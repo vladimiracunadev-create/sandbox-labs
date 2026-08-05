@@ -28,7 +28,13 @@ SECRETS = [
 ]
 
 # Directorios del sistema donde ningún proceso contenido debería poder escribir.
-WRITABLE_TARGETS = ["/", "/etc", "/usr/bin", "/var"]
+WRITABLE_TARGETS = ["/", "/etc", "/usr/bin", "/usr/lib", "/var"]
+
+# Sistemas de archivos que el propio sandbox crea y desaparecen con él. Escribir
+# ahí no toca al host: un runtime que monta una raíz tmpfs y te deja escribir en
+# «/» está funcionando, no fallando. Confundir las dos cosas convierte a la
+# sonda en una fuente de falsos positivos.
+EPHEMERAL_FILESYSTEMS = {"tmpfs", "ramfs", "overlay", "overlayfs", "squashfs"}
 
 
 def report(probe: str, dimension: str, result: str, detail: str) -> None:
@@ -76,23 +82,50 @@ def check_secret_reads() -> bool:
     return False
 
 
+def filesystem_type(path: str) -> str:
+    """Tipo del sistema de archivos que cubre `path`, según /proc/mounts."""
+    best_point, best_type = "", "unknown"
+    try:
+        for line in Path("/proc/mounts").read_text(encoding="utf-8").splitlines():
+            fields = line.split()
+            if len(fields) < 3:
+                continue
+            point, fstype = fields[1], fields[2]
+            # Gana el punto de montaje más largo que sea prefijo de la ruta.
+            if (path == point or path.startswith(point.rstrip("/") + "/") or point == "/") and len(point) >= len(best_point):
+                best_point, best_type = point, fstype
+    except OSError:
+        return "unknown"
+    return best_type
+
+
 def check_writes() -> bool:
-    """True si se pudo crear un archivo fuera del workspace."""
-    written = []
+    """True si se pudo escribir en un sistema de archivos persistente del host."""
+    host_writes, ephemeral_writes = [], []
     for directory in WRITABLE_TARGETS:
         candidate = Path(directory) / ".sandbox-labs-escape-probe"
         try:
             candidate.write_text("probe", encoding="utf-8")
         except OSError:
             continue
-        written.append(str(candidate))
+        fstype = filesystem_type(directory)
+        (ephemeral_writes if fstype in EPHEMERAL_FILESYSTEMS else host_writes).append(f"{candidate} ({fstype})")
         try:
             candidate.unlink()
         except OSError:
             pass
-    if written:
-        report("filesystem-write", "filesystem", "escaped", f"escritura permitida en: {','.join(written)}")
+
+    if host_writes:
+        report("filesystem-write", "filesystem", "escaped", f"escritura en filesystem persistente: {','.join(host_writes)}")
         return True
+    if ephemeral_writes:
+        report(
+            "filesystem-write",
+            "filesystem",
+            "contained",
+            f"solo escritura efímera dentro del sandbox: {','.join(ephemeral_writes)}",
+        )
+        return False
     report("filesystem-write", "filesystem", "contained", "sin escritura fuera del workspace")
     return False
 

@@ -69,12 +69,24 @@ pub fn run(root: &Path, options: &EscapeOptions) -> Result<i32> {
     }
 
     if options.strict {
-        if report.escaped_total() > 0 {
+        // `--strict` falla por **falsas garantías**, no por huecos conocidos.
+        //
+        // Que una sonda escape en un control que el runtime NO declara es
+        // información honesta y está documentada (hoy: `processes`, que necesita
+        // cgroups v2). Hacer fallar el build por eso obligaría a silenciar la
+        // sonda o a declarar un control inexistente — las dos salidas empeoran
+        // el sistema. Lo que no puede pasar inadvertido es lo contrario: que el
+        // runtime prometa un control y la sonda demuestre que no lo aplica.
+        if report.false_assurances_total() > 0 {
             eprintln!(
-                "\n❌ {} sonda(s) escaparon; {} de ellas bajo un control declarado.",
-                report.escaped_total(),
+                "\n❌ {} falsa(s) garantía(s): el runtime declara el control y no lo aplica.",
                 report.false_assurances_total()
             );
+            for entry in &report.reports {
+                for value in entry.results.iter().filter(|value| value.is_false_assurance()) {
+                    eprintln!("   · {} declara {} — {}: {}", entry.runtime, value.control, value.probe, value.detail);
+                }
+            }
             return Ok(1);
         }
         // Una puerta que aprueba sin haber medido nada no es una puerta. Si el

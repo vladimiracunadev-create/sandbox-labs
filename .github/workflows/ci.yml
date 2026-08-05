@@ -189,13 +189,18 @@ jobs:
       - name: Inventario del host
         run: cargo run --locked -q -p sandboxctl -- doctor
 
-      - name: Suite de contención — bubblewrap debe contenerlo todo
+      - name: Suite de contención — bubblewrap
         run: |
           set -euo pipefail
-          # `--strict` devuelve 1 si alguna sonda escapa: si bubblewrap deja de
-          # contener una dimensión, el build se cae aquí y no en producción.
+          # `--strict` falla si el runtime declara un control y la sonda
+          # demuestra que no lo aplica, o si no pudo medirse nada.
           cargo run --locked -q -p sandboxctl -- escape \
             --runtime bwrap --strict --report evidence/escape/bwrap.json
+          # Y por encima, el contrato explícito de lo que bubblewrap tiene que
+          # contener en este proyecto. `processes` queda fuera a propósito:
+          # necesita cgroups v2 y está documentado como hueco conocido.
+          node scripts/assert-containment.mjs evidence/escape/bwrap.json \
+            --contained network,filesystem,process,environment,privilege,memory
 
       - name: Suite de contención — unshare debe cortar la red y los PIDs
         run: |
