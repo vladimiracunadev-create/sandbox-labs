@@ -63,7 +63,7 @@ jobs:
 
       # Sin `version`: la fija `packageManager` en package.json. Declararla en
       # los dos sitios hace fallar la acción por conflicto.
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v5
 
       - uses: actions/setup-node@v4
         with:
