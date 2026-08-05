@@ -1,25 +1,174 @@
-name: Release artifact
+name: Release
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Publica un release verificado.
+#
+#   Uso: Actions → Release → Run workflow → versión (ej. v0.7.0)
+#   También se dispara al empujar un tag `v*`.
+#
+# La versión pedida debe coincidir con la del repositorio. Antes de publicar,
+# el workflow ejecuta la misma puerta de calidad que CI: un artefacto que
+# empaqueta un árbol en rojo no vale nada.
+# ─────────────────────────────────────────────────────────────────────────────
+
 on:
   push:
     tags: ["v*"]
   workflow_dispatch:
-permissions: { contents: write }
+    inputs:
+      version:
+        description: "Versión a publicar (vX.Y.Z, debe coincidir con version.txt)"
+        required: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
 jobs:
-  package:
+  verify:
+    name: Verificar el árbol
     runs-on: ubuntu-latest
+    timeout-minutes: 25
+    outputs:
+      version: ${{ steps.resolve.outputs.version }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with: { node-version: 22 }
-      - run: node scripts/validate-config.mjs
-      - run: node scripts/check-doc-links.mjs
-      - run: node scripts/run-negative-tests.mjs
-      - run: cd control-center && node scripts/build.mjs && node --test test/*.test.mjs
-      - run: node scripts/validate-evidence.mjs
-      - run: bash scripts/package-release.sh
-      - uses: softprops/action-gh-release@v2
-        if: startsWith(github.ref, 'refs/tags/')
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          files: |
+          persist-credentials: false
+
+      - id: resolve
+        name: Resolver y validar la versión
+        env:
+          REQUESTED: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          if [ -n "${REQUESTED:-}" ]; then
+            requested="$REQUESTED"
+          else
+            requested="${GITHUB_REF_NAME}"
+          fi
+          if [[ ! "$requested" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::Formato inválido: usa vX.Y.Z (recibido: $requested)"; exit 1
+          fi
+          declared="v$(tr -d '[:space:]' < version.txt)"
+          if [ "$requested" != "$declared" ]; then
+            echo "::error::$requested no coincide con version.txt ($declared). Bumpea la versión primero."; exit 1
+          fi
+          # La versión vive en cinco sitios: si uno se queda atrás, el release
+          # publica un artefacto que se contradice a sí mismo.
+          pkg="v$(node -p "require('./package.json').version")"
+          cc="v$(node -p "require('./control-center/package.json').version")"
+          cat_="v$(node -p "require('./sandbox.config.json').project.version")"
+          cargo="v$(grep -m1 '^version = ' Cargo.toml | cut -d'"' -f2)"
+          for pair in "package.json:$pkg" "control-center/package.json:$cc" "sandbox.config.json:$cat_" "Cargo.toml:$cargo"; do
+            name="${pair%%:*}"; value="${pair#*:}"
+            [ "$value" = "$declared" ] || { echo "::error::$name declara $value, se esperaba $declared"; exit 1; }
+          done
+          echo "version=$requested" >> "$GITHUB_OUTPUT"
+          echo "Versión coherente en los cinco manifiestos: $requested"
+
+      - uses: dtolnay/rust-toolchain@e97e2d8cc328f1b50210efc529dca0028893a2d9 # v1
+        with:
+          toolchain: stable
+          components: rustfmt, clippy
+
+      # Sin setup-node y sin caché: un release no debe restaurar una caché que
+      # una rama cualquiera pudo haber escrito. El runner ya trae Node ≥ 22 y
+      # el proyecto no tiene dependencias npm, así que no se pierde nada.
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
+
+      - name: Comprobar las versiones del entorno
+        run: |
+          set -euo pipefail
+          node --version
+          pnpm --version
+          node -e 'const [m]=process.versions.node.split(".");if(Number(m)<22)throw new Error("se requiere Node >= 22")'
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Puerta de calidad — Rust
+        run: |
+          set -euo pipefail
+          cargo metadata --locked --format-version 1 > /dev/null
+          cargo fmt --all -- --check
+          cargo clippy --workspace --all-targets --locked -- -D warnings
+          cargo test --workspace --locked
+
+      - name: Puerta de calidad — Node
+        run: pnpm check
+
+      - name: Empaquetar
+        run: bash scripts/package-release.sh
+
+      # Un ZIP que compila y cuadra de checksum puede seguir estando vacío por
+      # dentro: se abre y se cuenta lo que lleva.
+      - name: Verificar el contenido del artefacto
+        run: |
+          set -euo pipefail
+          archive=$(ls artifacts/*.zip)
+          echo "Artefacto: $archive"
+          entries=$(unzip -Z1 "$archive" | wc -l)
+          echo "Entradas: $entries"
+          [ "$entries" -ge 150 ] || { echo "::error::solo $entries entradas, se esperaban 150+"; exit 1; }
+          for needle in \
+              sandbox-labs/sandbox.config.json \
+              sandbox-labs/crates/sandboxctl/src/main.rs \
+              sandbox-labs/control-center/dist/server.js \
+              sandbox-labs/control-center/public/index.html \
+              sandbox-labs/policies/minimal.json \
+              sandbox-labs/workloads/benign/hello/manifest.json \
+              sandbox-labs/FILE_MANIFEST.txt; do
+            unzip -Z1 "$archive" | grep -qx "$needle" || { echo "::error::falta $needle en el ZIP"; exit 1; }
+          done
+          labs=$(unzip -Z1 "$archive" | grep -c '^sandbox-labs/labs/[0-9][0-9]-[^/]*/README.md$')
+          [ "$labs" -eq 18 ] || { echo "::error::el ZIP trae $labs laboratorios, se esperaban 18"; exit 1; }
+          sha=$(cut -d' ' -f1 artifacts/*.sha256)
+          {
+            echo "### 📦 Artefacto"
+            echo ""
+            echo "| Dato | Valor |"
+            echo "|---|---|"
+            echo "| Archivo | \`$(basename "$archive")\` |"
+            echo "| Entradas | **$entries** |"
+            echo "| Laboratorios | **$labs** |"
+            echo "| SHA-256 | \`$sha\` |"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: sandbox-labs-release
+          path: |
             artifacts/*.zip
             artifacts/*.sha256
+          retention-days: 7
+
+  publish:
+    name: Publicar release
+    needs: verify
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: sandbox-labs-release
+          path: artifacts
+
+      # `gh` ya viene en el runner: publicar con él quita una acción de
+      # terceros de la ruta que firma el release.
+      - name: Publicar en GitHub Releases
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.verify.outputs.version }}
+        run: |
+          set -euo pipefail
+          gh release create "$VERSION" \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "$VERSION" \
+            --generate-notes \
+            artifacts/*.zip artifacts/*.sha256

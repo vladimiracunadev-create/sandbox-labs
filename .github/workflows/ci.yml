@@ -1,10 +1,14 @@
 name: CI
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Puerta de calidad del repositorio. Dos trabajos independientes:
+# Puerta de calidad del repositorio. Tres trabajos independientes:
 #   rust  → formato, lint, pruebas de contrato y humo del CLI sandboxctl.
 #   node  → validadores del catálogo y suite del Control Center.
-# Ambos corren los mismos comandos que `make check` en local.
+#   panel → arranca el servidor real y comprueba la API de extremo a extremo.
+# Los tres corren los mismos comandos que `make check` en local.
+#
+# Todas las acciones van fijadas a SHA: un tag es mutable y `@v5` puede
+# apuntar mañana a otro código. zizmor lo verifica en el workflow Security.
 # ─────────────────────────────────────────────────────────────────────────────
 
 on:
@@ -23,17 +27,32 @@ jobs:
   rust:
     name: Rust (fmt · clippy · tests · CLI)
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       # `components` debe ser una cadena: en formato de flujo YAML,
-      # `{ components: rustfmt, clippy }` se interpreta como dos claves y la
-      # acción ignora clippy en silencio.
-      - uses: dtolnay/rust-toolchain@stable
+      # `{ components: rustfmt, clippy }` se lee como dos claves y la acción
+      # ignora clippy en silencio.
+      - uses: dtolnay/rust-toolchain@e97e2d8cc328f1b50210efc529dca0028893a2d9 # v1
         with:
+          toolchain: stable
           components: rustfmt, clippy
 
-      # Cargo.lock está versionado: `--locked` falla si el build lo modificaría.
+      - name: Cachear dependencias de Cargo
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/git/db
+            target
+          key: cargo-${{ runner.os }}-${{ hashFiles('Cargo.lock') }}
+          restore-keys: cargo-${{ runner.os }}-
+
+      # Cargo.lock está versionado: `--locked` falla si el build lo cambiaría.
       - name: Verificar que Cargo.lock está al día
         run: cargo metadata --locked --format-version 1 > /dev/null
 
@@ -55,17 +74,30 @@ jobs:
       - name: Humo — la evidencia generada cumple el esquema
         run: node scripts/validate-evidence.mjs
 
+      - name: Resumen
+        if: always()
+        run: |
+          {
+            echo "### 🦀 Rust"
+            echo ""
+            echo "- Toolchain: \`$(rustc --version)\`"
+            echo "- Evidencias generadas: **$(find evidence/runs -name '*.json' | wc -l)**"
+          } >> "$GITHUB_STEP_SUMMARY"
+
   node:
     name: Node (catálogo · Control Center)
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       # Sin `version`: la fija `packageManager` en package.json. Declararla en
       # los dos sitios hace fallar la acción por conflicto.
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: 22
           cache: pnpm
@@ -77,3 +109,87 @@ jobs:
 
       - name: Build del Control Center
         run: pnpm dashboard:build
+
+      # El build es determinista (copia src/ a dist/ reescribiendo imports):
+      # si dist/ versionado difiere del generado, alguien olvidó regenerarlo.
+      - name: Verificar que dist/ versionado está al día
+        run: |
+          set -euo pipefail
+          if ! git diff --quiet -- control-center/dist; then
+            echo "::error::control-center/dist está desincronizado. Ejecuta 'pnpm dashboard:build' y commitea."
+            git --no-pager diff --stat -- control-center/dist
+            exit 1
+          fi
+          echo "dist/ coincide con src/."
+
+  panel:
+    name: Panel (API de extremo a extremo)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: [rust, node]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+
+      - name: Construir el panel
+        run: node control-center/scripts/build.mjs
+
+      # Sin CLI compilado: se ejercita la ruta de evidencia de reserva, que es
+      # la que ve cualquiera que arranque el panel sin toolchain de Rust.
+      - name: Arrancar el panel
+        env:
+          SANDBOX_LABS_CLI_FALLBACK: "off"
+        run: |
+          set -euo pipefail
+          node control-center/dist/server.js &
+          echo $! > /tmp/panel.pid
+          for _ in $(seq 1 40); do
+            if curl -sf http://127.0.0.1:9093/api/system > /dev/null; then break; fi
+            sleep 0.5
+          done
+          curl -sf http://127.0.0.1:9093/api/system > /dev/null
+
+      - name: Comprobar el contrato de la API
+        run: |
+          set -euo pipefail
+          base=http://127.0.0.1:9093
+
+          echo "--- el panel se declara en modo seguro ---"
+          curl -sf "$base/api/system" | grep -q '"executionModel": "registered-workloads-only"'
+
+          echo "--- una escritura sin cabecera de confianza se rechaza ---"
+          code=$(curl -s -o /dev/null -w '%{http_code}' -X POST "$base/api/jobs" \
+            -H 'content-type: application/json' \
+            -d '{"workloadId":"hello","policyId":"minimal","runtimeId":"dry-run","arguments":[]}')
+          [ "$code" = "403" ] || { echo "::error::se esperaba 403, llegó $code"; exit 1; }
+
+          echo "--- no existe endpoint de comandos arbitrarios ---"
+          code=$(curl -s -o /dev/null -w '%{http_code}' -X POST "$base/api/exec" \
+            -H 'x-sandbox-request: 1' -d '{}')
+          [ "$code" = "404" ] || { echo "::error::se esperaba 404, llegó $code"; exit 1; }
+
+          echo "--- un Host no confiable se bloquea (anti DNS-rebinding) ---"
+          code=$(curl -s -o /dev/null -w '%{http_code}' -H 'Host: evil.example' "$base/api/system")
+          [ "$code" = "421" ] || { echo "::error::se esperaba 421, llegó $code"; exit 1; }
+
+          echo "--- un trabajo registrado llega a estado terminal con evidencia ---"
+          job=$(curl -sf -X POST "$base/api/jobs" \
+            -H 'content-type: application/json' -H 'x-sandbox-request: 1' \
+            -d '{"workloadId":"hello","policyId":"minimal","runtimeId":"dry-run","arguments":[]}' \
+            | node -e 'let d="";process.stdin.on("data",c=>d+=c).on("end",()=>console.log(JSON.parse(d).id))')
+          for _ in $(seq 1 40); do
+            status=$(curl -sf "$base/api/jobs/$job" | node -e 'let d="";process.stdin.on("data",c=>d+=c).on("end",()=>console.log(JSON.parse(d).status))')
+            [ "$status" = "planned" ] && break
+            sleep 0.5
+          done
+          [ "$status" = "planned" ] || { echo "::error::el trabajo terminó en $status"; exit 1; }
+          echo "Todas las comprobaciones del panel pasaron."
+
+      - name: Detener el panel
+        if: always()
+        run: kill "$(cat /tmp/panel.pid)" 2>/dev/null || true

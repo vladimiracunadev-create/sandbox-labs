@@ -1,0 +1,80 @@
+name: Pages
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Publica la portada estática de `site/` en GitHub Pages.
+# `site/` es solo presentación: el Control Center nunca se publica en internet
+# porque escucha en localhost y no tiene autenticación.
+# ─────────────────────────────────────────────────────────────────────────────
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "site/**"
+      - ".github/workflows/pages.yml"
+  workflow_dispatch:
+
+# Permisos mínimos a nivel de workflow; cada job amplía solo lo suyo.
+permissions:
+  contents: read
+
+# Un solo despliegue a la vez; no cancela uno en curso.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Verificar la portada
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pages: write # configure-pages con enablement lo necesita
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # Una portada a medias se publica igual de bien que una completa, así que
+      # conviene mirarla antes de subirla.
+      - name: Comprobar que la portada salió entera
+        run: |
+          set -euo pipefail
+          test -s site/index.html
+          for needle in "Sandbox Control Center" "sandbox-labs" "Apache License 2.0"; do
+            grep -q "$needle" site/index.html || { echo "::error::falta '$needle' en site/index.html"; exit 1; }
+          done
+          # La portada debe ser autocontenida: sin scripts ni hojas externas.
+          if grep -Eq '<(script|link)[^>]+(src|href)="https?://' site/index.html; then
+            echo "::error::site/index.html carga recursos externos"; exit 1
+          fi
+          {
+            echo "### 🌐 Portada"
+            echo ""
+            echo "- Tamaño: **$(wc -c < site/index.html) bytes**"
+            echo "- Enlaces: **$(grep -o '<a ' site/index.html | wc -l)**"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0
+        with:
+          enablement: true
+
+      - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
+        with:
+          path: site
+
+  deploy:
+    name: Publicar
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@cd2ce8fcbc39b97be8ca5fce6e763baed58fa128 # v5.0.0

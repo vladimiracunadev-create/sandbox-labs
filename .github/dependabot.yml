@@ -1,11 +1,53 @@
 version: 2
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Las actualizaciones se agrupan por ecosistema: un PR semanal con todo lo
+# menor y de parche, y PRs sueltos solo para los cambios mayores, que sí
+# necesitan revisión humana.
+#
+# Las acciones están fijadas a SHA (lo verifica zizmor en el workflow
+# Security). Dependabot entiende el formato `sha # vX.Y.Z` y actualiza ambos.
+# ─────────────────────────────────────────────────────────────────────────────
+
 updates:
   - package-ecosystem: cargo
     directory: "/"
-    schedule: { interval: weekly }
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    labels: ["dependencies", "rust"]
+    commit-message:
+      prefix: "cargo"
+    groups:
+      cargo-minor:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
+
   - package-ecosystem: npm
     directory: "/"
-    schedule: { interval: weekly }
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    labels: ["dependencies", "node"]
+    commit-message:
+      prefix: "npm"
+    groups:
+      npm-minor:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
+
   - package-ecosystem: github-actions
     directory: "/"
-    schedule: { interval: monthly }
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    labels: ["dependencies", "github-actions"]
+    commit-message:
+      prefix: "actions"
+    groups:
+      actions-minor:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]

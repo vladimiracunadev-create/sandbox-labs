@@ -5,6 +5,55 @@ Versionado semántico.
 
 ---
 
+## [Unreleased]
+
+### Security
+
+- **Todas las acciones de GitHub fijadas a SHA** con el tag en comentario. Un
+  tag es mutable: `@v5` puede apuntar mañana a otro código. `zizmor` lo
+  verifica en cada ejecución, así que deja de ser una convención olvidable.
+- `persist-credentials: false` en todos los checkouts: por defecto el token de
+  Actions queda en `.git/config` y cualquier paso posterior puede leerlo.
+  Ningún workflow del repositorio necesita empujar commits.
+- Permisos reducidos al mínimo por trabajo. `pages: write` e `id-token: write`
+  ya no se declaran a nivel de workflow.
+- El workflow de release ya no restaura caché de pnpm: no debe consumir una
+  caché que otra rama pudo haber escrito.
+- `softprops/action-gh-release` sustituido por `gh release create`, que ya
+  viene en el runner — una acción de terceros menos en la ruta que firma el
+  release.
+
+### Added
+
+- **Trabajo `panel` en CI**: arranca el servidor real y comprueba el contrato
+  de la API de extremo a extremo (modo seguro, `403` sin cabecera de
+  confianza, `404` en comandos arbitrarios, `421` anti DNS-rebinding y un
+  trabajo registrado que llega a estado terminal con evidencia).
+- CI verifica que `control-center/dist/` versionado coincide con lo que genera
+  el build: el build es determinista, así que una diferencia significa que
+  alguien editó `src/` sin regenerar `dist/`.
+- **`actionlint`** además de `zizmor` en el workflow de seguridad: corrección
+  de sintaxis, expresiones y shell embebido, no solo seguridad.
+- Workflow **Pages**, que publica `site/` y comprueba antes que la portada esté
+  completa y no cargue recursos externos.
+- Workflow **Release** rehecho: valida que la versión cuadre en los cinco
+  manifiestos, ejecuta la puerta de calidad completa y después **abre el ZIP y
+  cuenta lo que lleva dentro** — un artefacto puede compilar, cuadrar de
+  checksum y estar vacío.
+- Caché de dependencias de Cargo en CI.
+- `timeout-minutes` en todos los trabajos.
+- Resúmenes en `$GITHUB_STEP_SUMMARY` para Rust, Pages y Release.
+- `docs/CI_WORKFLOWS.md`: qué garantiza cada workflow y cómo reproducirlo.
+
+### Changed
+
+- `docs.yml` se divide en dos trabajos —enlaces y lint— porque fallan por
+  motivos distintos y el fallo debe decir qué arreglar.
+- `dependabot.yml`: actualizaciones agrupadas por ecosistema, con etiquetas,
+  prefijo de commit y límite de PRs abiertos.
+
+---
+
 ## [0.7.0] - 2026-08-05
 
 Primera versión **ejecutada de extremo a extremo**. La 0.6.0 se entregó sin que

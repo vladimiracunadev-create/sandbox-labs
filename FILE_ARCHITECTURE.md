@@ -110,6 +110,20 @@ Cada carga lleva `manifest.json` validado contra
 | `version.txt` | Versión en texto plano para scripts e instaladores |
 | `FILE_MANIFEST.txt` | SHA-256 de cada archivo versionado |
 | `.gitattributes` | Fija LF: un `.sh` con CRLF rompe CI |
+| `.markdownlint.json` | Estilo de Markdown aplicado en CI |
+
+## 🤖 `.github/`
+
+| Archivo | Rol |
+|---|---|
+| `workflows/ci.yml` | Formato, lint, pruebas, humo del CLI y del panel |
+| `workflows/docs.yml` | Enlaces internos y lint de Markdown |
+| `workflows/security.yml` | CVEs, secretos y auditoría de los propios workflows |
+| `workflows/pages.yml` | Publica `site/` en GitHub Pages |
+| `workflows/release.yml` | Verifica el árbol, empaqueta y **abre el ZIP para contar lo que lleva** |
+| `dependabot.yml` | Actualizaciones agrupadas de Cargo, npm y acciones |
+
+Detalle en [docs/CI_WORKFLOWS.md](docs/CI_WORKFLOWS.md).
 
 ---
 

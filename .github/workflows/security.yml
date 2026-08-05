@@ -3,6 +3,10 @@ name: Security
 # ─────────────────────────────────────────────────────────────────────────────
 # Auditoría de cadena de suministro. Corre en cada push a main, en cada PR y
 # semanalmente: una dependencia sin cambios puede tener un CVE nuevo mañana.
+#
+#   dependencies → CVEs en los árboles Cargo y npm.
+#   secrets      → credenciales filtradas en el historial completo.
+#   workflows    → los propios workflows, auditados con zizmor.
 # ─────────────────────────────────────────────────────────────────────────────
 
 on:
@@ -24,18 +28,23 @@ jobs:
   dependencies:
     name: Dependencias (cargo-audit · pnpm audit)
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       # La versión de pnpm viene de `packageManager` en package.json.
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: 22
           cache: pnpm
 
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@e97e2d8cc328f1b50210efc529dca0028893a2d9 # v1
+        with:
+          toolchain: stable
 
       - run: pnpm install --frozen-lockfile
 
@@ -44,15 +53,17 @@ jobs:
 
       # Cargo.lock está versionado: se audita el mismo árbol que compila CI.
       - name: Auditar el árbol Cargo
-        uses: actions-rust-lang/audit@v1
+        uses: actions-rust-lang/audit@72c09e02f132669d52284a3323acdb503cfc1a24 # v1.2.7
 
   secrets:
     name: Secretos (gitleaks)
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
+          persist-credentials: false
 
       - name: Instalar gitleaks
         env:
@@ -67,16 +78,29 @@ jobs:
         run: gitleaks detect --redact -v --source .
 
   workflows:
-    name: Workflows (zizmor)
+    name: Workflows (actionlint · zizmor)
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: "3.12"
 
-      - name: Auditar los propios workflows
+      # Corrección: sintaxis, expresiones y shell embebido de los workflows.
+      # shellcheck ya viene en el runner, así que audita también los `run:`.
+      - name: actionlint
+        run: |
+          set -euo pipefail
+          bash <(curl -sSfL https://raw.githubusercontent.com/rhysd/actionlint/main/scripts/download-actionlint.bash) > /dev/null
+          ./actionlint -color .github/workflows/*.yml
+
+      # Seguridad: verifica, entre otras cosas, que toda acción esté fijada a
+      # SHA — un tag es mutable y `@v5` puede apuntar mañana a otro código.
+      - name: zizmor
         run: |
           set -euo pipefail
           python -m pip install --quiet zizmor

@@ -64,6 +64,7 @@
 | Documento | Qué resuelve | Abrir |
 |---|---|---|
 | Testing | Qué prueba cada suite y cómo ejecutarlas | [Abrir](TESTING.md) |
+| CI Workflows | Los cinco workflows, qué garantiza cada uno y cómo reproducirlos | [Abrir](CI_WORKFLOWS.md) |
 | Validation | Qué se verificó realmente en esta versión | [Abrir](../VALIDATION.md) |
 | Project Status | Consolidado, experimental y pendiente | [Abrir](../PROJECT_STATUS.md) |
 | Roadmap | Hacia dónde va el proyecto | [Abrir](../ROADMAP.md) |
