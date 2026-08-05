@@ -1,0 +1,25 @@
+name: Release artifact
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+permissions: { contents: write }
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - run: node scripts/validate-config.mjs
+      - run: node scripts/check-doc-links.mjs
+      - run: node scripts/run-negative-tests.mjs
+      - run: cd control-center && node scripts/build.mjs && node --test test/*.test.mjs
+      - run: node scripts/validate-evidence.mjs
+      - run: bash scripts/package-release.sh
+      - uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          files: |
+            artifacts/*.zip
+            artifacts/*.sha256

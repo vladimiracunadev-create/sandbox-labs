@@ -1,0 +1,60 @@
+{
+  "$schema": "../schemas/policy.schema.json",
+  "id": "data-science",
+  "description": "Scripts de datos con dataset de solo lectura.",
+  "enforcement": {
+    "mode": "best-effort",
+    "requiredControls": [
+      "filesystem",
+      "network",
+      "timeout",
+      "output"
+    ]
+  },
+  "filesystem": {
+    "root": "ephemeral",
+    "readOnly": [
+      "/workspace/datasets"
+    ],
+    "writable": [
+      "/workspace/output"
+    ],
+    "maxWorkspaceMb": 256,
+    "followSymlinks": false
+  },
+  "network": {
+    "mode": "none",
+    "hosts": [],
+    "dns": "disabled"
+  },
+  "resources": {
+    "cpu": 2,
+    "memoryMb": 2048,
+    "processes": 64,
+    "timeoutSeconds": 300,
+    "openFiles": 256,
+    "outputBytes": 1048576
+  },
+  "process": {
+    "capabilities": [],
+    "environment": {
+      "PYTHONUNBUFFERED": "1"
+    },
+    "allowedEnvironment": [],
+    "user": 65534,
+    "group": 65534
+  },
+  "syscalls": {
+    "profile": "default",
+    "allow": [],
+    "deny": []
+  },
+  "devices": {
+    "allow": [
+      "null",
+      "zero",
+      "random",
+      "urandom"
+    ]
+  }
+}

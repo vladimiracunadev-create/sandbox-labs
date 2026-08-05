@@ -1,0 +1,19 @@
+{
+  "$schema": "../../../schemas/workload.schema.json",
+  "id": "wasi-hello",
+  "kind": "wasi",
+  "entrypoint": "hello.wasm",
+  "command": "wasmtime",
+  "args": [
+    "hello.wasm"
+  ],
+  "risk": "benign",
+  "description": "Módulo WASI esperado; build documentado en el laboratorio 14.",
+  "allowNative": false,
+  "expected": {
+    "outcome": "success",
+    "contains": [
+      "hello"
+    ]
+  }
+}

@@ -1,0 +1,62 @@
+{
+  "$schema": "../schemas/policy.schema.json",
+  "id": "web-application",
+  "description": "Aplicación web local con loopback y directorio temporal.",
+  "enforcement": {
+    "mode": "best-effort",
+    "requiredControls": [
+      "filesystem",
+      "timeout",
+      "output"
+    ]
+  },
+  "filesystem": {
+    "root": "ephemeral",
+    "readOnly": [
+      "/workspace/app"
+    ],
+    "writable": [
+      "/workspace/tmp"
+    ],
+    "maxWorkspaceMb": 256,
+    "followSymlinks": false
+  },
+  "network": {
+    "mode": "loopback",
+    "hosts": [],
+    "dns": "disabled"
+  },
+  "resources": {
+    "cpu": 1.5,
+    "memoryMb": 512,
+    "processes": 64,
+    "timeoutSeconds": 120,
+    "openFiles": 256,
+    "outputBytes": 524288
+  },
+  "process": {
+    "capabilities": [],
+    "environment": {
+      "NODE_ENV": "production"
+    },
+    "allowedEnvironment": [],
+    "user": 65534,
+    "group": 65534
+  },
+  "syscalls": {
+    "profile": "default",
+    "allow": [],
+    "deny": [
+      "mount",
+      "ptrace"
+    ]
+  },
+  "devices": {
+    "allow": [
+      "null",
+      "zero",
+      "random",
+      "urandom"
+    ]
+  }
+}

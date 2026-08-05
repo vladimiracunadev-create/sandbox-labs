@@ -1,0 +1,67 @@
+{
+  "$schema": "../schemas/policy.schema.json",
+  "id": "compiler",
+  "description": "Compilación aislada sin acceso de red.",
+  "enforcement": {
+    "mode": "strict",
+    "requiredControls": [
+      "filesystem",
+      "network",
+      "processes",
+      "memory",
+      "timeout",
+      "output"
+    ]
+  },
+  "filesystem": {
+    "root": "ephemeral",
+    "readOnly": [
+      "/workspace/source",
+      "/opt/toolchain"
+    ],
+    "writable": [
+      "/workspace/build",
+      "/workspace/home"
+    ],
+    "maxWorkspaceMb": 256,
+    "followSymlinks": false
+  },
+  "network": {
+    "mode": "none",
+    "hosts": [],
+    "dns": "disabled"
+  },
+  "resources": {
+    "cpu": 2,
+    "memoryMb": 1024,
+    "processes": 96,
+    "timeoutSeconds": 180,
+    "openFiles": 512,
+    "outputBytes": 1048576
+  },
+  "process": {
+    "capabilities": [],
+    "environment": {
+      "HOME": "/workspace/home"
+    },
+    "allowedEnvironment": [],
+    "user": 65534,
+    "group": 65534
+  },
+  "syscalls": {
+    "profile": "default",
+    "allow": [],
+    "deny": [
+      "mount",
+      "ptrace"
+    ]
+  },
+  "devices": {
+    "allow": [
+      "null",
+      "zero",
+      "random",
+      "urandom"
+    ]
+  }
+}

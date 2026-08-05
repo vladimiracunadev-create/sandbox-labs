@@ -1,0 +1,12 @@
+/target/
+/node_modules/
+/control-center/node_modules/
+/.sandbox-data/
+/artifacts/
+/evidence/runs/*.json
+!/evidence/runs/.gitkeep
+*.log
+.DS_Store
+.env
+.env.*
+!.env.example

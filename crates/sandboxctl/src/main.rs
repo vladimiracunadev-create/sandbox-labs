@@ -1,0 +1,200 @@
+use anyhow::{Context, Result};
+use clap::{Parser, Subcommand};
+use sandbox_core::{Catalog, DoctorReport, Evidence, ExecutionPlan, Policy, RuntimeKind, Workload};
+use std::{
+    path::{Path, PathBuf},
+    str::FromStr,
+};
+
+#[derive(Debug, Parser)]
+#[command(name = "sandboxctl", version, about = "Controlador reproducible de Sandbox Labs")]
+struct Cli {
+    #[arg(long, default_value = ".")]
+    root: PathBuf,
+    #[command(subcommand)]
+    command: Command,
+}
+
+#[derive(Debug, Subcommand)]
+enum Command {
+    Doctor {
+        #[arg(long)]
+        json: bool,
+    },
+    Labs,
+    Runtimes {
+        #[arg(long)]
+        json: bool,
+    },
+    Validate {
+        policy: PathBuf,
+        #[arg(long)]
+        workload: Option<PathBuf>,
+    },
+    Plan {
+        #[arg(long)]
+        workload: PathBuf,
+        #[arg(long, default_value = "dry-run")]
+        runtime: String,
+        #[arg(long)]
+        policy: PathBuf,
+        #[arg(long)]
+        json: bool,
+    },
+    Run {
+        #[arg(long)]
+        workload: PathBuf,
+        #[arg(long, default_value = "dry-run")]
+        runtime: String,
+        #[arg(long)]
+        policy: PathBuf,
+        #[arg(long, num_args=0..=16)]
+        arg: Vec<String>,
+        #[arg(long)]
+        json: bool,
+    },
+}
+
+fn main() -> Result<()> {
+    let cli = Cli::parse();
+    let root = canonical_or_original(&cli.root);
+    match cli.command {
+        Command::Doctor { json } => doctor(json),
+        Command::Labs => labs(&root),
+        Command::Runtimes { json } => runtimes(json),
+        Command::Validate { policy, workload } => validate(&root, &policy, workload.as_deref()),
+        Command::Plan { workload, runtime, policy, json } => plan(&root, &workload, &runtime, &policy, json),
+        Command::Run { workload, runtime, policy, arg, json } => run(&root, &workload, &runtime, &policy, &arg, json),
+    }
+}
+
+fn doctor(json: bool) -> Result<()> {
+    let report = DoctorReport::collect();
+    if json {
+        println!("{}", serde_json::to_string_pretty(&report)?);
+        return Ok(());
+    }
+    println!("Sandbox Labs doctor — {}", report.platform);
+    for check in report.checks {
+        println!("{} {:14} {}", if check.available { "✅" } else { "⚪" }, check.name, check.detail);
+    }
+    Ok(())
+}
+
+fn labs(root: &Path) -> Result<()> {
+    let catalog = Catalog::load(root.join("sandbox.config.json"))?;
+    println!("{} v{}", catalog.project.name, catalog.project.version);
+    for lab in catalog.labs {
+        println!("{} {:30} {:14} {}", lab.id, lab.slug, lab.level, lab.status);
+    }
+    Ok(())
+}
+
+fn runtimes(json_output: bool) -> Result<()> {
+    let kinds = [
+        RuntimeKind::DryRun,
+        RuntimeKind::Native,
+        RuntimeKind::Bwrap,
+        RuntimeKind::Unshare,
+        RuntimeKind::Gvisor,
+        RuntimeKind::Kata,
+        RuntimeKind::Wasi,
+        RuntimeKind::Firecracker,
+    ];
+    let probes = kinds.into_iter().map(RuntimeKind::probe).collect::<Vec<_>>();
+    if json_output {
+        println!("{}", serde_json::to_string_pretty(&probes)?);
+    } else {
+        for probe in probes {
+            println!("{} {:12} {}", if probe.available { "✅" } else { "⚪" }, probe.id, probe.version);
+        }
+    }
+    Ok(())
+}
+
+fn validate(root: &Path, policy: &Path, workload: Option<&Path>) -> Result<()> {
+    let policy_path = resolve_inside(root, policy)?;
+    let policy = Policy::load(&policy_path)?;
+    println!("✅ Política válida: {}", policy.id);
+    if let Some(path) = workload {
+        let workload = Workload::load(resolve_inside(root, path)?)?;
+        println!("✅ Carga válida: {}", workload.id);
+    }
+    Ok(())
+}
+
+fn plan(root: &Path, workload: &Path, runtime: &str, policy: &Path, json_output: bool) -> Result<()> {
+    let (_, _, _, plan) = prepare(root, workload, runtime, policy)?;
+    if json_output {
+        println!("{}", serde_json::to_string_pretty(&plan)?);
+    } else {
+        print_plan(&plan);
+    }
+    Ok(())
+}
+
+fn run(
+    root: &Path,
+    workload_path: &Path,
+    runtime: &str,
+    policy_path: &Path,
+    args: &[String],
+    json_output: bool,
+) -> Result<()> {
+    let (workload, policy, policy_file, plan) = prepare(root, workload_path, runtime, policy_path)?;
+    let policy_hash = Policy::hash(&policy_file)?;
+    let workload_hash = workload.hash()?;
+    let catalog = Catalog::load(root.join("sandbox.config.json"))?;
+    let evidence_dir = root.join(catalog.project.evidence_directory);
+    let evidence = if plan.runtime == RuntimeKind::DryRun || !plan.executable {
+        Evidence::planned(&plan, &policy, &policy_hash, &workload, &workload_hash)
+    } else {
+        let outcome = sandbox_runtimes::execute(&plan, &policy, &workload, args)?;
+        Evidence::executed(&plan, &policy, &policy_hash, &workload, &workload_hash, &outcome)
+    };
+    let path = evidence.write(evidence_dir)?;
+    if json_output {
+        println!("{}", serde_json::to_string_pretty(&evidence)?);
+    } else {
+        print_plan(&plan);
+        println!("\nEstado: {:?}\nEvidencia: {}", evidence.status, path.display());
+    }
+    Ok(())
+}
+
+fn prepare(
+    root: &Path,
+    workload: &Path,
+    runtime: &str,
+    policy: &Path,
+) -> Result<(Workload, Policy, PathBuf, ExecutionPlan)> {
+    let workload = Workload::load(resolve_inside(root, workload)?)?;
+    let policy_file = resolve_inside(root, policy)?;
+    let policy = Policy::load(&policy_file)?;
+    let runtime = RuntimeKind::from_str(runtime)?;
+    let plan = ExecutionPlan::build(runtime, &workload, &policy)?;
+    Ok((workload, policy, policy_file, plan))
+}
+
+fn print_plan(plan: &ExecutionPlan) {
+    println!("Plan de ejecución:");
+    for step in &plan.steps {
+        println!("  - {step}");
+    }
+    if let Some(reason) = &plan.block_reason {
+        println!("  ⚠ {reason}");
+    }
+}
+
+fn resolve_inside(root: &Path, candidate: &Path) -> Result<PathBuf> {
+    let joined = if candidate.is_absolute() { candidate.to_path_buf() } else { root.join(candidate) };
+    let canonical = joined.canonicalize().with_context(|| format!("No se pudo resolver {}", joined.display()))?;
+    let root = root.canonicalize().unwrap_or_else(|_| root.to_path_buf());
+    if !canonical.starts_with(&root) {
+        anyhow::bail!("Ruta fuera del repositorio: {}", canonical.display());
+    }
+    Ok(canonical)
+}
+fn canonical_or_original(path: &Path) -> PathBuf {
+    path.canonicalize().unwrap_or_else(|_| path.to_path_buf())
+}

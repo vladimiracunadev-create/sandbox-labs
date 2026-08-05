@@ -1,0 +1,157 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Sandbox Labs Catalog",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "project",
+    "runtimes",
+    "labs",
+    "workloadsDirectory",
+    "policiesDirectory"
+  ],
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "project": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "version",
+        "controlCenterPort",
+        "defaultRuntime",
+        "evidenceDirectory",
+        "dataDirectory"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "version": {
+          "type": "string",
+          "pattern": "^\\d+\\.\\d+\\.\\d+$"
+        },
+        "controlCenterPort": {
+          "type": "integer",
+          "minimum": 1024,
+          "maximum": 65535
+        },
+        "defaultRuntime": {
+          "type": "string",
+          "minLength": 1
+        },
+        "evidenceDirectory": {
+          "type": "string",
+          "minLength": 1
+        },
+        "dataDirectory": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "runtimes": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "label",
+          "status",
+          "requires",
+          "controls"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z0-9-]+$"
+          },
+          "label": {
+            "type": "string",
+            "minLength": 1
+          },
+          "status": {
+            "enum": [
+              "ready",
+              "experimental",
+              "documented",
+              "manual",
+              "planned"
+            ]
+          },
+          "requires": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "controls": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "labs": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "slug",
+          "title",
+          "level",
+          "status"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^\\d{2}$"
+          },
+          "slug": {
+            "type": "string",
+            "pattern": "^[a-z0-9-]+$"
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1
+          },
+          "level": {
+            "enum": [
+              "initial",
+              "intermediate",
+              "advanced",
+              "product"
+            ]
+          },
+          "status": {
+            "enum": [
+              "ready",
+              "experimental",
+              "documented",
+              "manual",
+              "planned"
+            ]
+          }
+        }
+      }
+    },
+    "workloadsDirectory": {
+      "type": "string",
+      "minLength": 1
+    },
+    "policiesDirectory": {
+      "type": "string",
+      "minLength": 1
+    }
+  }
+}

@@ -1,0 +1,258 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Sandbox Labs Policy",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "description",
+    "enforcement",
+    "filesystem",
+    "network",
+    "resources",
+    "process",
+    "syscalls",
+    "devices"
+  ],
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9-]+$"
+    },
+    "description": {
+      "type": "string"
+    },
+    "enforcement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "mode",
+        "requiredControls"
+      ],
+      "properties": {
+        "mode": {
+          "enum": [
+            "strict",
+            "best-effort"
+          ]
+        },
+        "requiredControls": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "filesystem",
+              "network",
+              "processes",
+              "memory",
+              "cpu",
+              "timeout",
+              "capabilities",
+              "syscalls",
+              "devices",
+              "environment",
+              "output"
+            ]
+          }
+        }
+      }
+    },
+    "filesystem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "root",
+        "readOnly",
+        "writable",
+        "maxWorkspaceMb",
+        "followSymlinks"
+      ],
+      "properties": {
+        "root": {
+          "enum": [
+            "ephemeral",
+            "host-readonly",
+            "custom"
+          ]
+        },
+        "readOnly": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "writable": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "maxWorkspaceMb": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "followSymlinks": {
+          "type": "boolean"
+        }
+      }
+    },
+    "network": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "mode",
+        "hosts",
+        "dns"
+      ],
+      "properties": {
+        "mode": {
+          "enum": [
+            "none",
+            "loopback",
+            "allowlist",
+            "unrestricted"
+          ]
+        },
+        "hosts": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "dns": {
+          "enum": [
+            "disabled",
+            "system",
+            "allowlist"
+          ]
+        }
+      }
+    },
+    "resources": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "cpu",
+        "memoryMb",
+        "processes",
+        "timeoutSeconds",
+        "openFiles",
+        "outputBytes"
+      ],
+      "properties": {
+        "cpu": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "memoryMb": {
+          "type": "integer",
+          "minimum": 16
+        },
+        "processes": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "timeoutSeconds": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "openFiles": {
+          "type": "integer",
+          "minimum": 8
+        },
+        "outputBytes": {
+          "type": "integer",
+          "minimum": 1024
+        }
+      }
+    },
+    "process": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "capabilities",
+        "environment",
+        "allowedEnvironment",
+        "user",
+        "group"
+      ],
+      "properties": {
+        "capabilities": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "environment": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "allowedEnvironment": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "user": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "group": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "syscalls": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "profile",
+        "allow",
+        "deny"
+      ],
+      "properties": {
+        "profile": {
+          "enum": [
+            "none",
+            "default",
+            "strict",
+            "custom"
+          ]
+        },
+        "allow": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "deny": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "devices": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "allow"
+      ],
+      "properties": {
+        "allow": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}

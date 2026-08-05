@@ -1,0 +1,19 @@
+{
+  "$schema": "../../../schemas/workload.schema.json",
+  "id": "process-pressure",
+  "kind": "python",
+  "entrypoint": "pressure.py",
+  "command": "python3",
+  "args": [
+    "pressure.py"
+  ],
+  "risk": "resource-abuse",
+  "description": "Crea una cantidad pequeña y configurable de procesos para probar límites.",
+  "allowNative": false,
+  "expected": {
+    "outcome": "limited",
+    "contains": [
+      "processes"
+    ]
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "name": "sandbox-control-center",
+  "version": "0.6.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node --experimental-strip-types --watch src/server.ts",
+    "build": "node scripts/build.mjs",
+    "start": "node dist/server.js",
+    "test": "node scripts/build.mjs && node --test test/*.test.mjs"
+  }
+}

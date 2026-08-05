@@ -1,0 +1,38 @@
+# Normalización de fin de línea.
+# El repositorio se desarrolla en Windows y se ejecuta en Linux (CI, WSL2,
+# runtimes de aislamiento). Un script con CRLF falla en bash con un error
+# opaco ("bad interpreter"), así que todo lo ejecutable se fija a LF.
+* text=auto eol=lf
+
+# Scripts y archivos que un intérprete lee directamente.
+*.sh        text eol=lf
+*.mjs       text eol=lf
+*.js        text eol=lf
+*.ts        text eol=lf
+*.py        text eol=lf
+*.rs        text eol=lf
+*.toml      text eol=lf
+*.json      text eol=lf
+*.yml       text eol=lf
+*.yaml      text eol=lf
+*.md        text eol=lf
+Makefile    text eol=lf
+
+# Herramientas de Windows: CRLF nativo.
+*.cmd       text eol=crlf
+*.bat       text eol=crlf
+*.ps1       text eol=crlf
+
+# Binarios: sin conversión.
+*.png       binary
+*.jpg       binary
+*.svg       text eol=lf
+*.wasm      binary
+*.zip       binary
+*.ico       binary
+
+# Artefactos generados: no ensucian el diff en las revisiones.
+FILE_MANIFEST.txt   text eol=lf linguist-generated=true
+Cargo.lock          text eol=lf linguist-generated=true
+pnpm-lock.yaml      text eol=lf linguist-generated=true
+control-center/dist/**  linguist-generated=true

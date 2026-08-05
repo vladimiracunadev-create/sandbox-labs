@@ -1,0 +1,23 @@
+[workspace]
+members = ["crates/sandboxctl", "crates/sandbox-core", "crates/sandbox-runtimes"]
+resolver = "2"
+
+[workspace.package]
+version = "0.6.0"
+edition = "2021"
+license = "Apache-2.0"
+authors = ["Vladimir Acuña"]
+rust-version = "1.78"
+
+[workspace.dependencies]
+anyhow = "1.0"
+chrono = { version = "0.4", features = ["serde", "clock"] }
+clap = { version = "4.5", features = ["derive"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+sha2 = "0.10"
+tempfile = "3.15"
+thiserror = "2.0"
+uuid = { version = "1.11", features = ["v4", "serde"] }
+wait-timeout = "0.2"
+walkdir = "2.5"

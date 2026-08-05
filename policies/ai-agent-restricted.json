@@ -1,0 +1,71 @@
+{
+  "$schema": "../schemas/policy.schema.json",
+  "id": "ai-agent-restricted",
+  "description": "Código generado por IA con red cerrada por defecto.",
+  "enforcement": {
+    "mode": "strict",
+    "requiredControls": [
+      "filesystem",
+      "network",
+      "processes",
+      "memory",
+      "timeout",
+      "capabilities",
+      "environment",
+      "output"
+    ]
+  },
+  "filesystem": {
+    "root": "ephemeral",
+    "readOnly": [
+      "/workspace/input"
+    ],
+    "writable": [
+      "/workspace/output"
+    ],
+    "maxWorkspaceMb": 256,
+    "followSymlinks": false
+  },
+  "network": {
+    "mode": "none",
+    "hosts": [],
+    "dns": "disabled"
+  },
+  "resources": {
+    "cpu": 1,
+    "memoryMb": 512,
+    "processes": 40,
+    "timeoutSeconds": 120,
+    "openFiles": 128,
+    "outputBytes": 262144
+  },
+  "process": {
+    "capabilities": [],
+    "environment": {
+      "LANG": "C.UTF-8",
+      "NO_COLOR": "1"
+    },
+    "allowedEnvironment": [],
+    "user": 65534,
+    "group": 65534
+  },
+  "syscalls": {
+    "profile": "strict",
+    "allow": [],
+    "deny": [
+      "mount",
+      "ptrace",
+      "reboot",
+      "kexec_load",
+      "bpf"
+    ]
+  },
+  "devices": {
+    "allow": [
+      "null",
+      "zero",
+      "random",
+      "urandom"
+    ]
+  }
+}

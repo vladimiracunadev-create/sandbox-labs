@@ -1,0 +1,88 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Sandbox Labs Workload",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "kind",
+    "entrypoint",
+    "command",
+    "args",
+    "risk",
+    "description",
+    "allowNative",
+    "expected"
+  ],
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9-]+$"
+    },
+    "kind": {
+      "enum": [
+        "script",
+        "python",
+        "node",
+        "binary",
+        "wasi"
+      ]
+    },
+    "entrypoint": {
+      "type": "string",
+      "minLength": 1
+    },
+    "command": {
+      "type": "string",
+      "minLength": 1
+    },
+    "args": {
+      "type": "array",
+      "maxItems": 32,
+      "items": {
+        "type": "string",
+        "maxLength": 512
+      }
+    },
+    "risk": {
+      "enum": [
+        "benign",
+        "controlled",
+        "adversarial-simulation",
+        "resource-abuse"
+      ]
+    },
+    "description": {
+      "type": "string"
+    },
+    "allowNative": {
+      "type": "boolean"
+    },
+    "expected": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "outcome"
+      ],
+      "properties": {
+        "outcome": {
+          "enum": [
+            "success",
+            "blocked",
+            "limited",
+            "timeout"
+          ]
+        },
+        "contains": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}

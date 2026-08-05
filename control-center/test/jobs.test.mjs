@@ -1,0 +1,4 @@
+import test from "node:test";import assert from "node:assert/strict";import { validateJobRequest } from "../dist/jobs.js";const workloads=[{id:"hello",allowNative:true},{id:"risk",allowNative:false}],policies=[{id:"minimal"}],runtimes=new Set(["dry-run","native"]);
+test("acepta referencias registradas",()=>assert.doesNotThrow(()=>validateJobRequest({workloadId:"hello",policyId:"minimal",runtimeId:"dry-run",arguments:[]},workloads,policies,runtimes)));
+test("rechaza IDs inventados",()=>assert.throws(()=>validateJobRequest({workloadId:"../../x",policyId:"minimal",runtimeId:"dry-run",arguments:[]},workloads,policies,runtimes)));
+test("rechaza native para carga riesgosa",()=>assert.throws(()=>validateJobRequest({workloadId:"risk",policyId:"minimal",runtimeId:"native",arguments:[]},workloads,policies,runtimes)));

@@ -1,0 +1,19 @@
+name: Bug
+about: Reportar un defecto reproducible
+body:
+  - type: textarea
+    id: description
+    attributes:
+      label: Descripción
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproducción
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Entorno y salida de sandboxctl doctor

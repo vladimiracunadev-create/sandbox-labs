@@ -1,0 +1,20 @@
+{
+  "schemaVersion": "1.0",
+  "workload": "hello",
+  "repetitions": 10,
+  "metrics": [
+    "startupMs",
+    "durationMs",
+    "peakMemoryBytes",
+    "cpuTimeMs",
+    "exitStatus"
+  ],
+  "runtimes": [
+    "native",
+    "bwrap",
+    "unshare",
+    "wasi"
+  ],
+  "results": [],
+  "note": "results se completan solo con mediciones reales"
+}

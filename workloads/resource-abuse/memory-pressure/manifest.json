@@ -1,0 +1,19 @@
+{
+  "$schema": "../../../schemas/workload.schema.json",
+  "id": "memory-pressure",
+  "kind": "python",
+  "entrypoint": "pressure.py",
+  "command": "python3",
+  "args": [
+    "pressure.py"
+  ],
+  "risk": "resource-abuse",
+  "description": "Reserva memoria en bloques acotados para verificar límites; no se permite en native.",
+  "allowNative": false,
+  "expected": {
+    "outcome": "limited",
+    "contains": [
+      "memory"
+    ]
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "$schema": "../../../schemas/workload.schema.json",
+  "id": "path-traversal-simulation",
+  "kind": "python",
+  "entrypoint": "probe.py",
+  "command": "python3",
+  "args": [
+    "probe.py"
+  ],
+  "risk": "adversarial-simulation",
+  "description": "Intenta salir del workspace mediante rutas relativas; no modifica archivos.",
+  "allowNative": false,
+  "expected": {
+    "outcome": "blocked",
+    "contains": [
+      "blocked"
+    ]
+  }
+}

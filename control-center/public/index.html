@@ -1,0 +1,10 @@
+<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Sandbox Control Center</title><link rel="stylesheet" href="/styles.css"></head><body>
+<header><div><p class="eyebrow">SANDBOX LABS · v0.6.0</p><h1>Sandbox Control Center</h1><p>Ejecuta cargas registradas, compara runtimes y conserva evidencia reproducible.</p></div><div class="status"><span></span> localhost seguro · :9093</div></header>
+<main><section class="summary" id="summary"></section>
+<section class="runner"><div><p class="eyebrow">EJECUCIÓN CONTROLADA</p><h2>Crear trabajo</h2><p>No acepta comandos libres: solo cargas, políticas y runtimes registrados.</p></div><form id="job-form"><label>Carga<select id="workload" required></select></label><label>Política<select id="policy" required></select></label><label>Runtime<select id="runtime" required></select></label><label>Argumentos opcionales<input id="arguments" placeholder="uno, dos"></label><button type="submit">Crear trabajo</button><output id="form-result"></output></form></section>
+<section><div class="section-title"><h2>Trabajos recientes</h2><button class="secondary" id="refresh-jobs">Actualizar</button></div><div class="jobs" id="jobs"></div></section>
+<section><div class="section-title"><h2>Runtimes</h2><span>Soporte declarado</span></div><div class="grid" id="runtimes"></div></section>
+<section><div class="section-title"><h2>Laboratorios</h2><span id="lab-count"></span></div><div class="grid" id="labs"></div></section>
+<section><div class="section-title"><h2>Políticas</h2><span>Falla cerrada cuando son estrictas</span></div><div class="grid" id="policies"></div></section></main>
+<dialog id="evidence-dialog"><button class="close" id="close-dialog">Cerrar</button><h2>Evidencia</h2><pre id="evidence"></pre></dialog>
+<template id="card-template"><article class="card"><div class="card-top"><strong></strong><span class="badge"></span></div><h3></h3><p></p></article></template><script type="module" src="/app.js"></script></body></html>

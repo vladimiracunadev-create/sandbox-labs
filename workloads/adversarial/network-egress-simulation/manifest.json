@@ -1,0 +1,19 @@
+{
+  "$schema": "../../../schemas/workload.schema.json",
+  "id": "network-egress-simulation",
+  "kind": "python",
+  "entrypoint": "probe.py",
+  "command": "python3",
+  "args": [
+    "probe.py"
+  ],
+  "risk": "adversarial-simulation",
+  "description": "Intenta una conexión TCP única con timeout corto para demostrar bloqueo de red.",
+  "allowNative": false,
+  "expected": {
+    "outcome": "blocked",
+    "contains": [
+      "blocked"
+    ]
+  }
+}

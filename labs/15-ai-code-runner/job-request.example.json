@@ -1,0 +1,10 @@
+{
+  "jobId": "demo-001",
+  "source": "agent-generated",
+  "language": "python",
+  "entrypoint": "main.py",
+  "policy": "ai-agent-restricted",
+  "runtimePreference": ["wasi", "gvisor", "bwrap"],
+  "networkJustification": "Read-only access to GitHub API",
+  "retentionSeconds": 3600
+}

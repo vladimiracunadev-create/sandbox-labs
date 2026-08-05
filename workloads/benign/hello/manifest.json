@@ -1,0 +1,19 @@
+{
+  "$schema": "../../../schemas/workload.schema.json",
+  "id": "hello",
+  "kind": "script",
+  "entrypoint": "run.sh",
+  "command": "sh",
+  "args": [
+    "run.sh"
+  ],
+  "risk": "benign",
+  "description": "Valida stdout, cwd y variables mínimas.",
+  "allowNative": true,
+  "expected": {
+    "outcome": "success",
+    "contains": [
+      "hello from sandbox-labs"
+    ]
+  }
+}

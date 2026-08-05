@@ -1,0 +1,69 @@
+{
+  "$schema": "../schemas/policy.schema.json",
+  "id": "minimal",
+  "description": "Perfil mínimo: filesystem efímero, sin red y recursos acotados.",
+  "enforcement": {
+    "mode": "strict",
+    "requiredControls": [
+      "filesystem",
+      "network",
+      "timeout",
+      "capabilities",
+      "environment",
+      "output"
+    ]
+  },
+  "filesystem": {
+    "root": "ephemeral",
+    "readOnly": [
+      "/workspace/input"
+    ],
+    "writable": [
+      "/workspace/output"
+    ],
+    "maxWorkspaceMb": 256,
+    "followSymlinks": false
+  },
+  "network": {
+    "mode": "none",
+    "hosts": [],
+    "dns": "disabled"
+  },
+  "resources": {
+    "cpu": 1,
+    "memoryMb": 256,
+    "processes": 24,
+    "timeoutSeconds": 30,
+    "openFiles": 64,
+    "outputBytes": 131072
+  },
+  "process": {
+    "capabilities": [],
+    "environment": {
+      "LANG": "C.UTF-8"
+    },
+    "allowedEnvironment": [],
+    "user": 65534,
+    "group": 65534
+  },
+  "syscalls": {
+    "profile": "strict",
+    "allow": [],
+    "deny": [
+      "mount",
+      "ptrace",
+      "reboot",
+      "kexec_load",
+      "bpf",
+      "perf_event_open"
+    ]
+  },
+  "devices": {
+    "allow": [
+      "null",
+      "zero",
+      "random",
+      "urandom"
+    ]
+  }
+}

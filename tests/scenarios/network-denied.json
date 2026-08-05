@@ -1,0 +1,7 @@
+{
+  "id": "network-denied",
+  "runtime": "bwrap",
+  "requiredControl": "network",
+  "expected": "blocked",
+  "description": "Una conexión externa debe fallar bajo network=none."
+}
