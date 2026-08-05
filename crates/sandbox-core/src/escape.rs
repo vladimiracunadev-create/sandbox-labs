@@ -228,6 +228,12 @@ impl RuntimeReport {
         self.results.iter().filter(|value| value.is_false_assurance()).count()
     }
 
+    /// Sondas que llegaron a un veredicto real. Un informe con cero mediciones
+    /// no prueba contención: prueba que no se pudo mirar.
+    pub fn measured(&self) -> usize {
+        self.results.iter().filter(|value| matches!(value.verdict, Verdict::Contained | Verdict::Escaped)).count()
+    }
+
     /// Un runtime «pasa» si no escapó por ninguna dimensión medible.
     pub fn passed(&self) -> bool {
         self.count(Verdict::Escaped) == 0
@@ -325,5 +331,56 @@ mod tests {
 
         let good = ProbeResult { verdict: Verdict::Contained, ..escaped };
         assert!(!good.is_false_assurance());
+    }
+}
+
+#[cfg(test)]
+mod report_tests {
+    use super::*;
+
+    fn result(probe: &str, verdict: Verdict) -> ProbeResult {
+        ProbeResult {
+            probe: probe.into(),
+            dimension: "network".into(),
+            control: "network".into(),
+            verdict,
+            declared: false,
+            detail: String::new(),
+            duration_ms: 0,
+            lines: vec![],
+        }
+    }
+
+    fn report(available: bool, verdicts: &[Verdict]) -> RuntimeReport {
+        RuntimeReport {
+            runtime: "bwrap".into(),
+            available,
+            policy: "containment-audit".into(),
+            results: verdicts.iter().enumerate().map(|(i, v)| result(&format!("p{i}"), *v)).collect(),
+        }
+    }
+
+    #[test]
+    fn counts_only_real_verdicts_as_measurements() {
+        let value =
+            report(true, &[Verdict::Contained, Verdict::Escaped, Verdict::Inconclusive, Verdict::NotApplicable]);
+        assert_eq!(value.measured(), 2, "no concluyente y no aplica no son mediciones");
+    }
+
+    #[test]
+    fn a_report_that_measured_nothing_proves_nothing() {
+        // El caso que hizo pasar una puerta de CI sin haber medido nada: el
+        // runtime estaba disponible y ninguna sonda llegó a ejecutarse.
+        let value = report(true, &[Verdict::Inconclusive; 7]);
+        assert_eq!(value.count(Verdict::Escaped), 0, "sin fugas...");
+        assert!(value.passed(), "...y por eso `passed()` dice que pasa...");
+        assert_eq!(value.measured(), 0, "...pero no midió nada, que es lo que hay que detectar");
+    }
+
+    #[test]
+    fn an_unavailable_runtime_is_not_a_failure() {
+        let value = report(false, &[Verdict::NotApplicable; 7]);
+        assert_eq!(value.measured(), 0);
+        assert!(value.passed(), "un runtime ausente no es una fuga");
     }
 }

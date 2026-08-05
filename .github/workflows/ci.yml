@@ -176,45 +176,30 @@ jobs:
       - name: Suite de contención — unshare debe cortar la red y los PIDs
         run: |
           set -euo pipefail
+          # unshare no ofrece jaula de filesystem y se documenta así, pero red y
+          # visibilidad de procesos sí tienen que quedar contenidas.
+          #
+          # `--skip-if-unmeasurable`: en Ubuntu 24.04 AppArmor restringe los user
+          # namespaces sin privilegios para binarios sin perfil, y `unshare` no
+          # tiene uno. Ahí no llega ni a arrancar — eso no es una fuga, es que en
+          # ese entorno no hay nada que medir. bubblewrap sí trae perfil y por eso
+          # es el que actúa de puerta dura.
           cargo run --locked -q -p sandboxctl -- escape \
-            --runtime unshare --json --report evidence/escape/unshare.json > /tmp/unshare.json
-          # unshare no ofrece jail de filesystem y se documenta así, pero la red
-          # y la visibilidad de procesos sí tienen que quedar contenidas.
-          node -e '
-            const report = require("/tmp/unshare.json").reports[0];
-            const need = { "network-egress": "network", "process-visibility": "process" };
-            let bad = 0;
-            for (const [probe, dimension] of Object.entries(need)) {
-              const found = report.results.find((r) => r.probe === probe);
-              if (!found || found.verdict !== "contained") {
-                console.error(`::error::unshare no contuvo ${dimension}: ${found ? found.verdict : "sin resultado"} — ${found ? found.detail : ""}`);
-                bad += 1;
-              } else {
-                console.log(`unshare contiene ${dimension}: ${found.detail}`);
-              }
-            }
-            process.exit(bad ? 1 : 0);
-          '
+            --runtime unshare --json --report evidence/escape/unshare.json > /dev/null
+          node scripts/assert-containment.mjs evidence/escape/unshare.json \
+            --contained network,process --skip-if-unmeasurable
 
       - name: Línea base — native debe ESCAPAR (si no, la suite no mide nada)
         env:
           SANDBOX_LABS_ALLOW_NATIVE: "1"
         run: |
           set -euo pipefail
-          cargo run --locked -q -p sandboxctl -- escape \
-            --runtime native --json --report evidence/escape/native.json > /tmp/native.json
           # Contraprueba deliberada: sin aislamiento las sondas TIENEN que
-          # escaparse. Si aquí saliera todo contenido, las sondas no estarían
-          # midiendo nada y los ✅ de bubblewrap no valdrían nada.
-          node -e '
-            const report = require("/tmp/native.json").reports[0];
-            const escaped = report.results.filter((r) => r.verdict === "escaped").map((r) => r.probe);
-            if (escaped.length === 0) {
-              console.error("::error::native no escapó por ninguna dimensión: las sondas no están midiendo");
-              process.exit(1);
-            }
-            console.log(`native escapa por ${escaped.length} dimensiones (esperado): ${escaped.join(", ")}`);
-          '
+          # escaparse. Si aquí saliera todo contenido, no estarían midiendo nada
+          # y los ✅ de bubblewrap no valdrían nada.
+          cargo run --locked -q -p sandboxctl -- escape \
+            --runtime native --json --report evidence/escape/native.json > /dev/null
+          node scripts/assert-containment.mjs evidence/escape/native.json --expect-escape
 
       - name: Comparativa de coste entre fronteras
         run: cargo run --locked -q -p sandboxctl -- bench --repeat 15 --report evidence/escape/bench.json

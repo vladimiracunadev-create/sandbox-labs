@@ -68,13 +68,31 @@ pub fn run(root: &Path, options: &EscapeOptions) -> Result<i32> {
         }
     }
 
-    if options.strict && report.escaped_total() > 0 {
-        eprintln!(
-            "\n❌ {} sonda(s) escaparon; {} de ellas bajo un control declarado.",
-            report.escaped_total(),
-            report.false_assurances_total()
-        );
-        return Ok(1);
+    if options.strict {
+        if report.escaped_total() > 0 {
+            eprintln!(
+                "\n❌ {} sonda(s) escaparon; {} de ellas bajo un control declarado.",
+                report.escaped_total(),
+                report.false_assurances_total()
+            );
+            return Ok(1);
+        }
+        // Una puerta que aprueba sin haber medido nada no es una puerta. Si el
+        // runtime está disponible pero ninguna sonda llegó a un veredicto, el
+        // resultado es «no se sabe», y `--strict` no puede tratar eso como un
+        // aprobado: es exactamente la falsa garantía que este proyecto persigue.
+        for entry in &report.reports {
+            if entry.available && entry.measured() == 0 {
+                eprintln!(
+                    "\n❌ {} está disponible pero ninguna sonda pudo medirse. Un informe sin mediciones no prueba contención.",
+                    entry.runtime
+                );
+                for value in &entry.results {
+                    eprintln!("   · {}: {}", value.probe, value.detail);
+                }
+                return Ok(1);
+            }
+        }
     }
     Ok(0)
 }
@@ -160,8 +178,16 @@ fn measure_probe(
             result.detail = if result.lines.is_empty() {
                 // Sin líneas de sonda pero con estado de terminación: el runtime
                 // pudo haber matado el proceso, que también es contención — solo
-                // que no medida por la sonda.
-                format!("sin salida de sonda (estado {}, código {:?})", value.status, value.exit_code)
+                // que no medida por la sonda. Se arrastra el stderr recortado
+                // porque sin él un «no concluyente» es indiagnosticable.
+                let stderr =
+                    value.stderr.trim().lines().next_back().unwrap_or("").chars().take(200).collect::<String>();
+                format!(
+                    "sin salida de sonda (estado {}, código {:?}){}",
+                    value.status,
+                    value.exit_code,
+                    if stderr.is_empty() { String::new() } else { format!(" · stderr: {stderr}") }
+                )
             } else {
                 result
                     .lines
