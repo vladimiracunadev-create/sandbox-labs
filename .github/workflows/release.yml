@@ -17,7 +17,7 @@ jobs:
       - run: cd control-center && node scripts/build.mjs && node --test test/*.test.mjs
       - run: node scripts/validate-evidence.mjs
       - run: bash scripts/package-release.sh
-      - uses: softprops/action-gh-release@v2
+      - uses: softprops/action-gh-release@v3
         if: startsWith(github.ref, 'refs/tags/')
         with:
           files: |
