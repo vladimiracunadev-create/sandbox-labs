@@ -17,6 +17,7 @@ Identidad y permisos.
 ```bash
 id
 ```
+
 ```bash
 unshare --user --map-root-user id
 ```

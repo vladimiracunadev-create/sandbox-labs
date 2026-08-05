@@ -17,6 +17,7 @@ cgroups v2.
 ```bash
 cat /sys/fs/cgroup/cgroup.controllers
 ```
+
 ```bash
 cargo run -p sandboxctl -- doctor
 ```

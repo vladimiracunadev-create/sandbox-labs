@@ -1,87 +1,90 @@
-# Sandbox Labs
+# 🧪 sandbox-labs — Sandbox Control Center
 
-> Plataforma educativa y experimental para planificar, ejecutar y comparar cargas registradas bajo políticas explícitas de aislamiento.
+**Ejecuta cargas registradas bajo políticas explícitas de aislamiento y quédate
+con la prueba de qué se aplicó de verdad.** Panel local + CLI en Rust, sobre
+namespaces, bubblewrap, WASI, gVisor, Kata y Firecracker.
 
 [![CI](https://github.com/vladimiracunadev-create/sandbox-labs/actions/workflows/ci.yml/badge.svg)](https://github.com/vladimiracunadev-create/sandbox-labs/actions/workflows/ci.yml)
 [![Docs](https://github.com/vladimiracunadev-create/sandbox-labs/actions/workflows/docs.yml/badge.svg)](https://github.com/vladimiracunadev-create/sandbox-labs/actions/workflows/docs.yml)
-[![License](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE)
-
-## Estado — v0.6.0
-
-Esta versión deja una base **implementation-ready** para Codex y otros agentes de desarrollo:
-
-- CLI `sandboxctl` en Rust con contratos tipados, validación y evidencias reproducibles.
-- Modelo neutral de políticas con `strict` y `best-effort`.
-- Separación entre controles solicitados, efectivos y no soportados.
-- Adaptadores `dry-run`, `native`, `bubblewrap`, `unshare` y `WASI`.
-- Adaptadores fail-closed/documentados para gVisor, Kata y Firecracker.
-- Timeout, límite de salida, limpieza efímera y evidencia JSON.
-- Control Center local en `127.0.0.1:9093`.
-- API de trabajos, cancelación, eventos SSE y evidencias.
-- Solo workloads registrados: no existe endpoint para comandos arbitrarios.
-- Validación local contra JSON Schema sin dependencias npm.
-- Protección de rutas, symlinks, Origin/CSRF local y Host anti DNS-rebinding.
-- Interfaz con cancelación, logs, errores y consulta de evidencias.
-- Pruebas negativas de filesystem, red y rechazo de cargas riesgosas en native.
+[![Security](https://github.com/vladimiracunadev-create/sandbox-labs/actions/workflows/security.yml/badge.svg)](https://github.com/vladimiracunadev-create/sandbox-labs/actions/workflows/security.yml)
+![Version](https://img.shields.io/badge/version-0.7.0-blue)
+![Platform](https://img.shields.io/badge/Platform-Linux%20%7C%20WSL2-orange)
+![Rust](https://img.shields.io/badge/Rust-1.78%2B-b7410e)
+![Node](https://img.shields.io/badge/Node-22%2B-3c873a)
+[![License: Apache-2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 
 > [!IMPORTANT]
-> `experimental` no significa “seguro para código hostil”. Antes de usar una carga desconocida, valida el runtime en una VM dedicada. Los adaptadores avanzados requieren pruebas reales del host y del kernel.
+> `experimental` **no** significa «seguro para código hostil». El valor de este
+> proyecto no es prometerte una caja fuerte: es decirte, con evidencia firmada,
+> **qué controles quedaron efectivos** en tu host y cuáles no. Antes de usar una
+> carga desconocida, valida el runtime en una VM que puedas destruir.
 
-## Arquitectura
+---
+
+## 🗺️ Qué es este repo
+
+| Pieza | Rol |
+|---|---|
+| 🧭 **Control Center** (Node.js, `:9093`) | Panel local: lanza trabajos, sigue el estado por SSE y abre evidencias |
+| 🦀 **`sandboxctl`** (Rust) | Sondea el host, compila el plan, ejecuta y firma la evidencia |
+| 🛡️ **6 políticas** (`policies/`) | Perfiles neutrales de aislamiento: `strict` o `best-effort` |
+| 📦 **7 cargas** (`workloads/`) | Lo único ejecutable — no hay comandos libres |
+| 🧪 **18 laboratorios** (`labs/`) | Recorrido educativo del baseline a la plataforma multi-tenant |
+| 📇 **`sandbox.config.json`** | Fuente única de verdad: labs, runtimes, rutas y versión |
+
+### La idea en una frase
+
+Un control **solicitado** por la política no es un control **efectivo**. Este
+sistema mantiene los dos conjuntos separados, cruza uno con otro para cada
+runtime y guarda el resultado.
+
+```text
+política.requiredControls  ∩  runtime.supportedControls  =  efectivos
+política.requiredControls  ∖  runtime.supportedControls  =  no soportados
+                                        ↓
+                    ¿strict y hay no soportados?  →  🚫 bloquea (fail-closed)
+```
+
+---
+
+## 🏗️ Arquitectura
 
 ```mermaid
 flowchart LR
-  U[Usuario / agente IA] --> CC[Control Center :9093]
-  CC --> JR[Registro de trabajos]
-  JR --> CLI[sandboxctl]
-  CLI --> PC[Compilador de política]
-  PC --> RA[Runtime adapter]
-  RA --> DR[Dry run]
-  RA --> BW[bubblewrap]
-  RA --> NS[unshare]
-  RA --> WA[Wasmtime/WASI]
-  RA --> ADV[gVisor / Kata / Firecracker]
-  RA --> EV[Evidencia JSON]
+  U["👤 Usuario / agente IA"] --> CC["🧭 Control Center<br/>127.0.0.1:9093"]
+  CC --> JR["Registro de trabajos"]
+  JR --> CLI["🦀 sandboxctl"]
+  CLI --> PC["Compilador de política"]
+  PC --> RA["Runtime adapter"]
+  RA --> DR["dry-run"]
+  RA --> BW["bubblewrap"]
+  RA --> NS["unshare"]
+  RA --> WA["Wasmtime / WASI"]
+  RA --> ADV["gVisor · Kata · Firecracker"]
+  RA --> EV["🧾 Evidencia JSON"]
   EV --> CC
 ```
 
-## Quickstart
+El panel **no es la frontera de aislamiento**: la frontera es el runtime
+efectivo. El panel reduce superficie, impide comandos libres y conserva
+trazabilidad.
 
-### Validación sin instalar dependencias
+---
 
-```bash
-node scripts/validate-config.mjs
-node scripts/check-doc-links.mjs
-node scripts/run-negative-tests.mjs
-node scripts/validate-evidence.mjs
-cd control-center
-node scripts/build.mjs
-node --test test/*.test.mjs
-```
+## 🚀 Quickstart
 
-### CLI Rust
+### Sin instalar nada más que Node
 
 ```bash
-bash scripts/generate-lockfiles.sh
-cargo build --workspace --locked
-cargo run -p sandboxctl -- doctor
-cargo run -p sandboxctl -- labs
-cargo run -p sandboxctl -- plan \
-  --workload workloads/benign/hello \
-  --runtime bwrap \
-  --policy policies/minimal.json
+git clone https://github.com/vladimiracunadev-create/sandbox-labs.git
+cd sandbox-labs
+
+node scripts/validate-config.mjs      # el catálogo es coherente
+node scripts/check-doc-links.mjs      # la documentación no tiene enlaces rotos
+node scripts/run-negative-tests.mjs   # los contratos negativos cuadran
 ```
 
-Baseline nativo, únicamente para la carga benigna `hello`:
-
-```bash
-SANDBOX_LABS_ALLOW_NATIVE=1 cargo run -p sandboxctl -- run \
-  --workload workloads/benign/hello \
-  --runtime native \
-  --policy policies/web-application.json
-```
-
-### Control Center
+### El panel
 
 ```bash
 corepack enable
@@ -90,63 +93,169 @@ pnpm dashboard:build
 pnpm dashboard:start
 ```
 
-Abre <http://127.0.0.1:9093>.
+Abre **<http://127.0.0.1:9093>**.
 
-## Runtimes
+### El CLI
+
+```bash
+cargo build --workspace --locked
+
+cargo run -p sandboxctl -- doctor
+cargo run -p sandboxctl -- plan \
+  --workload workloads/benign/hello \
+  --runtime bwrap \
+  --policy policies/minimal.json
+```
+
+Baseline sin aislamiento — solo carga benigna y con doble opt-in:
+
+```bash
+SANDBOX_LABS_ALLOW_NATIVE=1 cargo run -p sandboxctl -- run \
+  --workload workloads/benign/hello \
+  --runtime native \
+  --policy policies/web-application.json
+```
+
+> [!TIP]
+> ¿Primera vez? [`ENVIRONMENT_SETUP.md`](ENVIRONMENT_SETUP.md) va paso a paso
+> desde un equipo en blanco hasta la primera evidencia.
+
+---
+
+## ⚙️ Runtimes
 
 | Runtime | Estado | Qué aplica hoy |
 |---|---|---|
-| `dry-run` | ready | Plan y evidencia sin ejecutar |
-| `native` | experimental | Opt-in, timeout y límite de salida; no es aislamiento |
-| `bwrap` | experimental | Filesystem, namespaces, red cerrada, capabilities y `prlimit` cuando existe |
-| `unshare` | experimental | Namespaces y red cerrada; no ofrece jail completo de filesystem |
-| `wasi` | experimental | Preopens de Wasmtime y ejecución de módulos WASI registrados |
-| `gvisor` | documented | Contrato y backlog para OCI bundle + `runsc` |
-| `kata` | documented | Contrato y backlog para runtime respaldado por VM |
-| `firecracker` | manual | Requiere KVM, jailer, kernel y rootfs validados |
+| `dry-run` | 🟢 ready | Plan y evidencia sin ejecutar |
+| `native` | 🟡 experimental | Opt-in doble, timeout y límite de salida. **No es aislamiento** |
+| `bwrap` | 🟡 experimental | Filesystem, namespaces, red cerrada, capabilities y `prlimit` |
+| `unshare` | 🟡 experimental | Namespaces y red cerrada; sin jail completo de filesystem |
+| `wasi` | 🟡 experimental | Preopens de Wasmtime y módulos WASI registrados |
+| `gvisor` | ⚪ documented | Contrato y backlog para bundle OCI + `runsc` |
+| `kata` | ⚪ manual | Contrato y backlog para runtime respaldado por VM |
+| `firecracker` | ⚪ manual | Requiere KVM, jailer, kernel y rootfs validados |
 
-## Estructura
+Detalle control a control en
+[docs/CONTROL_ENFORCEMENT_MATRIX.md](docs/CONTROL_ENFORCEMENT_MATRIX.md).
+
+---
+
+## 🧪 Laboratorios
+
+Ruta recomendada:
+
+```mermaid
+flowchart LR
+  A["01 · baseline"] --> B["04 · namespaces"] --> C["05 · cgroups"]
+  C --> D["10 · rootless"] --> E["14 · WASM/WASI"]
+  E --> F["15 · runner de IA"] --> G["16 · suite de fuga"]
+```
+
+| # | Laboratorio | Nivel |
+|---|---|---|
+| 01 | [baseline-unrestricted](labs/01-baseline-unrestricted/) | initial |
+| 02 | [users-and-permissions](labs/02-users-and-permissions/) | initial |
+| 03 | [filesystem-jail](labs/03-filesystem-jail/) | initial |
+| 04 | [linux-namespaces](labs/04-linux-namespaces/) | core |
+| 05 | [cgroups-limits](labs/05-cgroups-limits/) | core |
+| 06 | [linux-capabilities](labs/06-linux-capabilities/) | core |
+| 07 | [seccomp-syscalls](labs/07-seccomp-syscalls/) | core |
+| 08 | [landlock-policies](labs/08-landlock-policies/) | core |
+| 09 | [network-egress](labs/09-network-egress/) | core |
+| 10 | [rootless-sandbox](labs/10-rootless-sandbox/) | advanced |
+| 11 | [gvisor-runsc](labs/11-gvisor-runsc/) | advanced |
+| 12 | [kata-containers](labs/12-kata-containers/) | advanced |
+| 13 | [firecracker-microvm](labs/13-firecracker-microvm/) | advanced |
+| 14 | [wasm-wasi](labs/14-wasm-wasi/) | advanced |
+| 15 | [ai-code-runner](labs/15-ai-code-runner/) | platform |
+| 16 | [escape-test-suite](labs/16-escape-test-suite/) | platform |
+| 17 | [sandbox-benchmarks](labs/17-sandbox-benchmarks/) | platform |
+| 18 | [multi-tenant-platform](labs/18-multi-tenant-platform/) | platform |
+
+---
+
+## 📁 Estructura
 
 ```text
 sandbox-labs/
 ├── crates/
-│   ├── sandbox-core/          # JSON, políticas, workloads, hashes y evidencia
-│   ├── sandbox-runtimes/      # RuntimeAdapter + ejecución
-│   └── sandboxctl/            # CLI
-├── control-center/            # API local, UI, trabajos y SSE
-├── policies/                  # Perfiles reproducibles
-├── workloads/                 # Cargas registradas y manifiestos
-├── tests/scenarios/           # Pruebas negativas declarativas
-├── schemas/                   # Catálogo, policy, workload, job y evidence
-├── labs/                      # 18 recorridos educativos
-├── adapters/                  # Notas y artefactos por runtime
-├── evidence/runs/             # Salidas JSON ignoradas por Git
-├── docs/                      # Arquitectura, amenazas, API y backlog
-└── .github/workflows/         # CI, docs y release
+│   ├── sandbox-core/          # 🦀 Modelos, políticas, hashes y evidencia
+│   ├── sandbox-runtimes/      # ⚙️ RuntimeAdapter y ejecución supervisada
+│   └── sandboxctl/            # ⌨️ CLI
+├── control-center/            # 🧭 API local, UI, trabajos y SSE
+├── policies/                  # 🛡️ Perfiles reproducibles
+├── workloads/                 # 📦 Cargas registradas y manifiestos
+├── schemas/                   # 📐 Catálogo, policy, workload, job y evidence
+├── labs/                      # 🧪 18 recorridos educativos
+├── tests/scenarios/           # 🚫 Contratos negativos declarativos
+├── adapters/                  # 📓 Notas y artefactos por runtime
+├── evidence/runs/             # 🧾 Salidas JSON (ignoradas por Git)
+├── docs/                      # 📚 Arquitectura, amenazas, API y backlog
+└── .github/workflows/         # 🤖 CI, docs, seguridad, Pages y release
 ```
 
-## Ruta recomendada
+Mapa completo en [FILE_ARCHITECTURE.md](FILE_ARCHITECTURE.md).
 
-1. `01-baseline-unrestricted`
-2. `04-linux-namespaces`
-3. `05-cgroups-limits`
-4. `10-rootless-sandbox`
-5. `14-wasm-wasi`
-6. `15-ai-code-runner`
-7. `16-escape-test-suite`
+---
 
-## Reglas de seguridad
+## 📖 Documentación
+
+Empieza por el **[🗂️ índice maestro](docs/DOCUMENTATION_INDEX.md)**.
+
+| Si quieres… | Ve a |
+|---|---|
+| Instalar desde cero | [ENVIRONMENT_SETUP.md](ENVIRONMENT_SETUP.md) |
+| Elegir cómo usarlo | [OPERATING-MODES.md](OPERATING-MODES.md) |
+| Entender el vocabulario | [GLOSSARY.md](GLOSSARY.md) |
+| Resolver un error | [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) |
+| Dudas de diseño | [FAQ.md](FAQ.md) |
+| Saber qué protege y qué no | [docs/THREAT_MODEL.md](docs/THREAT_MODEL.md) |
+| Escribir una política | [docs/POLICY_REFERENCE.md](docs/POLICY_REFERENCE.md) |
+| Leer una evidencia | [docs/EVIDENCE_FORMAT.md](docs/EVIDENCE_FORMAT.md) |
+
+---
+
+## ✅ Verificación
+
+```bash
+make check                      # validadores + suite del Control Center
+cargo test --workspace --locked # contratos del repositorio
+```
+
+| Suite | Qué cubre |
+|---|---|
+| `crates/sandbox-core/tests/repository.rs` | Catálogo ↔ `labs/`, políticas, cargas, fail-closed, hashes, rutas portables |
+| `control-center/test/` | API, referencias no registradas, anti DNS-rebinding, traversals, cabeceras |
+| `scripts/*.mjs` | Esquemas JSON, enlaces de documentación, contratos negativos, evidencias |
+
+Lo verificado en esta versión está en [VALIDATION.md](VALIDATION.md); lo que
+sigue pendiente, en [PROJECT_STATUS.md](PROJECT_STATUS.md).
+
+---
+
+## 🔒 Reglas de seguridad del proyecto
 
 - Fallar cerrado cuando una política `strict` exige controles no disponibles.
-- No ejecutar workloads `resource-abuse` o `adversarial-simulation` en native.
+- No ejecutar cargas `resource-abuse` ni `adversarial-simulation` en `native`.
 - No aceptar comandos libres desde HTTP.
 - No heredar el entorno del proceso por defecto.
 - Limitar stdout/stderr y tiempo de vida.
-- Conservar hash de política, workload y runner.
-- Tratar contenedores, namespaces y WASI como fronteras diferentes, no equivalentes.
+- Conservar hash de política, carga y runner en cada evidencia.
+- Tratar contenedores, namespaces y WASI como fronteras **diferentes**, no
+  equivalentes.
 
-Consulta [SECURITY.md](SECURITY.md), [docs/THREAT_MODEL.md](docs/THREAT_MODEL.md) y [docs/IMPLEMENTATION_BACKLOG.md](docs/IMPLEMENTATION_BACKLOG.md).
+Ver [SECURITY.md](SECURITY.md) y [docs/THREAT_MODEL.md](docs/THREAT_MODEL.md).
 
-## Licencia
+---
 
-Apache License 2.0. Revisa [LICENSE](LICENSE) y [NOTICE](NOTICE).
+## 🌐 Proyectos hermanos
+
+[docker-labs](https://github.com/vladimiracunadev-create/docker-labs) ·
+[wsl-labs](https://github.com/vladimiracunadev-create/wsl-labs) ·
+[unikernel-labs](https://github.com/vladimiracunadev-create/unikernel-labs)
+
+---
+
+## 📜 Licencia
+
+Apache License 2.0. Ver [LICENSE](LICENSE) y [NOTICE](NOTICE).

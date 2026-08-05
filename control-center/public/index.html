@@ -1,10 +1,150 @@
-<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Sandbox Control Center</title><link rel="stylesheet" href="/styles.css"></head><body>
-<header><div><p class="eyebrow">SANDBOX LABS · v0.6.0</p><h1>Sandbox Control Center</h1><p>Ejecuta cargas registradas, compara runtimes y conserva evidencia reproducible.</p></div><div class="status"><span></span> localhost seguro · :9093</div></header>
-<main><section class="summary" id="summary"></section>
-<section class="runner"><div><p class="eyebrow">EJECUCIÓN CONTROLADA</p><h2>Crear trabajo</h2><p>No acepta comandos libres: solo cargas, políticas y runtimes registrados.</p></div><form id="job-form"><label>Carga<select id="workload" required></select></label><label>Política<select id="policy" required></select></label><label>Runtime<select id="runtime" required></select></label><label>Argumentos opcionales<input id="arguments" placeholder="uno, dos"></label><button type="submit">Crear trabajo</button><output id="form-result"></output></form></section>
-<section><div class="section-title"><h2>Trabajos recientes</h2><button class="secondary" id="refresh-jobs">Actualizar</button></div><div class="jobs" id="jobs"></div></section>
-<section><div class="section-title"><h2>Runtimes</h2><span>Soporte declarado</span></div><div class="grid" id="runtimes"></div></section>
-<section><div class="section-title"><h2>Laboratorios</h2><span id="lab-count"></span></div><div class="grid" id="labs"></div></section>
-<section><div class="section-title"><h2>Políticas</h2><span>Falla cerrada cuando son estrictas</span></div><div class="grid" id="policies"></div></section></main>
-<dialog id="evidence-dialog"><button class="close" id="close-dialog">Cerrar</button><h2>Evidencia</h2><pre id="evidence"></pre></dialog>
-<template id="card-template"><article class="card"><div class="card-top"><strong></strong><span class="badge"></span></div><h3></h3><p></p></article></template><script type="module" src="/app.js"></script></body></html>
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="color-scheme" content="light dark">
+  <meta name="description" content="Sandbox Control Center: ejecuta cargas registradas bajo politicas explicitas de aislamiento y conserva evidencia reproducible.">
+  <title>Sandbox Control Center</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <a class="skip-link" href="#contenido">Saltar al contenido</a>
+
+  <main class="shell" id="contenido">
+
+    <!-- Hero ─────────────────────────────────────────────────────────────── -->
+    <section class="hero">
+      <div class="hero-copy">
+        <span class="eyebrow">Sandbox Labs · <span id="hero-version">…</span></span>
+        <h1>Sandbox Control Center</h1>
+        <p>
+          Ejecuta <b>cargas registradas</b> bajo políticas explícitas, compara lo que cada
+          runtime aplica de verdad y conserva <b>evidencia reproducible</b> de cada intento.
+        </p>
+      </div>
+
+      <div class="hero-actions">
+        <span class="status-badge healthy" id="safe-mode" title="El panel no acepta comandos arbitrarios">
+          <span class="status-dot"></span> Solo cargas registradas
+        </span>
+        <span class="tag" id="bind-address">127.0.0.1</span>
+        <button class="btn btn-secondary" id="refresh-jobs" type="button">🔃 Actualizar trabajos</button>
+        <a class="btn btn-ghost" href="https://github.com/vladimiracunadev-create/sandbox-labs" target="_blank" rel="noreferrer noopener">📚 Documentación</a>
+      </div>
+
+      <div class="metrics" id="metrics"></div>
+
+      <p class="notice">
+        <b>experimental</b> no significa «seguro para código hostil». Antes de ejecutar una
+        carga desconocida, valida el runtime en una VM dedicada.
+      </p>
+    </section>
+
+    <!-- Crear trabajo ────────────────────────────────────────────────────── -->
+    <section class="panel runner" aria-labelledby="runner-title">
+      <div class="runner-copy">
+        <span class="eyebrow">Ejecución controlada</span>
+        <h2 id="runner-title">Crear trabajo</h2>
+        <p class="section-copy">
+          No hay campo de comando libre: solo puedes combinar una carga, una política y un
+          runtime del catálogo. Cualquier identificador fuera de él se rechaza con 400.
+        </p>
+      </div>
+
+      <form id="job-form" novalidate>
+        <label for="workload">Carga
+          <select id="workload" name="workload" required></select>
+        </label>
+        <label for="policy">Política
+          <select id="policy" name="policy" required></select>
+        </label>
+        <label for="runtime">Runtime
+          <select id="runtime" name="runtime" required></select>
+        </label>
+        <label for="arguments">Argumentos opcionales
+          <input id="arguments" name="arguments" placeholder="uno, dos" autocomplete="off">
+        </label>
+        <p class="form-hint" id="plan-hint">Selecciona una combinación para ver qué controles aplicará.</p>
+        <button class="btn btn-primary" type="submit">▶ Crear trabajo</button>
+        <output id="form-result" role="status" aria-live="polite"></output>
+      </form>
+    </section>
+
+    <!-- Trabajos ─────────────────────────────────────────────────────────── -->
+    <div class="section-head">
+      <div>
+        <h2>🧾 Trabajos recientes</h2>
+        <p class="section-copy">Estado en vivo por SSE. Cada trabajo terminado deja una evidencia JSON verificable.</p>
+      </div>
+      <span class="tag" id="jobs-count">0 trabajos</span>
+    </div>
+    <div class="jobs" id="jobs">
+      <p class="empty">Cargando trabajos…</p>
+    </div>
+
+    <!-- Runtimes ─────────────────────────────────────────────────────────── -->
+    <div class="section-head">
+      <div>
+        <h2>⚙️ Runtimes</h2>
+        <p class="section-copy">Soporte declarado por cada adaptador. <code>documented</code> y <code>manual</code> nunca ejecutan.</p>
+      </div>
+    </div>
+    <div class="card-grid" id="runtimes"></div>
+
+    <!-- Políticas ────────────────────────────────────────────────────────── -->
+    <div class="section-head">
+      <div>
+        <h2>🛡️ Políticas</h2>
+        <p class="section-copy">Una política <code>strict</code> falla cerrada cuando el runtime no puede aplicar un control exigido.</p>
+      </div>
+    </div>
+    <div class="card-grid" id="policies"></div>
+
+    <!-- Laboratorios ─────────────────────────────────────────────────────── -->
+    <div class="section-head">
+      <div>
+        <h2>🧪 Laboratorios</h2>
+        <p class="section-copy">Recorrido educativo, del baseline sin restricciones a la plataforma multi-tenant.</p>
+      </div>
+      <span class="tag" id="lab-count"></span>
+    </div>
+    <div class="card-grid" id="labs"></div>
+
+    <!-- Salida operativa ─────────────────────────────────────────────────── -->
+    <section class="logs" aria-labelledby="logs-title">
+      <h2 id="logs-title">Salida operativa</h2>
+      <pre id="logs-output" aria-live="polite">Crea un trabajo para ver aquí su salida en vivo.</pre>
+    </section>
+
+    <footer class="foot">
+      <span id="foot-version">Sandbox Labs</span> ·
+      <a href="https://github.com/vladimiracunadev-create/sandbox-labs/blob/main/SECURITY.md" target="_blank" rel="noreferrer noopener">Política de seguridad</a> ·
+      Apache-2.0
+    </footer>
+  </main>
+
+  <!-- Evidencia ──────────────────────────────────────────────────────────── -->
+  <dialog id="evidence-dialog" aria-labelledby="evidence-title">
+    <div class="dialog-head">
+      <h2 id="evidence-title">Evidencia</h2>
+      <button class="btn btn-ghost" id="close-dialog" type="button">Cerrar</button>
+    </div>
+    <pre id="evidence"></pre>
+  </dialog>
+
+  <template id="card-template">
+    <article class="card">
+      <div class="card-head">
+        <span class="card-id"></span>
+        <span class="status-badge"><span class="status-dot"></span><span class="status-text"></span></span>
+      </div>
+      <h3 class="card-title"></h3>
+      <p class="card-copy"></p>
+      <p class="card-meta"></p>
+    </article>
+  </template>
+
+  <script type="module" src="/app.js"></script>
+</body>
+</html>
