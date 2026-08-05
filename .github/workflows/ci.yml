@@ -162,6 +162,30 @@ jobs:
           unshare --version
           prlimit --version
 
+      # Ubuntu 24.04 trae `kernel.apparmor_restrict_unprivileged_userns=1`: los
+      # binarios sin perfil de AppArmor no pueden crear user namespaces. Sin
+      # userns propio, bubblewrap crea el network namespace sin CAP_NET_ADMIN
+      # sobre él y muere al levantar loopback:
+      #
+      #   bwrap: loopback: Failed RTM_NEWADDR: Operation not permitted
+      #
+      # Aquí se levanta la restricción porque el runner es efímero y su único
+      # trabajo es medir contención. En una máquina real la respuesta correcta
+      # es la contraria: dejar el sysctl como está y usar el perfil de AppArmor
+      # que trae el paquete.
+      - name: Permitir user namespaces sin privilegios en el runner
+        run: |
+          set -euo pipefail
+          key=kernel.apparmor_restrict_unprivileged_userns
+          if sysctl -n "$key" > /dev/null 2>&1; then
+            echo "antes: $(sysctl -n "$key")"
+            sudo sysctl -w "$key=0"
+          else
+            echo "$key no existe en este kernel: nada que hacer"
+          fi
+          # Comprobación directa: si esto falla, la suite no podrá medir nada.
+          unshare --user --map-root-user true && echo "user namespaces disponibles"
+
       - name: Inventario del host
         run: cargo run --locked -q -p sandboxctl -- doctor
 
@@ -179,11 +203,10 @@ jobs:
           # unshare no ofrece jaula de filesystem y se documenta así, pero red y
           # visibilidad de procesos sí tienen que quedar contenidas.
           #
-          # `--skip-if-unmeasurable`: en Ubuntu 24.04 AppArmor restringe los user
-          # namespaces sin privilegios para binarios sin perfil, y `unshare` no
-          # tiene uno. Ahí no llega ni a arrancar — eso no es una fuga, es que en
-          # ese entorno no hay nada que medir. bubblewrap sí trae perfil y por eso
-          # es el que actúa de puerta dura.
+          # `--skip-if-unmeasurable` se mantiene por si el runner cambia y vuelve
+          # a restringir los user namespaces: en ese caso unshare no llega a
+          # arrancar, y eso no es una fuga sino ausencia de medición. La puerta
+          # dura la sostiene bubblewrap, que sí falla si no midió nada.
           cargo run --locked -q -p sandboxctl -- escape \
             --runtime unshare --json --report evidence/escape/unshare.json > /dev/null
           node scripts/assert-containment.mjs evidence/escape/unshare.json \
