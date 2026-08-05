@@ -1,9 +1,9 @@
+use crate::hash::sha256_hex;
 use crate::{ExecutionOutcome, ExecutionPlan, Policy, Workload};
 use anyhow::{Context, Result};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
-use sha2::{Digest, Sha256};
 use std::{
     collections::BTreeMap,
     env, fs,
@@ -82,12 +82,12 @@ impl Evidence {
     ) -> Self {
         let timestamp = Utc::now();
         let seed = format!("{}:{}:{}:{}", timestamp.to_rfc3339(), plan.runtime, workload.id, policy.id);
-        let run_id = format!("{:x}", Sha256::digest(seed.as_bytes()))[..20].to_string();
+        let run_id = sha256_hex(seed.as_bytes())[..20].to_string();
         let probe = plan.runtime.probe();
         let runner_sha256 = env::current_exe()
             .ok()
             .and_then(|path| fs::read(path).ok())
-            .map(|bytes| format!("{:x}", Sha256::digest(bytes)))
+            .map(sha256_hex)
             .unwrap_or_else(|| "unavailable".into());
         let kernel = Command::new("uname")
             .arg("-r")

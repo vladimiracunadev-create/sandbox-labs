@@ -1,3 +1,4 @@
+use crate::hash::finish_hex;
 use anyhow::{bail, Context, Result};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
@@ -122,6 +123,6 @@ impl Workload {
             digest.update(fs::read(entry.path())?);
             digest.update([0]);
         }
-        Ok(format!("{:x}", digest.finalize()))
+        Ok(finish_hex(digest))
     }
 }

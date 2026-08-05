@@ -1,6 +1,6 @@
+use crate::hash::sha256_hex;
 use anyhow::{bail, Context, Result};
 use serde::{Deserialize, Serialize};
-use sha2::{Digest, Sha256};
 use std::{
     collections::{BTreeMap, BTreeSet},
     fs,
@@ -120,7 +120,7 @@ impl Policy {
 
     pub fn hash(path: impl AsRef<Path>) -> Result<String> {
         let bytes = fs::read(path.as_ref())?;
-        Ok(format!("{:x}", Sha256::digest(bytes)))
+        Ok(sha256_hex(bytes))
     }
 
     pub fn validate(&self) -> Result<()> {

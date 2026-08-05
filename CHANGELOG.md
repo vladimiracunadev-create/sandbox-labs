@@ -9,6 +9,12 @@ Versionado semántico.
 
 ### Security
 
+- `sha2` actualizado a 0.11 (cambio mayor). La versión 0.11 dejó de
+  implementar `LowerHex` sobre la salida del digest, así que la codificación
+  hexadecimal se centraliza en `sandbox_core::hash` en lugar de repetirse en
+  cada llamador: la próxima actualización de la dependencia deja de ser una
+  migración a mano. El módulo trae vectores de prueba del NIST.
+
 - **Todas las acciones de GitHub fijadas a SHA** con el tag en comentario. Un
   tag es mutable: `@v5` puede apuntar mañana a otro código. `zizmor` lo
   verifica en cada ejecución, así que deja de ser una convención olvidable.
