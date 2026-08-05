@@ -1,31 +1,79 @@
 name: CI
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Puerta de calidad del repositorio. Dos trabajos independientes:
+#   rust  → formato, lint, pruebas de contrato y humo del CLI sandboxctl.
+#   node  → validadores del catálogo y suite del Control Center.
+# Ambos corren los mismos comandos que `make check` en local.
+# ─────────────────────────────────────────────────────────────────────────────
+
 on:
   push:
   pull_request:
   workflow_dispatch:
-permissions: { contents: read }
-concurrency: { group: "ci-${{ github.ref }}", cancel-in-progress: true }
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   rust:
+    name: Rust (fmt · clippy · tests · CLI)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
+
+      # `components` debe ser una cadena: en formato de flujo YAML,
+      # `{ components: rustfmt, clippy }` se interpreta como dos claves y la
+      # acción ignora clippy en silencio.
       - uses: dtolnay/rust-toolchain@stable
-        with: { components: rustfmt, clippy }
-      - run: cargo generate-lockfile
-      - run: cargo fmt --all -- --check
-      - run: cargo clippy --workspace --all-targets -- -D warnings
-      - run: cargo test --workspace --locked
-      - run: cargo run --locked -p sandboxctl -- validate policies/minimal.json --workload workloads/benign/hello
-      - run: cargo run --locked -p sandboxctl -- run --workload workloads/benign/hello --runtime dry-run --policy policies/minimal.json
+        with:
+          components: rustfmt, clippy
+
+      # Cargo.lock está versionado: `--locked` falla si el build lo modificaría.
+      - name: Verificar que Cargo.lock está al día
+        run: cargo metadata --locked --format-version 1 > /dev/null
+
+      - name: Formato
+        run: cargo fmt --all -- --check
+
+      - name: Lint
+        run: cargo clippy --workspace --all-targets --locked -- -D warnings
+
+      - name: Pruebas
+        run: cargo test --workspace --locked
+
+      - name: Humo — validación de política y carga
+        run: cargo run --locked -p sandboxctl -- validate policies/minimal.json --workload workloads/benign/hello
+
+      - name: Humo — plan y evidencia en dry-run
+        run: cargo run --locked -p sandboxctl -- run --workload workloads/benign/hello --runtime dry-run --policy policies/minimal.json
+
+      - name: Humo — la evidencia generada cumple el esquema
+        run: node scripts/validate-evidence.mjs
+
   node:
+    name: Node (catálogo · Control Center)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
+
+      # Sin `version`: la fija `packageManager` en package.json. Declararla en
+      # los dos sitios hace fallar la acción por conflicto.
       - uses: pnpm/action-setup@v4
-        with: { version: 9 }
+
       - uses: actions/setup-node@v4
-        with: { node-version: 22, cache: pnpm }
+        with:
+          node-version: 22
+          cache: pnpm
+
       - run: pnpm install --frozen-lockfile
-      - run: pnpm check
-      - run: pnpm dashboard:build
+
+      - name: Suite completa
+        run: pnpm check
+
+      - name: Build del Control Center
+        run: pnpm dashboard:build
