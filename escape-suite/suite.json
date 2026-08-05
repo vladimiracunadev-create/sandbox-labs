@@ -1,0 +1,93 @@
+{
+  "$schema": "../schemas/escape-suite.schema.json",
+  "version": "1.0",
+  "description": "Suite de contención: cada sonda intenta salirse del sandbox y el resultado dice qué controla realmente cada runtime en este host.",
+  "dimensions": [
+    {
+      "id": "network",
+      "label": "Salida de red",
+      "why": "Una carga con red puede exfiltrar lo que lea y descargar lo que quiera ejecutar después."
+    },
+    {
+      "id": "filesystem",
+      "label": "Aislamiento de filesystem",
+      "why": "Leer claves del host o escribir en rutas del sistema convierte una ejecución en una persistencia."
+    },
+    {
+      "id": "process",
+      "label": "Visibilidad de procesos",
+      "why": "Ver el árbol de procesos del host permite inspeccionar y señalizar procesos ajenos."
+    },
+    {
+      "id": "environment",
+      "label": "Fuga de entorno",
+      "why": "Un token heredado en el entorno convierte cualquier ejecución de código ajeno en una filtración."
+    },
+    {
+      "id": "privilege",
+      "label": "Privilegios efectivos",
+      "why": "Las capabilities que sobreviven al sandbox son las que permiten montar, trazar o tocar la red del host."
+    },
+    {
+      "id": "memory",
+      "label": "Límite de memoria",
+      "why": "Sin techo de memoria, una sola carga puede tumbar al host y a todo lo que corra en él."
+    },
+    {
+      "id": "processes",
+      "label": "Límite de procesos",
+      "why": "Sin techo de PIDs, una carga agota la tabla de procesos del host."
+    }
+  ],
+  "probes": [
+    {
+      "id": "network-egress",
+      "dimension": "network",
+      "workload": "escape-network-egress",
+      "control": "network",
+      "argument": null
+    },
+    {
+      "id": "filesystem-escape",
+      "dimension": "filesystem",
+      "workload": "escape-filesystem-escape",
+      "control": "filesystem",
+      "argument": null
+    },
+    {
+      "id": "process-visibility",
+      "dimension": "process",
+      "workload": "escape-process-visibility",
+      "control": "processes",
+      "argument": null
+    },
+    {
+      "id": "environment-leak",
+      "dimension": "environment",
+      "workload": "escape-environment-leak",
+      "control": "environment",
+      "argument": null
+    },
+    {
+      "id": "privilege-check",
+      "dimension": "privilege",
+      "workload": "escape-privilege-check",
+      "control": "capabilities",
+      "argument": null
+    },
+    {
+      "id": "memory-limit",
+      "dimension": "memory",
+      "workload": "escape-memory-limit",
+      "control": "memory",
+      "argument": "memoryMb"
+    },
+    {
+      "id": "process-limit",
+      "dimension": "processes",
+      "workload": "escape-process-limit",
+      "control": "processes",
+      "argument": "processes"
+    }
+  ]
+}

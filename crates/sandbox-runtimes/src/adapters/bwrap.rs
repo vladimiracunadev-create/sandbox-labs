@@ -68,10 +68,14 @@ impl RuntimeAdapter for BwrapAdapter {
         args.push(workload.command.clone());
         args.extend(workload.command_args(extra_args)?);
         let mut program = "bwrap".to_string();
+        // Sin `--nproc`: RLIMIT_NPROC cuenta los procesos del UID real en todo
+        // el host, no los de esta carga. Aplicarlo aquí mata la ejecución nada
+        // más empezar y haría pasar por control de contención algo que no lo
+        // es. Un techo real de PIDs necesita el controlador `pids` de cgroups
+        // v2; hasta entonces, el control `processes` no se declara.
         if command_exists("prlimit") {
             let mut wrapped = vec![
                 format!("--as={}", policy.resources.memory_mb * 1024 * 1024),
-                format!("--nproc={}", policy.resources.processes),
                 format!("--nofile={}", policy.resources.open_files),
                 "--".into(),
                 "bwrap".into(),
@@ -87,7 +91,7 @@ impl RuntimeAdapter for BwrapAdapter {
         limits.insert("output".into(), format!("{} bytes", policy.resources.output_bytes));
         if program == "prlimit" {
             limits.insert("memory".into(), format!("{}MB RLIMIT_AS", policy.resources.memory_mb));
-            limits.insert("processes".into(), format!("{} RLIMIT_NPROC", policy.resources.processes));
+            limits.insert("openFiles".into(), format!("{} RLIMIT_NOFILE", policy.resources.open_files));
         }
         run(
             CommandSpec {

@@ -1,0 +1,19 @@
+{
+  "$schema": "../../../schemas/workload.schema.json",
+  "id": "escape-privilege-check",
+  "kind": "python",
+  "entrypoint": "probe.py",
+  "command": "python3",
+  "args": [
+    "probe.py"
+  ],
+  "risk": "controlled",
+  "description": "Lee capabilities efectivas y distingue root real de root mapeado.",
+  "allowNative": true,
+  "expected": {
+    "outcome": "blocked",
+    "contains": [
+      "result="
+    ]
+  }
+}

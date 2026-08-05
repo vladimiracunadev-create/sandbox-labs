@@ -1,0 +1,19 @@
+{
+  "$schema": "../../../schemas/workload.schema.json",
+  "id": "escape-process-visibility",
+  "kind": "python",
+  "entrypoint": "probe.py",
+  "command": "python3",
+  "args": [
+    "probe.py"
+  ],
+  "risk": "controlled",
+  "description": "Cuenta los PIDs visibles e inspecciona el PID 1 para detectar ausencia de namespace.",
+  "allowNative": true,
+  "expected": {
+    "outcome": "blocked",
+    "contains": [
+      "result="
+    ]
+  }
+}

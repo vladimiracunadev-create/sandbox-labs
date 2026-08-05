@@ -1,0 +1,66 @@
+{
+  "$schema": "../schemas/policy.schema.json",
+  "id": "containment-audit",
+  "description": "Auditoría de contención: pide todos los controles en modo best-effort para poder MEDIR qué aplica cada runtime. Una política strict fallaría cerrada antes de ejecutar y no mediría nada.",
+  "enforcement": {
+    "mode": "best-effort",
+    "requiredControls": [
+      "filesystem",
+      "network",
+      "processes",
+      "memory",
+      "cpu",
+      "timeout",
+      "capabilities",
+      "devices",
+      "environment",
+      "output"
+    ]
+  },
+  "filesystem": {
+    "root": "ephemeral",
+    "readOnly": [],
+    "writable": [
+      "/workspace/output"
+    ],
+    "maxWorkspaceMb": 128,
+    "followSymlinks": false
+  },
+  "network": {
+    "mode": "none",
+    "hosts": [],
+    "dns": "disabled"
+  },
+  "resources": {
+    "cpu": 1.0,
+    "memoryMb": 128,
+    "processes": 16,
+    "timeoutSeconds": 30,
+    "openFiles": 64,
+    "outputBytes": 65536
+  },
+  "process": {
+    "capabilities": [],
+    "environment": {
+      "LANG": "C.UTF-8",
+      "NO_COLOR": "1",
+      "PATH": "/usr/local/bin:/usr/bin:/bin"
+    },
+    "allowedEnvironment": [],
+    "user": 65534,
+    "group": 65534
+  },
+  "syscalls": {
+    "profile": "default",
+    "allow": [],
+    "deny": []
+  },
+  "devices": {
+    "allow": [
+      "null",
+      "zero",
+      "random",
+      "urandom"
+    ]
+  }
+}

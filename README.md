@@ -27,8 +27,9 @@ namespaces, bubblewrap, WASI, gVisor, Kata y Firecracker.
 |---|---|
 | 🧭 **Control Center** (Node.js, `:9093`) | Panel local: lanza trabajos, sigue el estado por SSE y abre evidencias |
 | 🦀 **`sandboxctl`** (Rust) | Sondea el host, compila el plan, ejecuta y firma la evidencia |
-| 🛡️ **6 políticas** (`policies/`) | Perfiles neutrales de aislamiento: `strict` o `best-effort` |
-| 📦 **7 cargas** (`workloads/`) | Lo único ejecutable — no hay comandos libres |
+| 🛡️ **7 políticas** (`policies/`) | Perfiles neutrales de aislamiento: `strict` o `best-effort` |
+| 📦 **14 cargas** (`workloads/`) | Lo único ejecutable — no hay comandos libres |
+| 🧪 **7 sondas de contención** (`escape-suite/`) | Intentan salirse del sandbox y reportan qué se contuvo |
 | 🧪 **18 laboratorios** (`labs/`) | Recorrido educativo del baseline a la plataforma multi-tenant |
 | 📇 **`sandbox.config.json`** | Fuente única de verdad: labs, runtimes, rutas y versión |
 
@@ -100,11 +101,9 @@ Abre **<http://127.0.0.1:9093>**.
 ```bash
 cargo build --workspace --locked
 
-cargo run -p sandboxctl -- doctor
-cargo run -p sandboxctl -- plan \
-  --workload workloads/benign/hello \
-  --runtime bwrap \
-  --policy policies/minimal.json
+cargo run -p sandboxctl -- doctor      # qué runtimes hay en este host
+cargo run -p sandboxctl -- escape      # qué aísla cada uno DE VERDAD
+cargo run -p sandboxctl -- bench       # cuánto cuesta cada frontera
 ```
 
 Baseline sin aislamiento — solo carga benigna y con doble opt-in:
@@ -137,6 +136,52 @@ SANDBOX_LABS_ALLOW_NATIVE=1 cargo run -p sandboxctl -- run \
 
 Detalle control a control en
 [docs/CONTROL_ENFORCEMENT_MATRIX.md](docs/CONTROL_ENFORCEMENT_MATRIX.md).
+
+---
+
+## 🛡️ Lo que hace distinto a este repositorio
+
+Casi cualquier proyecto de sandboxing te dice qué **debería** aislar. Este
+ejecuta sondas que **intentan salirse** y te devuelve lo que realmente pasó en
+tu host:
+
+```bash
+cargo run -p sandboxctl -- escape
+```
+
+```text
+DIMENSIÓN / SONDA             native         bwrap       unshare
+────────────────────────────────────────────────────────────────
+network-egress                     ❌             ✅             ✅
+filesystem-escape                  ❌             ✅             ❌
+process-visibility                 ❌             ✅             ✅
+environment-leak                   ✅             ✅             ✅
+privilege-check                    ✅             ✅             ✅
+memory-limit                       —              ✅             ✅
+process-limit                      —              ❌             ❌
+```
+
+El veredicto que más importa no es ❌ sino **❌ DECLARADO**: el runtime dice que
+aplica el control y la sonda demuestra que no. La suite ya encontró dos casos
+así **en este mismo repositorio** — un PID namespace sin `/proc` remontado y un
+`RLIMIT_NPROC` que no limitaba lo que decía limitar. Los dos están corregidos y
+documentados en [docs/CONTAINMENT_SUITE.md](docs/CONTAINMENT_SUITE.md).
+
+CI instala bubblewrap y ejecuta la suite en cada commit, incluida la
+contraprueba de que `native` **tiene** que escaparse: si sin aislamiento
+saliera todo contenido, las sondas no estarían midiendo nada.
+
+### Y cuánto cuesta cada frontera
+
+```bash
+cargo run -p sandboxctl -- bench --repeat 20
+```
+
+```text
+RUNTIME         p50 ms    p95 ms  SOBRECOSTE
+native            9.48     10.40       1.00×
+unshare          13.07     13.42       1.38×
+```
 
 ---
 
@@ -211,6 +256,7 @@ Empieza por el **[🗂️ índice maestro](docs/DOCUMENTATION_INDEX.md)**.
 | Dudas de diseño | [FAQ.md](FAQ.md) |
 | Saber qué protege y qué no | [docs/THREAT_MODEL.md](docs/THREAT_MODEL.md) |
 | Escribir una política | [docs/POLICY_REFERENCE.md](docs/POLICY_REFERENCE.md) |
+| Medir contención real | [docs/CONTAINMENT_SUITE.md](docs/CONTAINMENT_SUITE.md) |
 | Leer una evidencia | [docs/EVIDENCE_FORMAT.md](docs/EVIDENCE_FORMAT.md) |
 
 ---

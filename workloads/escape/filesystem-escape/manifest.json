@@ -1,0 +1,19 @@
+{
+  "$schema": "../../../schemas/workload.schema.json",
+  "id": "escape-filesystem-escape",
+  "kind": "python",
+  "entrypoint": "probe.py",
+  "command": "python3",
+  "args": [
+    "probe.py"
+  ],
+  "risk": "controlled",
+  "description": "Intenta leer secretos del host, escribir fuera del workspace y ver el árbol real.",
+  "allowNative": true,
+  "expected": {
+    "outcome": "blocked",
+    "contains": [
+      "result="
+    ]
+  }
+}

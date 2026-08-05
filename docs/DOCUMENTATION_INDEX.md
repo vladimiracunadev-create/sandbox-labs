@@ -25,6 +25,7 @@
 
 | Documento | Qué resuelve | Abrir |
 |---|---|---|
+| **Containment Suite** | **Cómo se mide qué aísla de verdad cada runtime** | [Abrir](CONTAINMENT_SUITE.md) |
 | Policy Reference | Cada campo de una política y qué significa | [Abrir](POLICY_REFERENCE.md) |
 | Control Enforcement Matrix | Qué control aplica de verdad cada runtime | [Abrir](CONTROL_ENFORCEMENT_MATRIX.md) |
 | Runtime Adapters | Contrato `RuntimeAdapter` y estado por adaptador | [Abrir](RUNTIME_ADAPTERS.md) |

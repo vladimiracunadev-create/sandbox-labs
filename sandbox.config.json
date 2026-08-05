@@ -167,21 +167,21 @@
       "slug": "users-and-permissions",
       "title": "Usuarios y permisos",
       "level": "initial",
-      "status": "documented"
+      "status": "ready"
     },
     {
       "id": "03",
       "slug": "filesystem-jail",
       "title": "Jail de filesystem",
       "level": "initial",
-      "status": "documented"
+      "status": "ready"
     },
     {
       "id": "04",
       "slug": "linux-namespaces",
       "title": "Namespaces Linux",
       "level": "intermediate",
-      "status": "experimental"
+      "status": "ready"
     },
     {
       "id": "05",
@@ -195,7 +195,7 @@
       "slug": "linux-capabilities",
       "title": "Linux capabilities",
       "level": "intermediate",
-      "status": "experimental"
+      "status": "ready"
     },
     {
       "id": "07",
@@ -216,14 +216,14 @@
       "slug": "network-egress",
       "title": "Control de salida de red",
       "level": "intermediate",
-      "status": "experimental"
+      "status": "ready"
     },
     {
       "id": "10",
       "slug": "rootless-sandbox",
       "title": "Sandbox rootless",
       "level": "intermediate",
-      "status": "experimental"
+      "status": "ready"
     },
     {
       "id": "11",
@@ -251,14 +251,14 @@
       "slug": "wasm-wasi",
       "title": "WebAssembly y WASI",
       "level": "intermediate",
-      "status": "experimental"
+      "status": "documented"
     },
     {
       "id": "15",
       "slug": "ai-code-runner",
       "title": "AI Code Runner",
       "level": "product",
-      "status": "experimental"
+      "status": "ready"
     },
     {
       "id": "16",
@@ -272,14 +272,14 @@
       "slug": "sandbox-benchmarks",
       "title": "Benchmarks reproducibles",
       "level": "advanced",
-      "status": "planned"
+      "status": "ready"
     },
     {
       "id": "18",
       "slug": "multi-tenant-platform",
       "title": "Plataforma multi-tenant",
       "level": "product",
-      "status": "planned"
+      "status": "documented"
     }
   ],
   "workloadsDirectory": "workloads",

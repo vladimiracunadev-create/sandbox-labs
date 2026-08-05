@@ -1,3 +1,6 @@
+mod bench;
+mod escape;
+
 use anyhow::{Context, Result};
 use clap::{Parser, Subcommand};
 use sandbox_core::{Catalog, DoctorReport, Evidence, ExecutionPlan, Policy, RuntimeKind, Workload};
@@ -53,19 +56,83 @@ enum Command {
         #[arg(long)]
         json: bool,
     },
+    /// Ejecuta la suite de contención: mide qué aísla de verdad cada runtime.
+    ///
+    /// `plan` dice lo que el runtime declara; `escape` dice lo que hace.
+    Escape {
+        /// Runtime a medir; repetible. Sin él se miden todos los ejecutables.
+        #[arg(long)]
+        runtime: Vec<String>,
+        #[arg(long, default_value = "policies/containment-audit.json")]
+        policy: PathBuf,
+        #[arg(long)]
+        json: bool,
+        /// Devuelve código 1 si alguna sonda escapa, para usarlo como gate de CI.
+        #[arg(long)]
+        strict: bool,
+        #[arg(long)]
+        report: Option<PathBuf>,
+    },
+    /// Compara el coste de arranque de cada frontera con la misma carga.
+    Bench {
+        #[arg(long, default_value = "workloads/benign/hello")]
+        workload: PathBuf,
+        /// Por defecto la política de auditoría: es best-effort, así que se
+        /// ejecuta en todos los runtimes y la comparación es entre iguales.
+        /// Una política strict bloquearía a unos sí y a otros no.
+        #[arg(long, default_value = "policies/containment-audit.json")]
+        policy: PathBuf,
+        #[arg(long)]
+        runtime: Vec<String>,
+        #[arg(long, default_value_t = 10)]
+        repeat: usize,
+        #[arg(long)]
+        json: bool,
+        #[arg(long)]
+        report: Option<PathBuf>,
+    },
 }
 
 fn main() -> Result<()> {
     let cli = Cli::parse();
     let root = canonical_or_original(&cli.root);
-    match cli.command {
-        Command::Doctor { json } => doctor(json),
-        Command::Labs => labs(&root),
-        Command::Runtimes { json } => runtimes(json),
-        Command::Validate { policy, workload } => validate(&root, &policy, workload.as_deref()),
-        Command::Plan { workload, runtime, policy, json } => plan(&root, &workload, &runtime, &policy, json),
-        Command::Run { workload, runtime, policy, arg, json } => run(&root, &workload, &runtime, &policy, &arg, json),
+    // `escape` y `bench` devuelven un código de salida propio: son puertas de
+    // CI, y un informe con fugas tiene que poder tumbar el build.
+    let code = match cli.command {
+        Command::Doctor { json } => doctor(json).map(|_| 0),
+        Command::Labs => labs(&root).map(|_| 0),
+        Command::Runtimes { json } => runtimes(json).map(|_| 0),
+        Command::Validate { policy, workload } => validate(&root, &policy, workload.as_deref()).map(|_| 0),
+        Command::Plan { workload, runtime, policy, json } => plan(&root, &workload, &runtime, &policy, json).map(|_| 0),
+        Command::Run { workload, runtime, policy, arg, json } => {
+            run(&root, &workload, &runtime, &policy, &arg, json).map(|_| 0)
+        }
+        Command::Escape { runtime, policy, json, strict, report } => escape::run(
+            &root,
+            &escape::EscapeOptions {
+                runtimes: escape::parse_runtimes(&runtime)?,
+                policy: resolve_inside(&root, &policy)?,
+                json,
+                strict,
+                report_path: report,
+            },
+        ),
+        Command::Bench { workload, policy, runtime, repeat, json, report } => bench::run(
+            &root,
+            &bench::BenchOptions {
+                workload: resolve_inside(&root, &workload)?,
+                policy: resolve_inside(&root, &policy)?,
+                runtimes: escape::parse_runtimes(&runtime)?,
+                repetitions: repeat,
+                json,
+                report_path: report,
+            },
+        ),
+    }?;
+    if code != 0 {
+        std::process::exit(code);
     }
+    Ok(())
 }
 
 fn doctor(json: bool) -> Result<()> {

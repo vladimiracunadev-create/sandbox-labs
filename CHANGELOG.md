@@ -7,6 +7,54 @@ Versionado semántico.
 
 ## [Unreleased]
 
+### Added — el repositorio deja de describir aislamiento y pasa a medirlo
+
+- **`sandboxctl escape`: suite de contención.** Siete sondas que **intentan
+  salirse** del sandbox (red, filesystem, visibilidad de procesos, fuga de
+  entorno, privilegios efectivos, memoria y procesos) ejecutadas bajo cada
+  runtime, con una matriz de resultados. Cada sonda es una carga registrada
+  normal: se ejecuta por el mismo camino que el resto, porque una vía especial
+  no mediría el sistema real.
+- **Veredicto `❌ DECLARADO`** para el caso más peligroso: el runtime declara el
+  control y la sonda demuestra que no lo aplica. Peor que no declararlo, porque
+  invita a confiar.
+- **`sandboxctl bench`: comparativa entre fronteras.** Misma carga y misma
+  política en todos los runtimes, con p50, p95 y sobrecoste contra el más
+  rápido. Repetición de calentamiento descartada; se reporta la cola porque una
+  media sola esconde justo el caso que hará esperar al usuario.
+- **Trabajo `isolation` en CI**: instala bubblewrap y ejecuta la suite de
+  verdad. Tres comprobaciones que se sostienen entre sí — bubblewrap debe
+  contenerlo todo (`--strict`), unshare debe cortar red y PIDs, y **native
+  debe ESCAPAR**. Esta última es una contraprueba deliberada: si sin
+  aislamiento saliera todo contenido, las sondas no estarían midiendo nada.
+- Política `containment-audit`: `best-effort` a propósito, porque una `strict`
+  falla cerrada antes de ejecutar y no mediría nada.
+- `docs/CONTAINMENT_SUITE.md` y esquema `escape-suite.schema.json`.
+
+### Fixed — hallazgos de la propia suite
+
+- **PID namespace sin `/proc` remontado.** El adaptador `unshare` pasaba
+  `--pid --fork` y creaba el namespace, pero sin `--mount-proc` el proceso
+  seguía leyendo el `/proc` del host y enumeraba sus 48 PIDs. El namespace
+  existía y no se notaba.
+- **`RLIMIT_NPROC` no es un límite de procesos de contenedor.** Los adaptadores
+  declaraban el control `processes` porque envolvían la carga con
+  `prlimit --nproc`, pero RLIMIT_NPROC cuenta los procesos del UID en **todo el
+  host**: fijarlo al presupuesto de la política mataba la ejecución al arrancar
+  y hacía pasar por contención algo que no lo era. Se retiró, y el control
+  `processes` ya no se declara hasta que exista con cgroups v2.
+
+### Changed — laboratorios profesionales
+
+- Los 18 laboratorios reescritos: de plantillas de 35 líneas a ~105 líneas con
+  concepto, motivo, diagrama Mermaid, comandos reales sobre la nueva
+  herramienta, salida esperada, verificación, caso de uso y errores comunes.
+- Estado de cada laboratorio sincronizado con el catálogo, **con una prueba de
+  contrato que impide que vuelvan a divergir** y que además exige que cada
+  README traiga diagrama, práctica y verificación.
+- Los adaptadores `bwrap` y `unshare` declaran ahora `memory` (RLIMIT_AS
+  verificado en el host) y ya no declaran `processes`.
+
 ### Security
 
 - `sha2` actualizado a 0.11 (cambio mayor). La versión 0.11 dejó de

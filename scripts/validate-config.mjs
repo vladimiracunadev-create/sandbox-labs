@@ -88,4 +88,22 @@ for (const file of manifestPaths) {
 }
 assert(workloadIds.size > 0, "No hay workloads");
 
-console.log(`✅ Configuración válida: ${catalog.labs.length} labs, ${catalog.runtimes.length} runtimes, ${policyIds.size} policies, ${workloadIds.size} workloads · v${catalog.project.version}`);
+// Suite de contención: cada sonda debe apuntar a una carga registrada y a una
+// dimensión declarada. Una sonda huérfana no mediría nada y pasaría por buena.
+const suitePath = resolve(root, "escape-suite", "suite.json");
+const suite = await validate("escape-suite.schema.json", suitePath);
+await ensureSchemaReference(suitePath, suite);
+const dimensionIds = new Set(suite.dimensions.map((value) => value.id));
+const probeIds = new Set();
+for (const probe of suite.probes) {
+  assert(!probeIds.has(probe.id), `Sonda duplicada: ${probe.id}`);
+  probeIds.add(probe.id);
+  assert(dimensionIds.has(probe.dimension), `${probe.id}: dimensión desconocida ${probe.dimension}`);
+  assert(workloadIds.has(probe.workload), `${probe.id}: apunta a una carga no registrada (${probe.workload})`);
+  assert(knownControls.has(probe.control), `${probe.id}: control desconocido ${probe.control}`);
+}
+for (const dimension of dimensionIds) {
+  assert(suite.probes.some((probe) => probe.dimension === dimension), `La dimensión ${dimension} no tiene ninguna sonda`);
+}
+
+console.log(`✅ Configuración válida: ${catalog.labs.length} labs, ${catalog.runtimes.length} runtimes, ${policyIds.size} policies, ${workloadIds.size} workloads, ${probeIds.size} sondas de contención · v${catalog.project.version}`);

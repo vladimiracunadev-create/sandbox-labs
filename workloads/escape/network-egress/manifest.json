@@ -1,0 +1,19 @@
+{
+  "$schema": "../../../schemas/workload.schema.json",
+  "id": "escape-network-egress",
+  "kind": "python",
+  "entrypoint": "probe.py",
+  "command": "python3",
+  "args": [
+    "probe.py"
+  ],
+  "risk": "controlled",
+  "description": "Intenta salida TCP y resolución DNS desde dentro del sandbox.",
+  "allowNative": true,
+  "expected": {
+    "outcome": "blocked",
+    "contains": [
+      "result="
+    ]
+  }
+}

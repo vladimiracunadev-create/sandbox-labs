@@ -1,0 +1,19 @@
+{
+  "$schema": "../../../schemas/workload.schema.json",
+  "id": "escape-process-limit",
+  "kind": "python",
+  "entrypoint": "probe.py",
+  "command": "python3",
+  "args": [
+    "probe.py"
+  ],
+  "risk": "resource-abuse",
+  "description": "Crea procesos hijo acotados hasta pasarse del presupuesto de la política.",
+  "allowNative": false,
+  "expected": {
+    "outcome": "blocked",
+    "contains": [
+      "result="
+    ]
+  }
+}

@@ -10,3 +10,7 @@
 .env
 .env.*
 !.env.example
+
+# Informes de la suite de contención (generados)
+/evidence/escape/*.json
+!/evidence/escape/.gitkeep

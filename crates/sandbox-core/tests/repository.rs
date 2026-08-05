@@ -4,7 +4,7 @@
 //! Estas pruebas no ejecutan ninguna carga. Leen los artefactos versionados y
 //! comprueban las invariantes que el resto del sistema da por hechas.
 
-use sandbox_core::{Catalog, EnforcementMode, ExecutionPlan, Policy, RuntimeKind, Workload};
+use sandbox_core::{Catalog, EnforcementMode, EscapeSuite, ExecutionPlan, Policy, RuntimeKind, Workload};
 use std::{collections::BTreeSet, fs, path::PathBuf, str::FromStr};
 
 fn repo_root() -> PathBuf {
@@ -101,7 +101,7 @@ fn every_workload_loads_and_validates() {
         let workload = Workload::load(&path).unwrap_or_else(|error| panic!("{}: {error}", path.display()));
         assert!(ids.insert(workload.id.clone()), "id de carga duplicado: {}", workload.id);
         assert!(
-            ["benign", "resource-abuse", "adversarial-simulation"].contains(&workload.risk.as_str()),
+            ["benign", "controlled", "resource-abuse", "adversarial-simulation"].contains(&workload.risk.as_str()),
             "{} declara un riesgo desconocido: {}",
             path.display(),
             workload.risk
@@ -111,9 +111,13 @@ fn every_workload_loads_and_validates() {
 
 #[test]
 fn risky_workloads_never_allow_native() {
+    // `controlled` existe para las sondas de observación de la suite de
+    // contención: solo miden y reportan, así que pueden correr en native para
+    // obtener la línea base sin aislamiento. Las que consumen recursos o
+    // simulan una fuga siguen fuera de native, sin excepción.
     for path in workload_manifests() {
         let workload = Workload::load(&path).expect("carga válida");
-        if workload.risk != "benign" {
+        if matches!(workload.risk.as_str(), "resource-abuse" | "adversarial-simulation") {
             assert!(
                 !workload.allow_native,
                 "{} es de riesgo {} y no puede declarar allowNative",
@@ -239,5 +243,114 @@ fn portable_path_never_leaks_the_host() {
         assert!(portable.starts_with("workloads/"), "{portable} no es una ruta portable");
         assert!(!portable.contains('\\'), "{portable} arrastra separadores de Windows");
         assert!(!portable.contains(':'), "{portable} arrastra una unidad del host");
+    }
+}
+
+// ── Suite de contención ──────────────────────────────────────────────────────
+
+fn suite() -> EscapeSuite {
+    EscapeSuite::load(repo_root().join("escape-suite").join("suite.json")).expect("suite de contención")
+}
+
+#[test]
+fn escape_suite_loads_and_validates() {
+    let value = suite();
+    assert!(!value.probes.is_empty(), "la suite debe declarar sondas");
+    assert!(!value.dimensions.is_empty(), "la suite debe declarar dimensiones");
+    value.validate().expect("suite coherente");
+}
+
+#[test]
+fn every_probe_points_to_a_registered_workload() {
+    let registered: BTreeSet<String> =
+        workload_manifests().iter().map(|path| Workload::load(path).expect("carga válida").id).collect();
+    for probe in &suite().probes {
+        assert!(
+            registered.contains(&probe.workload),
+            "la sonda {} apunta a una carga no registrada: {}",
+            probe.id,
+            probe.workload
+        );
+    }
+}
+
+#[test]
+fn every_probe_declares_a_known_control() {
+    // El control de la sonda es lo que se compara con `supported_controls` del
+    // runtime para detectar falsas garantías: si no es un control real del
+    // modelo, la comparación no significaría nada.
+    let policy = load_policy("containment-audit");
+    let known = RuntimeKind::Gvisor.supported_controls(&policy);
+    for probe in &suite().probes {
+        assert!(
+            known.contains(&probe.control),
+            "la sonda {} declara un control desconocido: {}",
+            probe.id,
+            probe.control
+        );
+    }
+}
+
+#[test]
+fn every_dimension_is_exercised_by_a_probe() {
+    let value = suite();
+    let exercised: BTreeSet<&str> = value.probes.iter().map(|probe| probe.dimension.as_str()).collect();
+    for dimension in &value.dimensions {
+        assert!(exercised.contains(dimension.id.as_str()), "la dimensión {} no tiene sonda", dimension.id);
+    }
+}
+
+#[test]
+fn the_audit_policy_is_executable_by_design() {
+    // Una política estricta falla cerrada antes de ejecutar y no mediría nada.
+    // La de auditoría es best-effort justamente para poder observar la realidad.
+    let policy = load_policy("containment-audit");
+    assert_eq!(policy.enforcement.mode, EnforcementMode::BestEffort, "una política strict no puede auditar contención");
+    assert!(policy.enforcement.required_controls.len() >= 8, "la auditoría debe pedir controles suficientes");
+    assert_eq!(policy.network.mode, "none", "la auditoría mide con la red cerrada por política");
+}
+
+#[test]
+fn escape_probes_pass_the_real_resource_budget() {
+    // Una sonda que midiera contra una constante inventada no probaría nada
+    // sobre la política; debe recibir el presupuesto real.
+    let policy = load_policy("containment-audit");
+    for probe in &suite().probes {
+        match probe.argument.as_deref() {
+            Some("memoryMb") => {
+                assert_eq!(EscapeSuite::argument_value(probe, &policy), Some(policy.resources.memory_mb.to_string()))
+            }
+            Some("processes") => {
+                assert_eq!(EscapeSuite::argument_value(probe, &policy), Some(policy.resources.processes.to_string()))
+            }
+            None => assert!(EscapeSuite::argument_value(probe, &policy).is_none()),
+            _ => {}
+        }
+    }
+}
+
+#[test]
+fn lab_readmes_agree_with_the_catalog() {
+    // El estado de un laboratorio vive en dos sitios que se leen por separado:
+    // el catálogo (lo consume el panel) y su README (lo lee una persona). Si
+    // divergen, uno de los dos miente y no hay forma de saber cuál.
+    let catalog = Catalog::load(repo_root().join("sandbox.config.json")).expect("catálogo válido");
+    for lab in &catalog.labs {
+        let path = repo_root().join("labs").join(format!("{}-{}", lab.id, lab.slug)).join("README.md");
+        let content = fs::read_to_string(&path).unwrap_or_else(|_| panic!("falta {}", path.display()));
+
+        let declared = content
+            .lines()
+            .find_map(|line| line.split("**Estado:** `").nth(1)?.split('`').next())
+            .unwrap_or_else(|| panic!("{} no declara estado", path.display()))
+            .to_string();
+        assert_eq!(declared, lab.status, "{} declara {declared} y el catálogo {}", path.display(), lab.status);
+
+        // Un laboratorio sin contenido real es una plantilla: se exige que
+        // traiga diagrama, práctica y verificación, no solo encabezados.
+        for section in ["```mermaid", "## ▶️ Práctica", "## ✅ Cómo se verifica", "## 🏭 Caso de uso real"] {
+            assert!(content.contains(section), "{} no incluye «{section}»", path.display());
+        }
+        assert!(content.lines().count() >= 60, "{} es demasiado corto para ser útil", path.display());
     }
 }

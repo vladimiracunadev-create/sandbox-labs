@@ -122,6 +122,124 @@ jobs:
           fi
           echo "dist/ coincide con src/."
 
+  # ───────────────────────────────────────────────────────────────────────────
+  # El trabajo que sostiene todo lo que el repositorio afirma.
+  #
+  # Los demás verifican que el código compila y que el plan es coherente. Este
+  # instala los runtimes de verdad, lanza cargas que INTENTAN salirse del
+  # sandbox y comprueba que no lo consiguen. Sin él, «aísla» sería una palabra
+  # en un README.
+  # ───────────────────────────────────────────────────────────────────────────
+  isolation:
+    name: Aislamiento real (bubblewrap · unshare)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: dtolnay/rust-toolchain@e97e2d8cc328f1b50210efc529dca0028893a2d9 # v1
+        with:
+          toolchain: stable
+
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/git/db
+            target
+          key: cargo-isolation-${{ runner.os }}-${{ hashFiles('Cargo.lock') }}
+          restore-keys: cargo-isolation-${{ runner.os }}-
+
+      - name: Instalar los runtimes de aislamiento
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq bubblewrap util-linux
+          bwrap --version
+          unshare --version
+          prlimit --version
+
+      - name: Inventario del host
+        run: cargo run --locked -q -p sandboxctl -- doctor
+
+      - name: Suite de contención — bubblewrap debe contenerlo todo
+        run: |
+          set -euo pipefail
+          # `--strict` devuelve 1 si alguna sonda escapa: si bubblewrap deja de
+          # contener una dimensión, el build se cae aquí y no en producción.
+          cargo run --locked -q -p sandboxctl -- escape \
+            --runtime bwrap --strict --report evidence/escape/bwrap.json
+
+      - name: Suite de contención — unshare debe cortar la red y los PIDs
+        run: |
+          set -euo pipefail
+          cargo run --locked -q -p sandboxctl -- escape \
+            --runtime unshare --json --report evidence/escape/unshare.json > /tmp/unshare.json
+          # unshare no ofrece jail de filesystem y se documenta así, pero la red
+          # y la visibilidad de procesos sí tienen que quedar contenidas.
+          node -e '
+            const report = require("/tmp/unshare.json").reports[0];
+            const need = { "network-egress": "network", "process-visibility": "process" };
+            let bad = 0;
+            for (const [probe, dimension] of Object.entries(need)) {
+              const found = report.results.find((r) => r.probe === probe);
+              if (!found || found.verdict !== "contained") {
+                console.error(`::error::unshare no contuvo ${dimension}: ${found ? found.verdict : "sin resultado"} — ${found ? found.detail : ""}`);
+                bad += 1;
+              } else {
+                console.log(`unshare contiene ${dimension}: ${found.detail}`);
+              }
+            }
+            process.exit(bad ? 1 : 0);
+          '
+
+      - name: Línea base — native debe ESCAPAR (si no, la suite no mide nada)
+        env:
+          SANDBOX_LABS_ALLOW_NATIVE: "1"
+        run: |
+          set -euo pipefail
+          cargo run --locked -q -p sandboxctl -- escape \
+            --runtime native --json --report evidence/escape/native.json > /tmp/native.json
+          # Contraprueba deliberada: sin aislamiento las sondas TIENEN que
+          # escaparse. Si aquí saliera todo contenido, las sondas no estarían
+          # midiendo nada y los ✅ de bubblewrap no valdrían nada.
+          node -e '
+            const report = require("/tmp/native.json").reports[0];
+            const escaped = report.results.filter((r) => r.verdict === "escaped").map((r) => r.probe);
+            if (escaped.length === 0) {
+              console.error("::error::native no escapó por ninguna dimensión: las sondas no están midiendo");
+              process.exit(1);
+            }
+            console.log(`native escapa por ${escaped.length} dimensiones (esperado): ${escaped.join(", ")}`);
+          '
+
+      - name: Comparativa de coste entre fronteras
+        run: cargo run --locked -q -p sandboxctl -- bench --repeat 15 --report evidence/escape/bench.json
+
+      - name: Publicar la matriz en el resumen
+        if: always()
+        run: |
+          set -euo pipefail
+          {
+            echo "## 🛡️ Matriz de contención"
+            echo ""
+            echo "Medida en este runner, no declarada en un documento."
+            echo ""
+            echo '```'
+            cargo run --locked -q -p sandboxctl -- escape --runtime bwrap --runtime unshare 2>&1 || true
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: always()
+        with:
+          name: containment-reports
+          path: evidence/escape/
+          retention-days: 14
+
   panel:
     name: Panel (API de extremo a extremo)
     runs-on: ubuntu-latest

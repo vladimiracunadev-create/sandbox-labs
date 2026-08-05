@@ -463,6 +463,7 @@ name = "sandboxctl"
 version = "0.7.0"
 dependencies = [
  "anyhow",
+ "chrono",
  "clap",
  "sandbox-core",
  "sandbox-runtimes",

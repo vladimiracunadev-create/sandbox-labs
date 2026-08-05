@@ -179,9 +179,17 @@ impl RuntimeKind {
             ],
         };
         let mut values: BTreeSet<String> = declared.into_iter().map(String::from).collect();
-        if self == Self::Bwrap && command_exists("prlimit") {
+        // `prlimit` aporta un techo de memoria (RLIMIT_AS) a los adaptadores
+        // que envuelven el proceso con él. Se comprueba en el host, no se
+        // asume: declarar un control que no existe es exactamente lo que este
+        // proyecto trata de evitar.
+        //
+        // `processes` NO se añade aquí. RLIMIT_NPROC cuenta los procesos del
+        // UID real en todo el host, no los de la carga, así que no es el
+        // control que la política pide. Un techo real de PIDs necesita el
+        // controlador `pids` de cgroups v2 — ver docs/IMPLEMENTATION_BACKLOG.md.
+        if matches!(self, Self::Bwrap | Self::Unshare) && command_exists("prlimit") {
             values.insert("memory".into());
-            values.insert("processes".into());
         }
         if self == Self::Bwrap && policy.network.mode != "none" {
             values.remove("network");
