@@ -25,7 +25,7 @@ jobs:
     name: Dependencias (cargo-audit · pnpm audit)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
 
       # La versión de pnpm viene de `packageManager` en package.json.
       - uses: pnpm/action-setup@v4
@@ -50,7 +50,7 @@ jobs:
     name: Secretos (gitleaks)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
@@ -70,7 +70,7 @@ jobs:
     name: Workflows (zizmor)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
 
       - uses: actions/setup-python@v5
         with:
