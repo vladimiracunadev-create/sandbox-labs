@@ -75,10 +75,13 @@ dentro de uno **no** es ser root fuera: ese cero está mapeado.
 ### cgroups v2
 
 Jerarquía del kernel que limita CPU, memoria, procesos y E/S. Es la vía correcta
-para límites de recursos.
+para límites de recursos, y la que usa bubblewrap en este proyecto:
+`memory.max`, `pids.max` y `cpu.max`, puestos a través de un scope de
+`systemd-run --user`.
 
 > `RLIMIT_NPROC` **no** es un sustituto: cuenta los procesos del UID en todo el
-> host, no los de tu carga.
+> host, no los de tu carga. `RLIMIT_AS` tampoco lo es de memoria: acota el
+> espacio de direcciones virtual, no la residente.
 
 ### Capabilities
 

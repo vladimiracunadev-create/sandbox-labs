@@ -197,8 +197,11 @@ jobs:
           cargo run --locked -q -p sandboxctl -- escape \
             --runtime bwrap --strict --report evidence/escape/bwrap.json
           # Y por encima, el contrato explícito de lo que bubblewrap tiene que
-          # contener en este proyecto. `processes` queda fuera a propósito:
-          # necesita cgroups v2 y está documentado como hueco conocido.
+          # contener en este proyecto. `processes` queda fuera de esta lista
+          # porque depende del host: solo se declara donde el sondeo demuestra
+          # que systemd puede aplicar `pids.max`. Cuando se declara, `--strict`
+          # ya exige que la sonda lo confirme — esta lista es el suelo mínimo,
+          # no el techo.
           node scripts/assert-containment.mjs evidence/escape/bwrap.json \
             --contained network,filesystem,process,environment,privilege,memory
 

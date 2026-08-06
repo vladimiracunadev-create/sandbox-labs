@@ -139,9 +139,12 @@ host**: fijarlo al presupuesto de la política mataba la ejecución nada más
 arrancar (`unshare: fork failed: Resource temporarily unavailable`) y, peor,
 hacía pasar por control de contención algo que no lo era.
 
-**Corregido**: se retiró `--nproc` y el control `processes` **ya no se
-declara**. Un techo real de PIDs necesita el controlador `pids` de cgroups v2 —
-necesita el controlador `pids` de cgroups v2.
+**Corregido**: se retiró `--nproc` y el control `processes` dejó de
+declararse. Después se cerró de verdad: bubblewrap envuelve la ejecución en un
+scope de systemd con `TasksMax`, que el kernel traduce a `pids.max`. El control
+vuelve a declararse, pero **solo donde el sondeo demuestra que el host lo
+admite** — donde no hay gestor de usuario de systemd, sigue sin declararse. Ver
+[B-01](IMPLEMENTATION_BACKLOG.md).
 
 ### 3. `--strict` aprobaba sin haber medido nada
 
