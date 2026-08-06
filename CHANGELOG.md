@@ -35,6 +35,30 @@ Versionado semántico.
   `XDG_RUNTIME_DIR` y `DBUS_SESSION_BUS_ADDRESS` en `/proc/1/environ`. Se borran
   con `env -u` entre el scope y el runtime.
 
+### Added — un servicio puede contener la red y seguir publicando su puerto
+
+- **Reenviador TCP → socket Unix en el supervisor.** Hasta ahora, todo servicio
+  que quisiera abrirse en el navegador tenía que conservar la red del host: su
+  puerto lo enlazaba él, y dentro de un namespace de red propio ese puerto no es
+  alcanzable desde fuera. Ahora el servicio escucha en un socket Unix y el
+  supervisor publica el puerto por él, empalmando cada conexión. El servicio
+  sigue hablando HTTP; solo cambia el transporte por debajo.
+- **`publish` en el manifiesto de servicio**, que separa *cómo escucha el
+  servicio* de *cómo llega el host*: `direct` (lo enlaza el servicio, necesita
+  la red del host), `proxy` (lo publica el supervisor, el sandbox se queda sin
+  red) y `none` (solo el socket). Los manifiestos sin el campo siguen
+  significando lo mismo que antes.
+- **Política `service-isolated`**: como `service-sandbox` pero con
+  `network: loopback` y exigiendo el control `network`.
+- **Los casos `02-ai-code-runner` y `03-file-detonation` pasan a red contenida.**
+  Eran la frontera abierta más grande que quedaba en el catálogo. Medido
+  levantando el caso 03: `curl http://127.0.0.1:8803/health` → 200, con el
+  sandbox en `net:[4026532244]` y el host en `net:[4026531833]`.
+- El reenviador se registra en `proxyPid` y se baja con el sandbox: si
+  sobreviviera, dejaría el puerto ocupado y el siguiente `up` fallaría
+  señalando a un servicio que ya no existe. Tiene techo de conexiones
+  simultáneas, porque corre **fuera** del sandbox y por tanto fuera del cgroup.
+
 ### Added — límites de recursos que existen de verdad
 
 - **cgroups v2 en bubblewrap.** `memoryMb`, `processes` y `cpu` pasan de

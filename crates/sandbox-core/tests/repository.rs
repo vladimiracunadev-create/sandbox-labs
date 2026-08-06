@@ -435,6 +435,60 @@ fn a_policy_that_requires_network_either_isolates_or_fails_closed() {
 }
 
 #[test]
+fn every_service_is_reachable_the_way_it_says_it_is() {
+    // `transport` dice cómo escucha el servicio; `publish`, cómo llega el host.
+    // Las combinaciones imposibles se cazan aquí, en los manifiestos
+    // versionados, y no a los veinte segundos de un arranque que no responde.
+    for service in built_cases() {
+        let policy = load_policy(&service.policy);
+        match service.publish_mode() {
+            "direct" => {
+                assert!(
+                    !service.is_socket(),
+                    "{}: publish «direct» exige que el servicio enlace el puerto",
+                    service.id
+                );
+                assert!(
+                    policy.network.allows_published_port(),
+                    "{}: enlaza el puerto {} él mismo, así que su política ({}) no puede aislar la red",
+                    service.id,
+                    service.port,
+                    policy.id
+                );
+            }
+            "proxy" => assert!(
+                service.is_socket(),
+                "{}: el reenviador empalma con un socket del sandbox; sin socket no hay nada que empalmar",
+                service.id
+            ),
+            "none" => {}
+            other => panic!("{}: modo de publicación desconocido: {other}", service.id),
+        }
+    }
+}
+
+#[test]
+fn a_proxied_service_has_no_excuse_to_keep_the_host_network() {
+    // Es la razón de ser del reenviador. Si un servicio lo usa y aun así corre
+    // con la red del host, se está pagando el precio sin cobrar el beneficio.
+    for service in built_cases().into_iter().filter(sandbox_core::Service::needs_proxy) {
+        let policy = load_policy(&service.policy);
+        assert!(
+            policy.network.isolates_host_network(),
+            "{}: publica por reenviador pero su política ({}) usa network «{}»",
+            service.id,
+            policy.id,
+            policy.network.mode
+        );
+        assert!(
+            policy.enforcement.required_controls.iter().any(|value| value == "network"),
+            "{}: si la red queda contenida, la política tiene que exigir el control `network`",
+            service.id
+        );
+    }
+}
+
+#[test]
 fn service_ports_are_unprivileged() {
     for service in built_cases() {
         assert!(service.port >= 1024, "{} usa un puerto privilegiado: {}", service.id, service.port);

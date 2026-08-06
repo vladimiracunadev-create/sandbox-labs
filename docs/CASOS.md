@@ -61,9 +61,15 @@ revisado: se generó hace medio segundo.
 ejecución, corre sin salida a internet y se destruye. Nada persiste entre
 ejecuciones porque nada debe persistir.
 
-**Qué pasa al levantarlo.** Filesystem efímero, red cerrada, techo de memoria y
-de tiempo. El entorno se limpia: el fragmento no hereda ni una variable que la
-política no declare.
+**Qué pasa al levantarlo.** Filesystem efímero, red cerrada de verdad —namespace
+de red propio—, techo de memoria y de tiempo. El entorno se limpia: el fragmento
+no hereda ni una variable que la política no declare.
+
+> **Cómo puede estar sin red y abrirse igual en el navegador.** El servicio
+> escucha en un socket Unix dentro de su propio namespace de red, y el
+> supervisor publica el puerto por él (`publish: proxy`). Lo que llega al
+> `:8802` del host lo empalma un reenviador que vive fuera de la jaula. El
+> sandbox no tiene por dónde salir; tú entras igual.
 
 **Tareas dentro.** Pegar un fragmento, ejecutarlo, ver su salida y qué intentó
 tocar, iterar sobre él.
@@ -82,7 +88,13 @@ código se ejecute: el valor está en el informe de qué hizo, no en haberlo
 impedido. Es el único caso donde el sandbox no es un muro sino un instrumento.
 
 **Qué pasa al levantarlo.** Jaula con carpeta efímera, sin acceso al árbol del
-host, con techo de memoria y de entradas.
+host, sin red y con techo de memoria y de entradas.
+
+> **Cómo puede estar sin red y abrirse igual en el navegador.** El servicio
+> escucha en un socket Unix dentro de su propio namespace de red, y el
+> supervisor publica el puerto por él (`publish: proxy`). Lo que llega al
+> `:8803` del host lo empalma un reenviador que vive fuera de la jaula. El
+> sandbox no tiene por dónde salir; tú entras igual.
 
 **Tareas dentro.**
 

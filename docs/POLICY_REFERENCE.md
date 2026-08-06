@@ -29,18 +29,39 @@ que decide si el control `network` puede declararse efectivo:
 
 - `none`: sin interfaz de red utilizable hacia fuera.
 - `loopback`: la carga habla consigo misma dentro de su propio namespace. Un
-  servicio con este modo **no puede publicar un puerto en el host**: el puerto
-  nace dentro del sandbox. `sandboxctl service up` falla en cerrado y dice que
-  el servicio tiene que pasar a `transport: unix-socket`.
+  servicio con este modo **no puede enlazar él mismo un puerto del host**: el
+  que abra nace dentro del sandbox. Sí puede publicarlo el supervisor por él
+  —ver `publish: proxy` más abajo—, y si no hace ninguna de las dos cosas,
+  `sandboxctl service up` falla en cerrado explicando ambas salidas.
 - `allowlist`: hoy **no hay nada que haga cumplir la lista**. No existe proxy de
   salida, ni reglas de firewall, ni resolución DNS controlada. `hosts` se valida
   y después se ignora, así que el control nunca sale efectivo y una política
   estricta que lo exija no ejecuta. Ver
   [B-04](IMPLEMENTATION_BACKLOG.md) — es un hueco conocido, no un modo listo.
-- `unrestricted`: la red del host, escrito con todas sus letras. Es lo que
-  necesita cualquier servicio que publique un puerto, y por eso las políticas
-  `service-sandbox` y `web-application` lo usan. Ninguna de las dos exige el
-  control `network`, porque ahí no hay ninguno que exigir.
+- `unrestricted`: la red del host, escrito con todas sus letras. Ninguna
+  política que lo use puede exigir el control `network`, porque ahí no hay
+  ninguno que exigir.
+
+### Un servicio puede contener la red y seguir publicando un puerto
+
+Parecen incompatibles y no lo son. La clave es separar **cómo escucha el
+servicio** (`transport`, en su manifiesto) de **cómo llega el host**
+(`publish`):
+
+| `publish` | Quién enlaza el puerto del host | `network` puede ser |
+|---|---|---|
+| `direct` | el propio servicio | `allowlist` o `unrestricted` |
+| `proxy` | el supervisor, empalmando con el socket Unix del sandbox | `none` o `loopback` |
+| `none` | nadie: la única puerta es el socket | `none` o `loopback` |
+
+Con `proxy`, `sandboxctl service up` levanta un reenviador que escucha en
+`127.0.0.1:<puerto>` del host y empalma cada conexión con el socket del sandbox.
+El servicio sigue hablando HTTP y se abre en el navegador igual, pero corre en
+un namespace de red propio y no tiene por dónde salir.
+
+Es lo que usan `service-isolated` y los casos `02` y `03`. `service-sandbox` y
+`web-application` se quedan en `unrestricted` para los servicios que enlacen el
+puerto ellos mismos.
 
 ## Recursos
 

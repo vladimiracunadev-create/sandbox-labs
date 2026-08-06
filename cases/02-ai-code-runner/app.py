@@ -31,6 +31,10 @@ from pathlib import Path
 
 PORT = int(os.environ.get("SANDBOX_PORT", "8802"))
 RUNTIME = os.environ.get("SANDBOX_RUNTIME", "sin sandbox")
+# Cuando el supervisor publica el puerto por nosotros, el servicio escucha en
+# un socket Unix y el sandbox se queda SIN red. Sin esta variable se cae al
+# modo TCP de siempre, que necesita la red del host.
+SOCKET_PATH = os.environ.get("SANDBOX_SOCKET")
 
 MAX_CODE_BYTES = 8 * 1024
 MAX_OUTPUT_CHARS = 8 * 1024
@@ -228,10 +232,38 @@ class Handler(http.server.BaseHTTPRequestHandler):
         print(f"{self.address_string()} {format % args}", flush=True)
 
 
+class UnixServer(socketserver.ThreadingUnixStreamServer):
+    """Servidor HTTP sobre socket Unix.
+
+    `BaseHTTPRequestHandler` espera poder pedir la dirección del par; en un
+    socket Unix no hay ninguna, así que se devuelve una etiqueta fija en vez de
+    dejar que reviente al registrar la petición.
+    """
+
+    allow_reuse_address = True
+
+    def get_request(self):
+        connection, _ = super().get_request()
+        return connection, ("unix", 0)
+
+
 def main() -> None:
+    if SOCKET_PATH:
+        # Un socket huérfano de una ejecución anterior impediría enlazar.
+        try:
+            os.unlink(SOCKET_PATH)
+        except FileNotFoundError:
+            pass
+        os.makedirs(os.path.dirname(SOCKET_PATH), exist_ok=True)
+        with UnixServer(SOCKET_PATH, Handler) as server:
+            os.chmod(SOCKET_PATH, 0o660)
+            print(f"servicio 02-code-runner en unix:{SOCKET_PATH} · runtime={RUNTIME} · sin red", flush=True)
+            server.serve_forever()
+        return
+
     socketserver.TCPServer.allow_reuse_address = True
     with socketserver.TCPServer(("127.0.0.1", PORT), Handler) as server:
-        print(f"servicio 03-code-runner escuchando en 127.0.0.1:{PORT} (runtime={RUNTIME})", flush=True)
+        print(f"servicio 02-code-runner en 127.0.0.1:{PORT} · runtime={RUNTIME}", flush=True)
         server.serve_forever()
 
 

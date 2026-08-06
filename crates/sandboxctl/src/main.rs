@@ -1,5 +1,6 @@
 mod bench;
 mod escape;
+mod forward;
 mod service;
 
 use anyhow::{Context, Result};
@@ -143,6 +144,13 @@ enum ServiceAction {
         #[arg(long, default_value_t = 40)]
         lines: usize,
     },
+    /// Publica el puerto de un servicio empalmándolo con su socket Unix.
+    ///
+    /// No se invoca a mano: lo lanza `service up` como proceso aparte cuando el
+    /// servicio declara `publish: proxy`. Existe como subcomando porque el
+    /// reenviador tiene que sobrevivir al CLI que levantó el sandbox, igual que
+    /// el sandbox mismo.
+    Forward { id: String },
 }
 
 fn main() -> Result<()> {
@@ -183,6 +191,7 @@ fn main() -> Result<()> {
                 ServiceAction::Call { id, method, path, body } => service::call(&ctx, &id, &method, &path, body),
                 ServiceAction::List { json } => service::list(&ctx, json),
                 ServiceAction::Logs { id, lines } => service::logs(&ctx, &id, lines),
+                ServiceAction::Forward { id } => service::forward(&ctx, &id),
             }
         }
         Command::Bench { workload, policy, runtime, repeat, json, report } => bench::run(

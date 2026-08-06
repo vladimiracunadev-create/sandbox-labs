@@ -130,17 +130,29 @@ pub fn observe(ctx: &ServiceContext, service: Service) -> Observed {
 /// Un servicio con `network: none` no tiene puerto que sondear: se comprueba
 /// que el socket exista y acepte una conexión.
 fn endpoint_responds(ctx: &ServiceContext, service: &Service) -> bool {
+    if service.needs_proxy() {
+        // Las DOS puntas. Solo el puerto daría un «listo» falso: el reenviador
+        // acepta desde el primer instante, tenga o no con quién empalmar, así
+        // que `up` diría que el servicio responde antes de que exista.
+        return port_responds(service.port) && socket_responds(ctx, service);
+    }
     if service.is_socket() {
-        #[cfg(unix)]
-        {
-            return std::os::unix::net::UnixStream::connect(ctx.socket_path(&service.id)).is_ok();
-        }
-        #[cfg(not(unix))]
-        {
-            return false;
-        }
+        return socket_responds(ctx, service);
     }
     port_responds(service.port)
+}
+
+/// ¿Está el servicio enlazado a su socket dentro del sandbox?
+fn socket_responds(ctx: &ServiceContext, service: &Service) -> bool {
+    #[cfg(unix)]
+    {
+        std::os::unix::net::UnixStream::connect(ctx.socket_path(&service.id)).is_ok()
+    }
+    #[cfg(not(unix))]
+    {
+        let _ = (ctx, service);
+        false
+    }
 }
 
 /// ¿Hay algo escuchando en el puerto del loopback?
@@ -311,14 +323,53 @@ fn check_transport_matches_network(service: &Service, policy: &Policy) -> Result
     bail!(
         "{}: la política {} pide network.mode «{}», que crea un namespace de red propio, \
          pero el servicio declara transport «tcp» y publica el puerto {}. Ese puerto no sería \
-         alcanzable desde el host.\n   → o el servicio pasa a transport «unix-socket», \
-         que entra por el filesystem y no necesita red;\n   → o la política declara \
-         network.mode «unrestricted», y entonces el control `network` no se cuenta como efectivo.",
+         alcanzable desde el host.\n   → o el servicio pasa a transport «unix-socket» con \
+         publish «proxy», y el supervisor publica el puerto por él sin devolverle la red;\n   \
+         → o la política declara network.mode «unrestricted», y entonces el control `network` \
+         no se cuenta como efectivo.",
         service.id,
         policy.id,
         policy.network.mode,
         service.port
     )
+}
+
+/// Levanta el reenviador que publica el puerto de un servicio.
+///
+/// Proceso aparte, y no un hilo, por la misma razón que el sandbox: `service
+/// up` termina y los dos tienen que seguir vivos. Se relanza el propio binario
+/// con `service forward`, así que no hay un segundo ejecutable que instalar.
+fn spawn_proxy(ctx: &ServiceContext, service: &Service) -> Result<u32> {
+    let binary = std::env::current_exe().context("No se pudo localizar el propio binario de sandboxctl")?;
+    let log = fs::OpenOptions::new().create(true).append(true).open(ctx.log_path(&service.id))?;
+    let mut command = Command::new(binary);
+    command
+        .arg("--root")
+        .arg(&ctx.root)
+        .args(["service", "forward", &service.id])
+        .stdin(Stdio::null())
+        .stdout(Stdio::from(log.try_clone()?))
+        .stderr(Stdio::from(log));
+    #[cfg(unix)]
+    {
+        use std::os::unix::process::CommandExt;
+        command.process_group(0);
+    }
+    let child = command.spawn().context("No se pudo levantar el reenviador del puerto")?;
+    Ok(child.id())
+}
+
+/// El proceso reenviador. Bloquea hasta que lo maten.
+pub fn forward(ctx: &ServiceContext, id: &str) -> Result<i32> {
+    let service = ctx.find(id)?;
+    if !service.needs_proxy() {
+        bail!("{}: no declara publish «proxy»; no hay puerto que publicar", service.id);
+    }
+    let socket = ctx.socket_path(&service.id);
+    let listener = crate::forward::bind(service.port)?;
+    println!("▶ reenviador {} · 127.0.0.1:{} → unix:{}", service.id, service.port, socket.display());
+    crate::forward::serve(listener, socket)?;
+    Ok(0)
 }
 
 pub fn up(ctx: &ServiceContext, id: &str, wait: bool) -> Result<i32> {
@@ -335,7 +386,7 @@ pub fn up(ctx: &ServiceContext, id: &str, wait: bool) -> Result<i32> {
         println!("⚠️  {} tenía un registro huérfano de un proceso muerto; se limpia.", service.id);
         ServiceRecord::remove(&ctx.data_root, &service.id);
     }
-    if !service.is_socket() && port_responds(service.port) {
+    if service.is_published() && port_responds(service.port) {
         bail!("El puerto {} ya está ocupado por otro proceso. Bájalo o cambia el puerto del servicio.", service.port);
     }
     if service.is_socket() {
@@ -408,9 +459,15 @@ pub fn up(ctx: &ServiceContext, id: &str, wait: bool) -> Result<i32> {
         format!("No se pudo levantar {} con {program}. ¿Está instalado? `sandboxctl doctor`", service.id)
     })?;
 
+    // El reenviador se levanta DESPUÉS del sandbox: reserva el puerto del host
+    // y empalma con el socket en cuanto el servicio lo enlace. Una conexión que
+    // llegue antes se cierra sola sin tumbarlo.
+    let proxy_pid = if service.needs_proxy() { Some(spawn_proxy(ctx, &service)?) } else { None };
+
     let record = ServiceRecord {
         id: service.id.clone(),
         pid: child.id(),
+        proxy_pid,
         port: service.port,
         runtime: runtime.to_string(),
         policy: policy.id.clone(),
@@ -429,7 +486,9 @@ pub fn up(ctx: &ServiceContext, id: &str, wait: bool) -> Result<i32> {
     let started = Instant::now();
     while started.elapsed() < READY_TIMEOUT {
         if endpoint_responds(ctx, &service) {
-            let endpoint = if service.is_socket() {
+            let endpoint = if service.needs_proxy() {
+                format!("{} (reenviado a unix:{})", service.url(), ctx.socket_path(&service.id).display())
+            } else if service.is_socket() {
                 format!("unix:{}", ctx.socket_path(&service.id).display())
             } else {
                 service.url()
@@ -478,6 +537,23 @@ pub fn down(ctx: &ServiceContext, id: &str) -> Result<i32> {
         // señaliza a nadie: matar a quien heredó el número sería mucho peor
         // que dejar un registro obsoleto.
         println!("· el registro de {} estaba obsoleto (PID reutilizado o proceso muerto)", service.id);
+    }
+
+    // El reenviador es un proceso aparte y no muere con el sandbox. Si
+    // sobrevive, deja el puerto ocupado y el siguiente `up` falla diciendo que
+    // está en uso, señalando a un servicio que ya no existe.
+    //
+    // Sin comprobación de `start_ticks` porque el registro no la guarda para
+    // este PID: se manda TERM y después KILL, que es lo que hace el reenviador
+    // esperable. El riesgo de PID reutilizado se acota comprobando antes que el
+    // registro que lo nombra sigue siendo el vigente.
+    if let Some(proxy) = record.proxy_pid {
+        terminate(proxy);
+        let started = Instant::now();
+        while started.elapsed() < Duration::from_secs(3) && port_responds(service.port) {
+            std::thread::sleep(Duration::from_millis(150));
+        }
+        kill(proxy);
     }
 
     ServiceRecord::remove(&ctx.data_root, &service.id);

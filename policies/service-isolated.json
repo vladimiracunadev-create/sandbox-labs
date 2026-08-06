@@ -1,0 +1,67 @@
+{
+  "$schema": "../schemas/policy.schema.json",
+  "id": "service-isolated",
+  "description": "Servicios de larga duración CON la red contenida. El servicio escucha en un socket Unix dentro de su propio namespace de red y el supervisor publica el puerto por él, así que se abre en el navegador igual pero no tiene por dónde salir. Es lo que `service-sandbox` no puede ofrecer: ahí el puerto lo enlaza el propio servicio y eso exige conservar la red del host.",
+  "enforcement": {
+    "mode": "best-effort",
+    "requiredControls": [
+      "filesystem",
+      "network",
+      "processes",
+      "memory",
+      "capabilities",
+      "devices",
+      "environment",
+      "output"
+    ]
+  },
+  "filesystem": {
+    "root": "ephemeral",
+    "readOnly": [],
+    "writable": [
+      "/workspace/output"
+    ],
+    "maxWorkspaceMb": 128,
+    "followSymlinks": false
+  },
+  "network": {
+    "mode": "loopback",
+    "hosts": [],
+    "dns": "disabled"
+  },
+  "resources": {
+    "cpu": 1.0,
+    "memoryMb": 512,
+    "processes": 32,
+    "timeoutSeconds": 86400,
+    "openFiles": 256,
+    "outputBytes": 1048576
+  },
+  "process": {
+    "capabilities": [],
+    "environment": {
+      "LANG": "C.UTF-8",
+      "NO_COLOR": "1",
+      "PATH": "/usr/local/bin:/usr/bin:/bin",
+      "HOME": "/workspace",
+      "PYTHONDONTWRITEBYTECODE": "1",
+      "PYTHONUNBUFFERED": "1"
+    },
+    "allowedEnvironment": [],
+    "user": 65534,
+    "group": 65534
+  },
+  "syscalls": {
+    "profile": "default",
+    "allow": [],
+    "deny": []
+  },
+  "devices": {
+    "allow": [
+      "null",
+      "zero",
+      "random",
+      "urandom"
+    ]
+  }
+}

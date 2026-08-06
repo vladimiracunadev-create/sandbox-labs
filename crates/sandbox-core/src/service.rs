@@ -57,6 +57,17 @@ pub struct Service {
     /// red es exactamente lo que no debe coexistir.
     #[serde(default = "default_transport")]
     pub transport: String,
+    /// Cómo llega el host al servicio, que **no** es lo mismo que cómo escucha.
+    ///
+    /// - `direct`: el propio servicio enlaza el puerto del loopback del host.
+    ///   Obliga a que la política conserve la red del host.
+    /// - `proxy`: el servicio escucha en un socket Unix dentro de su namespace
+    ///   de red, y el supervisor publica el puerto por él. Es lo que permite
+    ///   contener la red **y** seguir abriéndolo en el navegador.
+    /// - `none`: no se publica. La única puerta es el socket, y hay que
+    ///   hablarle a mano. Un custodio de claves quiere exactamente esto.
+    #[serde(default)]
+    pub publish: Option<String>,
     #[serde(skip)]
     pub directory: PathBuf,
 }
@@ -68,6 +79,31 @@ fn default_transport() -> String {
 impl Service {
     pub fn is_socket(&self) -> bool {
         self.transport == "unix-socket"
+    }
+
+    /// El modo de publicación efectivo, con el valor implícito de cada
+    /// transporte cuando el manifiesto no lo dice.
+    ///
+    /// Los manifiestos anteriores a este campo siguen significando lo mismo: un
+    /// servicio `tcp` publicaba su puerto, y uno `unix-socket` no publicaba
+    /// nada.
+    pub fn publish_mode(&self) -> &str {
+        match self.publish.as_deref() {
+            Some(value) => value,
+            None if self.is_socket() => "none",
+            None => "direct",
+        }
+    }
+
+    /// ¿Necesita el supervisor levantar un reenviador para este servicio?
+    pub fn needs_proxy(&self) -> bool {
+        self.publish_mode() == "proxy"
+    }
+
+    /// ¿Se alcanza este servicio por un puerto TCP del host, lo enlace quien lo
+    /// enlace?
+    pub fn is_published(&self) -> bool {
+        matches!(self.publish_mode(), "direct" | "proxy")
     }
 
     pub fn load(path: impl AsRef<Path>) -> Result<Self> {
@@ -101,6 +137,28 @@ impl Service {
         }
         if !matches!(self.transport.as_str(), "tcp" | "unix-socket") {
             bail!("{}: transporte desconocido: {}", self.id, self.transport);
+        }
+        if !matches!(self.publish_mode(), "direct" | "proxy" | "none") {
+            bail!("{}: modo de publicación desconocido: {}", self.id, self.publish_mode());
+        }
+        // Las dos combinaciones imposibles. `proxy` empalma un puerto del host
+        // con un socket del sandbox: sin socket no hay nada que empalmar. Y
+        // `direct` significa que el puerto lo enlaza el propio servicio, cosa
+        // que uno que solo escucha en un socket no hace.
+        if self.needs_proxy() && !self.is_socket() {
+            bail!(
+                "{}: publish «proxy» empalma el puerto del host con un socket del sandbox, \
+                 pero el transporte es «{}». Cambia transport a «unix-socket».",
+                self.id,
+                self.transport
+            );
+        }
+        if self.publish_mode() == "direct" && self.is_socket() {
+            bail!(
+                "{}: publish «direct» significa que el servicio enlaza el puerto, pero su transporte \
+                 es «unix-socket» y nunca lo hará. Usa «proxy» para publicarlo, o «none» para no publicarlo.",
+                self.id
+            );
         }
         if !self.health_path.starts_with('/') {
             bail!("{}: healthPath debe empezar por /", self.id);
@@ -169,6 +227,13 @@ pub struct ServiceRecord {
     #[serde(default)]
     pub start_ticks: Option<u64>,
     pub log_path: String,
+    /// PID del reenviador que publica el puerto, cuando lo hay.
+    ///
+    /// Es un proceso aparte del sandbox y hay que bajarlo con él: si sobrevive,
+    /// deja el puerto ocupado y el siguiente `up` falla diciendo que ya está en
+    /// uso, señalando a un servicio que ya no existe.
+    #[serde(default)]
+    pub proxy_pid: Option<u32>,
     /// Controles que el runtime declaró aplicar al levantarlo. Se guardan aquí
     /// para que la tarjeta del panel muestre bajo qué contención corre, no solo
     /// que corre.
@@ -278,6 +343,7 @@ mod tests {
             health_path: "/health".into(),
             secrets: vec![],
             transport: default_transport(),
+            publish: None,
             directory: PathBuf::from("."),
         }
     }

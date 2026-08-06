@@ -97,23 +97,43 @@ conexiones no hay control, solo intención.
 
 | | |
 |---|---|
-| **Estado** | Abierto |
+| **Estado** | ✅ Cerrado |
 | **Control afectado** | `network`, en los servicios |
-| **Se declara hoy** | No. Los servicios usan `unrestricted` y así consta. |
+| **Se declara hoy** | Sí. Los casos `02` y `03` corren con `service-isolated`, que exige el control `network`. |
 
-`loopback` ya está implementado —crea namespace propio— pero un servicio con
-`transport: tcp` no puede usarlo: su puerto nace dentro del sandbox y nadie
-fuera lo alcanza. Hoy `sandboxctl service up` **falla en cerrado** y explica las
-dos salidas, en vez de arrancar algo que nunca responderá.
+`loopback` estaba implementado —crea namespace propio— pero un servicio con
+`transport: tcp` no podía usarlo: su puerto nacía dentro del sandbox y nadie
+fuera lo alcanzaba. Eso dejaba a los dos casos con la red del host.
 
-Eso deja a los casos `02-ai-code-runner` y `03-file-detonation` con la red del
-host, que es la frontera abierta más grande que queda en el catálogo.
+**Cómo se cerró:** separando *cómo escucha el servicio* de *cómo llega el host*.
+El manifiesto gana el campo `publish`:
 
-**Para cerrarlo:** un reenviador en el supervisor que escuche el puerto en el
-loopback del **host** y lo empalme con un socket Unix montado dentro del
-sandbox. El servicio pasaría a `loopback` sin cambiar su código, y el control
-`network` sería efectivo también para los servicios. Es el mismo mecanismo que
-el caso `05` ya usa a mano.
+| `publish` | Quién enlaza el puerto | Red del sandbox |
+|---|---|---|
+| `direct` | el propio servicio | tiene que ser la del host |
+| `proxy` | el supervisor, empalmando con el socket | namespace propio |
+| `none` | nadie: solo el socket | namespace propio |
+
+Con `proxy`, `sandboxctl service up` levanta un reenviador —un proceso aparte,
+registrado en `proxyPid` y bajado junto al sandbox— que escucha en el loopback
+del host y empalma cada conexión con el socket Unix del sandbox. El servicio
+sigue hablando HTTP; solo cambia el transporte por debajo.
+
+Medido levantando el caso `03` de verdad:
+
+```text
+✅ file-detonation responde en http://127.0.0.1:8803
+   (reenviado a unix:/run/user/1000/sandbox-labs/file-detonation.sock)
+   contención efectiva: environment, memory, network, output, timeout
+
+curl http://127.0.0.1:8803/health  →  http=200
+netns del sandbox : net:[4026532244]
+netns del host    : net:[4026531833]   ← distintos
+```
+
+**Lo que queda:** el caso `05` sigue con `publish: none` a propósito —una clave
+privada no se publica— y ningún caso usa ya `direct`, pero el modo se conserva
+porque un servicio que necesite la red del host tiene que poder decirlo.
 
 ### B-05 · Perfiles seccomp declarados y no aplicados
 

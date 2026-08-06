@@ -10,11 +10,12 @@
   "entrypoint": "app.py",
   "command": "python3",
   "args": [],
-  "policy": "service-sandbox",
+  "policy": "service-isolated",
   "runtimes": [
     "bwrap",
     "unshare"
   ],
   "healthPath": "/health",
-  "transport": "tcp"
+  "transport": "unix-socket",
+  "publish": "proxy"
 }

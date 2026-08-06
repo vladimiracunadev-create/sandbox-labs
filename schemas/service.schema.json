@@ -105,6 +105,14 @@
         "unix-socket"
       ],
       "default": "tcp"
+    },
+    "publish": {
+      "description": "Cómo llega el host al servicio, que no es lo mismo que cómo escucha. `direct`: el servicio enlaza el puerto del host y por tanto necesita su red. `proxy`: escucha en un socket Unix dentro de su namespace de red y el supervisor publica el puerto por él. `none`: no se publica. Sin declarar, `tcp` implica `direct` y `unix-socket` implica `none`.",
+      "enum": [
+        "direct",
+        "proxy",
+        "none"
+      ]
     }
   }
 }

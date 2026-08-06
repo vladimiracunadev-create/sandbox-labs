@@ -19,5 +19,6 @@
   "secrets": [
     "SANDBOX_WALLET_KEY"
   ],
-  "transport": "unix-socket"
+  "transport": "unix-socket",
+  "publish": "none"
 }
