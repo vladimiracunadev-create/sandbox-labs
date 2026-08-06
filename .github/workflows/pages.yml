@@ -10,12 +10,14 @@ on:
   push:
     branches: [main]
     paths:
+      # Todo lo que el generador lee. Si algo de esto cambia y no vuelve a
+      # publicarse, la web pasa a contar una versión del repositorio que ya no
+      # existe: es el modo de fallo silencioso de un sitio generado.
       - "site-src/**"
-      - "site/_style.css"
-      - "labs/**/*.md"
-      - "services/**/service.json"
+      - "docs/**/*.md"
       - "sandbox.config.json"
       - "scripts/build-site.mjs"
+      - "scripts/check-site-links.mjs"
       - ".github/workflows/pages.yml"
   workflow_dispatch:
 
@@ -71,6 +73,9 @@ jobs:
           if grep -Eq '<(script|link)[^>]+(src|href)="https?://' site/index.html; then
             echo "::error::la portada carga recursos externos"; exit 1
           fi
+          # Un 404 no rompe el despliegue: se publica igual de bien que una
+          # página buena. Por eso los enlaces se revisan antes de subir.
+          node scripts/check-site-links.mjs
           {
             echo "### 🌐 Sitio publicado"
             echo ""

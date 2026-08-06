@@ -19,6 +19,17 @@ const out = join(root, "site");
 // traerlos con CRLF: el separador tiene que aceptar los dos.
 const NEWLINES = /\r?\n/;
 const MD_EXT = /\.md$/;
+const UNDERSCORES = /_/g;
+
+/**
+ * La URL de un documento: el nombre del archivo en minúsculas y con guiones.
+ * `POLICY_REFERENCE.md` y `QUE-ES-UN-SANDBOX.md` conviven en docs/, pero en el
+ * sitio ambos se publican con la misma forma. README es siempre el índice.
+ */
+function docSlug(name) {
+  if (name === "README.md") return "index";
+  return name.replace(MD_EXT, "").toLowerCase().replace(UNDERSCORES, "-");
+}
 
 const escape = (value) =>
   String(value).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
@@ -34,9 +45,9 @@ function inline(text) {
       // Los enlaces relativos a otros .md apuntan al HTML generado; el resto
       // se manda a GitHub, que es donde vive el archivo.
       let target = href;
-      if (/^[A-Z0-9-]+\.md$/i.test(href)) {
+      if (/^[A-Za-z0-9_-]+\.md$/.test(href)) {
         // Un documento hermano de docs/ tiene su propia página generada.
-        target = href === "README.md" ? "index.html" : href.replace(/\.md$/, ".html").toLowerCase();
+        target = docSlug(href) + ".html";
       } else if (href.startsWith("../") || href.endsWith(".md")) {
         target = `https://github.com/vladimiracunadev-create/sandbox-labs/blob/main/${href.replace(/^(\.\.\/)+/, "")}`;
       }
@@ -146,7 +157,7 @@ function renderMarkdown(markdown) {
 
 // ── Plantilla ────────────────────────────────────────────────────────────────
 
-const STYLE = await readFile(join(root, "site", "_style.css"), "utf8").catch(() => "");
+const STYLE = await readFile(join(root, "site-src", "_style.css"), "utf8");
 
 function page({ title, description, body, active = "", depth = 0 }) {
   const base = depth ? "../" : "";
@@ -262,7 +273,7 @@ function docTitle(markdown, fallback) {
 
 for (const name of docFiles) {
   const markdown = await readFile(join(root, "docs", name), "utf8");
-  const slug = name === "README.md" ? "index" : name.replace(MD_EXT, "").toLowerCase();
+  const slug = docSlug(name);
   const title = docTitle(markdown, slug);
   await writeFile(
     join(out, "docs", slug + ".html"),

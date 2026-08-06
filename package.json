@@ -15,9 +15,11 @@
     "docs:check": "node scripts/check-doc-links.mjs",
     "config:check": "node scripts/validate-config.mjs",
     "manifest": "node scripts/generate-file-manifest.mjs",
-    "check": "pnpm config:check && pnpm docs:check && pnpm dashboard:test && pnpm evidence:check && pnpm test:cleanup",
+    "check": "pnpm config:check && pnpm docs:check && pnpm site:check && pnpm dashboard:test && pnpm evidence:check && pnpm test:cleanup",
     "evidence:check": "node scripts/validate-evidence.mjs",
     "test:cleanup": "node scripts/cleanup-test-state.mjs",
-    "cases": "node --run config:check"
+    "cases": "node --run config:check",
+    "site:build": "node scripts/build-site.mjs",
+    "site:check": "node scripts/build-site.mjs && node scripts/check-site-links.mjs"
   }
 }

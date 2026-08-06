@@ -15,6 +15,7 @@
 /evidence/escape/*.json
 !/evidence/escape/.gitkeep
 
-# Sitio generado por scripts/build-site.mjs (las fuentes viven en site-src/)
-/site/*.html
-/site/labs/
+# Sitio generado por scripts/build-site.mjs (las fuentes viven en site-src/).
+# El directorio entero es salida: se borra y se reconstruye en cada ejecución,
+# y versionarlo dejaría que la web contradijera al repositorio.
+/site/
