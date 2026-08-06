@@ -89,14 +89,12 @@ fn probe() -> CgroupSupport {
     if !std::path::Path::new("/sys/fs/cgroup/cgroup.controllers").exists() {
         return CgroupSupport::unavailable("no hay cgroups v2 montado en /sys/fs/cgroup");
     }
-    let mut command = Command::new("systemd-run");
-    command
-        .args(["--user", "--scope", "--quiet", "--collect"])
-        .args(scope_properties(&probe_limits()))
-        .args(["--", "true"])
-        .stdin(Stdio::null())
-        .stdout(Stdio::null())
-        .stderr(Stdio::piped());
+    // El sondeo ejecuta la MISMA forma de comando que `wrap`, incluido el
+    // `env -u` que borra las variables del bus. Si sondeara una forma más
+    // simple, podría salir disponible y luego fallar al ejecutar de verdad.
+    let (program, args) = build_chain("true", &[], &probe_limits());
+    let mut command = Command::new(program);
+    command.args(args).stdin(Stdio::null()).stdout(Stdio::null()).stderr(Stdio::piped());
     match command.output() {
         Err(error) => CgroupSupport::unavailable(format!("systemd-run no se pudo ejecutar: {error}")),
         Ok(output) if !output.status.success() => {
@@ -157,12 +155,49 @@ pub fn wrap(program: &str, args: &[String], limits: &ResourcePolicy) -> Option<(
     if !support().available {
         return None;
     }
+    Some(build_chain(program, args, limits))
+}
+
+/// La cadena completa: scope de systemd → borrado del entorno → programa.
+fn build_chain(program: &str, args: &[String], limits: &ResourcePolicy) -> (String, Vec<String>) {
     let mut wrapped = vec!["--user".into(), "--scope".into(), "--quiet".into(), "--collect".into()];
     wrapped.extend(scope_properties(limits));
     wrapped.push("--".into());
+    wrapped.extend(strip_bus_environment());
     wrapped.push(program.to_string());
     wrapped.extend_from_slice(args);
-    Some(("systemd-run".into(), wrapped))
+    ("systemd-run".into(), wrapped)
+}
+
+/// `env -u` que borra las variables del bus en cuanto `systemd-run` las ha
+/// leído, antes de que lleguen al runtime.
+///
+/// # Por qué hace falta
+///
+/// Sin esto, `XDG_RUNTIME_DIR` y `DBUS_SESSION_BUS_ADDRESS` sobreviven hasta el
+/// proceso `init` de bubblewrap, que es el PID 1 **dentro** del sandbox. El
+/// `--clearenv` de bubblewrap limpia el entorno de la carga, no el suyo propio,
+/// así que la carga las leía en `/proc/1/environ`.
+///
+/// Lo detectó la suite de contención en CI, no una revisión:
+///
+/// ```text
+/// filesystem-escape        ❌ DECLARADO
+///   · bwrap declara filesystem — rutas sensibles legibles: /proc/1/environ
+/// ```
+///
+/// Antes de envolver en un scope, bubblewrap se lanzaba con el entorno
+/// completamente vacío y ese `/proc/1/environ` no tenía nada que leer.
+///
+/// `env` hace `exec`, así que no añade un proceso al árbol ni deja al de dentro
+/// huérfano cuando el supervisor mata por timeout.
+fn strip_bus_environment() -> Vec<String> {
+    let mut args = vec!["env".to_string()];
+    for name in REQUIRED_ENVIRONMENT {
+        args.push("-u".into());
+        args.push(name.to_string());
+    }
+    args
 }
 
 /// Variables que `systemd-run --user` necesita para encontrar el bus del gestor
@@ -200,16 +235,46 @@ mod tests {
     #[test]
     fn wrapping_preserves_the_inner_command() {
         let inner = vec!["--unshare-net".to_string(), "--".to_string(), "python3".to_string()];
-        match wrap("bwrap", &inner, &limits()) {
-            // Sin soporte no se envuelve, y quien llama no declara los
-            // controles. Es el camino correcto en un host sin systemd.
-            None => assert!(!support().available),
-            Some((program, args)) => {
-                assert_eq!(program, "systemd-run");
-                let separator = args.iter().position(|value| value == "--").expect("separador");
-                assert_eq!(args[separator + 1], "bwrap", "el programa envuelto va justo detrás de --");
-                assert_eq!(&args[separator + 2..], &inner[..], "los argumentos internos no se tocan");
-            }
+        let (program, args) = build_chain("bwrap", &inner, &limits());
+        assert_eq!(program, "systemd-run");
+        let target = args.iter().position(|value| value == "bwrap").expect("el programa envuelto");
+        assert_eq!(&args[target + 1..], &inner[..], "los argumentos internos no se tocan");
+    }
+
+    /// La regresión que encontró la suite de contención en CI.
+    ///
+    /// Las variables del bus tienen que morir entre `systemd-run` y el runtime.
+    /// Si sobreviven, acaban en el `/proc/1/environ` del sandbox y la carga las
+    /// lee — con bubblewrap declarando el control `filesystem`, que es la peor
+    /// combinación posible: una falsa garantía.
+    #[test]
+    fn the_bus_variables_never_reach_the_runtime() {
+        let (_, args) = build_chain("bwrap", &[], &limits());
+        let target = args.iter().position(|value| value == "bwrap").expect("el programa envuelto");
+        let before = &args[..target];
+        for name in REQUIRED_ENVIRONMENT {
+            let position = before.iter().position(|value| value == name).unwrap_or_else(|| panic!("falta {name}"));
+            assert_eq!(before[position - 1], "-u", "{name} tiene que borrarse, no fijarse");
+        }
+        assert!(before.contains(&"env".to_string()), "el borrado lo hace `env`, que hace exec");
+    }
+
+    #[test]
+    fn the_probe_runs_the_same_shape_it_will_execute() {
+        // Sondear una forma más simple que la real dejaría pasar un
+        // «disponible» que después falla al ejecutar.
+        let (_, probed) = build_chain("true", &[], &probe_limits());
+        let (_, real) = build_chain("bwrap", &[], &probe_limits());
+        let cut = |args: &[String], program: &str| args[..args.iter().position(|v| v == program).unwrap()].to_vec();
+        assert_eq!(cut(&probed, "true"), cut(&real, "bwrap"), "el prefijo de la cadena tiene que ser idéntico");
+    }
+
+    #[test]
+    fn without_support_nothing_is_wrapped() {
+        // El camino correcto en un host sin gestor de usuario: no envolver, y
+        // que quien llama no declare los controles.
+        if !support().available {
+            assert!(wrap("bwrap", &[], &limits()).is_none());
         }
     }
 
