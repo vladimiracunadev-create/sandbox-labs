@@ -76,10 +76,42 @@ Verificado en navegador contra el servidor real en `127.0.0.1:9093`:
 - Sin desbordamiento horizontal a 375 px ni a 1280 px; esquema claro y oscuro.
 - Sin errores en la consola del navegador.
 
+## 🛡️ Contención medida (no declarada)
+
+Ejecutado en el trabajo `isolation` de CI sobre `ubuntu-latest` con bubblewrap
+0.9.0 y util-linux 2.39.3 instalados. **No es un ejemplo: es la salida del
+runner**, y se repite en cada commit.
+
+| Dimensión | `bwrap` | Detalle medido |
+|---|:--:|---|
+| Salida de red | ✅ | sin salida TCP ni resolución DNS |
+| Filesystem | ✅ | ninguna ruta sensible del host es legible |
+| Visibilidad de procesos | ✅ | solo 2 PIDs visibles, propio PID 2 |
+| Fuga de entorno | ✅ | 4 variables, ninguna sensible |
+| Privilegios | ✅ | `CapEff=0x0000000000000000` |
+| Límite de memoria | ✅ | `MemoryError` tras 96 MB con presupuesto de 128 MB |
+| Límite de procesos | ❌ | 32 procesos con presupuesto de 16 — **hueco conocido** |
+
+| Dimensión | `unshare` | Detalle medido |
+|---|:--:|---|
+| Salida de red | ✅ | sin salida TCP ni resolución DNS |
+| Visibilidad de procesos | ✅ | solo 1 PID visible, propio PID 1 |
+
+**Contraprueba obligatoria:** `native` escapó por 3 dimensiones (red,
+filesystem, procesos), como tiene que ser. Si sin aislamiento saliera todo
+contenido, las sondas no estarían midiendo nada y los ✅ de arriba no valdrían
+nada. CI falla si esa contraprueba deja de escaparse.
+
+El ❌ de `process-limit` es correcto y deliberado: ningún runtime local aplica
+todavía un techo real de PIDs, así que el control `processes` **no se declara**
+y no hay falsa garantía. `--strict` falla por falsas garantías, no por huecos
+documentados.
+
 ## 🤖 Integración continua
 
-Los workflows de GitHub Actions ejecutan los mismos comandos de este documento
-sobre `ubuntu-latest` y quedan en verde en `main`.
+Cinco workflows en verde sobre `main`. El trabajo `isolation` de CI instala los
+runtimes y ejecuta la suite de verdad; los informes JSON quedan como artefacto
+del run.
 
 ---
 
@@ -89,15 +121,20 @@ Estos puntos **no** se han probado, y por eso ningún adaptador sube a `ready`:
 
 | Pendiente | Motivo |
 |---|---|
-| Ejecución real con `bwrap` | No instalado en el entorno de verificación |
-| Ejecución real con `wasi` | `wasmtime` no instalado |
+| Ejecución real con `wasi` | `wasmtime` no está en el runner ni en el entorno local |
+| Techo real de PIDs | Necesita el controlador `pids` de cgroups v2 |
 | cgroups v2 como control efectivo | Requiere delegación de cgroup en el host |
 | seccomp efectivo | El perfil existe pero todavía no se impone |
 | gVisor, Kata y Firecracker | Requieren hosts dedicados con KVM y runtimes propios |
-| Métricas reales de recursos | Depende de cgroups v2 |
+| Resistencia frente a un atacante real | La suite acota lo que sabes, no lo que temes |
 | Persistencia y multi-tenancy | Fuera del alcance de la versión |
 
-> [!IMPORTANT]
+> [!NOTE]
+> `bwrap` contiene seis de siete dimensiones de forma verificada en cada
+> commit, y aun así sigue en `experimental`. La razón es la de la última fila:
+> siete sondas que no escapan no son una prueba de resistencia frente a alguien
+> que lo intente en serio, y faltan seccomp y el techo de PIDs.
+>
 > Un runtime no pasa a `ready` sin ejecución real **y** pruebas negativas que
 > demuestren que el control bloquea lo que debe bloquear.
 

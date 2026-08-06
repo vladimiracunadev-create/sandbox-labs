@@ -143,6 +143,27 @@ hacía pasar por control de contención algo que no lo era.
 declara**. Un techo real de PIDs necesita el controlador `pids` de cgroups v2 —
 está en [el backlog](IMPLEMENTATION_BACKLOG.md).
 
+### 3. `--strict` aprobaba sin haber medido nada
+
+En el primer run de CI, bubblewrap no llegó a ejecutar ninguna sonda (AppArmor
+restringía los user namespaces en el runner) y las siete quedaron «no
+concluyente». `--strict` pasó igual, porque solo miraba si algo había escapado.
+Cero fugas de cero mediciones no es contención: es no haber mirado.
+
+**Corregido**: `--strict` falla si un runtime está disponible y ninguna sonda
+llegó a un veredicto. Y el detalle de una sonda sin salida arrastra ahora la
+última línea de stderr — fue lo que permitió diagnosticar la causa exacta
+(`bwrap: loopback: Failed RTM_NEWADDR: Operation not permitted`) en un solo
+intento.
+
+### 4. La sonda de filesystem sobre-reportaba
+
+Contaba como fuga poder escribir en `/` y `/etc` dentro del sandbox. Pero la
+raíz que monta bubblewrap es un tmpfs efímero: escribir ahí no toca al host.
+
+**Corregido**: la sonda resuelve el tipo de filesystem en `/proc/mounts` y solo
+cuenta como fuga la escritura en un sistema persistente.
+
 > [!IMPORTANT]
 > Que la suite encontrara fallos en el propio repositorio es la mejor prueba de
 > que mide algo. Una suite que siempre sale verde no está midiendo: está
@@ -164,6 +185,32 @@ y ejecuta tres comprobaciones que se sostienen entre sí:
    bubblewrap no valdrían nada.
 
 La tercera es la que impide que la suite se degrade en silencio.
+
+### Lo que mide hoy el runner
+
+```text
+✅ bwrap contiene network: sin salida TCP ni resolución DNS
+✅ bwrap contiene filesystem: ninguna ruta sensible del host es legible
+✅ bwrap contiene process: solo 2 PIDs visibles, propio PID 2
+✅ bwrap contiene environment: 4 variables, ninguna sensible
+✅ bwrap contiene privilege: sin capabilities peligrosas (CapEff=0x0000000000000000)
+✅ bwrap contiene memory: MemoryError tras 96 MB con presupuesto de 128 MB
+✅ unshare contiene network: sin salida TCP ni resolución DNS
+✅ unshare contiene process: solo 1 PIDs visibles, propio PID 1
+✅ native escapa por 3 dimensiones (esperado): network, filesystem, process
+```
+
+### Qué hace fallar el build
+
+| Situación | ¿Falla? | Por qué |
+|---|:--:|---|
+| Falsa garantía (declara y no aplica) | ✅ sí | Es la clase de fallo que el proyecto persigue |
+| Ninguna sonda pudo medirse | ✅ sí | Un informe sin mediciones no prueba contención |
+| Fuga en un control **no** declarado | ❌ no | Es un hueco honesto y documentado (`processes`) |
+| Runtime ausente en el host | ❌ no | No hay nada que medir |
+
+Hacer fallar el build por un hueco documentado dejaría dos salidas —silenciar
+la sonda o declarar un control inexistente— y las dos empeoran el sistema.
 
 ---
 

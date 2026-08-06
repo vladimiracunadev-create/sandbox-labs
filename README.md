@@ -161,6 +161,11 @@ memory-limit                       —              ✅             ✅
 process-limit                      —              ❌             ❌
 ```
 
+Esta matriz **no es un ejemplo**: es lo que CI mide en cada commit sobre un
+runner con bubblewrap instalado. Los detalles que acompañan a cada ✅ son
+igual de concretos — `solo 2 PIDs visibles`, `CapEff=0x0000000000000000`,
+`MemoryError tras 96 MB con presupuesto de 128 MB`.
+
 El veredicto que más importa no es ❌ sino **❌ DECLARADO**: el runtime dice que
 aplica el control y la sonda demuestra que no. La suite ya encontró dos casos
 así **en este mismo repositorio** — un PID namespace sin `/proc` remontado y un
