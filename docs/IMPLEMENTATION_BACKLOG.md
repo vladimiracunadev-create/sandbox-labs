@@ -155,18 +155,44 @@ aplicado y el resultado de las sondas que intentan las llamadas bloqueadas.
 
 | | |
 |---|---|
-| **Estado** | Abierto |
+| **Estado** | ✅ Cerrado en bubblewrap · no aplica a `unshare` |
 | **Control afectado** | `capabilities` |
-| **Se declara hoy** | Sí — bubblewrap sí aplica `--cap-drop ALL` y el user namespace, que es lo que el control nombra. |
+| **Se declara hoy** | Sí. La evidencia lleva `user: uid=… gid=… (--uid/--gid)` en los límites efectivos. |
 
 `policy.process.user` y `policy.process.group` valen 65534 en todas las
-políticas del catálogo, pero bubblewrap nunca recibe `--uid`/`--gid`: la carga
-corre como el root mapeado del user namespace. Dentro del namespace ese root no
-tiene capabilities sobre el host, así que el impacto es menor que su apariencia,
-pero la política dice una cosa y la ejecución hace otra.
+políticas y bubblewrap nunca los recibía. Lo que de verdad pasaba era peor de lo
+que decía este documento antes: la carga no corría como el root mapeado del user
+namespace sino **con el uid real de quien la lanzó**, y heredaba sus grupos
+suplementarios. Medido con bubblewrap 0.9.0:
 
-**Para cerrarlo:** pasar `--uid`/`--gid` y comprobarlo con una sonda que lea su
-propio `id`.
+```text
+sin --uid : uid=1000(vbav) gid=1000(vbav) groups=1000(vbav),65534(nogroup)
+con --uid : uid=65534(nobody) gid=65534(nogroup) groups=65534(nogroup)
+```
+
+**Cómo se cerró:** `--uid`/`--gid` de la política, tanto en las cargas breves
+como en los servicios. Estos últimos ganan además el `--cap-drop ALL` que ya
+tenían las cargas y a ellos les faltaba, aunque su política exigía el control
+`capabilities`. Comprobado levantando el caso `03` dentro de bubblewrap: socket
+creado, `HTTP 200` por él, y `uid=65534(nobody)` dentro.
+
+**Por qué no hay sonda que lo verifique.** Se intentó y se retiró: desde dentro
+de un user namespace de un solo uid **no se puede** distinguir «soy el usuario
+que lanzó esto» de «soy un id distinto mapeado a él». El kernel reetiqueta todo
+de forma coherente —`/proc/self/uid_map` leído desde dentro da `1000 0 1` tanto
+antes como después—, así que la sonda reportaba `contained` en los dos casos.
+Una sonda que aprueba pase lo que pase es precisamente la falsa garantía que
+este proyecto persigue.
+
+Lo que sí queda registrado: el `uid` efectivo aparece en el detalle de la sonda
+`privilege-caps` de cada informe, y la identidad pedida en los límites efectivos
+de la evidencia. Para convertirlo en una comprobación automática haría falta que
+la sonda conociera el valor esperado, es decir, que la política se lo inyecte
+por entorno. Está sin hacer.
+
+**No aplica a `unshare`:** usa `--map-root-user`, que es otro mecanismo y da
+uid 0 dentro del namespace. Es una de las razones por las que sigue clasificado
+como runtime parcial.
 
 ---
 

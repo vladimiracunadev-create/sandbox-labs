@@ -23,6 +23,7 @@ fn effective_limits(
 ) -> BTreeMap<String, String> {
     let mut limits = BTreeMap::new();
     limits.insert("filesystem".into(), "bubblewrap mount namespace".into());
+    limits.insert("user".into(), format!("uid={} gid={} (--uid/--gid)", policy.process.user, policy.process.group));
     if network_isolated {
         limits.insert("network".into(), "isolated network namespace (--unshare-net)".into());
     }
@@ -110,6 +111,19 @@ impl RuntimeAdapter for BwrapAdapter {
             "--clearenv".into(),
             "--cap-drop".into(),
             "ALL".into(),
+            // Identidad propia dentro del sandbox. Sin esto la carga corría con
+            // el uid REAL de quien la lanzó —medido: `uid=1000(vbav)`— y
+            // heredaba sus grupos suplementarios, mientras todas las políticas
+            // del catálogo pedían 65534. La política decía una cosa y la
+            // ejecución hacía otra.
+            //
+            // Va después de `--unshare-user`, que es su requisito: el mapeo
+            // que hace bubblewrap es «uid de dentro → uid real», así que los
+            // ficheros del bind de escritura siguen siendo accesibles.
+            "--uid".into(),
+            policy.process.user.to_string(),
+            "--gid".into(),
+            policy.process.group.to_string(),
         ]);
         for (name, value) in &policy.process.environment {
             args.extend(["--setenv".into(), name.clone(), value.clone()]);
@@ -212,6 +226,14 @@ mod tests {
         let policy = policy_with_network("none");
         assert!(!effective_limits(&policy, true, false, false).contains_key("memory"));
         assert!(effective_limits(&policy, true, true, false).contains_key("memory"));
+    }
+
+    #[test]
+    fn always_declares_the_identity_the_policy_asked_for() {
+        // No depende del host: `--uid`/`--gid` los aplica bubblewrap siempre que
+        // haya user namespace, y siempre lo hay.
+        let limits = effective_limits(&policy_with_network("none"), true, false, false);
+        assert_eq!(limits["user"], "uid=65534 gid=65534 (--uid/--gid)");
     }
 
     #[test]

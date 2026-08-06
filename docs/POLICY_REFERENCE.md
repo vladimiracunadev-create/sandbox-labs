@@ -93,3 +93,30 @@ pero **no** sustituye a cgroups: acota el espacio de direcciones virtual, no la
 memoria residente. Cuando los dos están, la evidencia nombra el cgroup, que es
 el que manda. `RLIMIT_NPROC` no se usa nunca: cuenta los procesos del UID real
 en todo el host, no los de la carga.
+
+## Proceso
+
+- `capabilities`: lista de capabilities a conservar. Vacía en todas las
+  políticas del catálogo, y bubblewrap aplica `--cap-drop ALL` tanto en cargas
+  breves como en servicios.
+- `user` y `group`: la identidad **dentro** del sandbox. Bubblewrap los aplica
+  con `--uid`/`--gid`, que exigen user namespace. El mapeo es «uid de dentro →
+  uid real», así que los montajes de escritura siguen siendo accesibles aunque
+  el número cambie.
+
+  No es cosmético. Sin ellos la carga corre con el uid de quien la lanzó y
+  hereda sus grupos suplementarios — es decir, con la identidad que tiene acceso
+  al repositorio, al llavero y a la sesión:
+
+  | | uid dentro | grupos |
+  |---|---|---|
+  | sin `--uid` | `1000` (el tuyo) | `1000`, `65534` |
+  | con `--uid 65534` | `65534` (`nobody`) | `65534` |
+
+  `unshare` **no** los aplica: usa `--map-root-user`, que es otro mecanismo. Es
+  una de las razones por las que sigue clasificado como runtime parcial.
+- `environment`: variables que sí entran. El resto no: bubblewrap limpia el
+  entorno con `--clearenv` antes de fijar estas.
+- `allowedEnvironment`: nombres de secretos que la política autoriza. Un secreto
+  que el servicio pide y la política no declara **no entra**, y eso no es un
+  fallo sino la política haciendo su trabajo.

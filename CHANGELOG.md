@@ -35,6 +35,21 @@ Versionado semántico.
   `XDG_RUNTIME_DIR` y `DBUS_SESSION_BUS_ADDRESS` en `/proc/1/environ`. Se borran
   con `env -u` entre el scope y el runtime.
 
+### Fixed — la carga corría con tu identidad, no con la de la política
+
+- **`--uid`/`--gid` de la política, aplicados.** `process.user` y
+  `process.group` valían 65534 en todas las políticas y bubblewrap nunca los
+  recibía. Lo que pasaba de verdad era peor que «corre como root mapeado»: la
+  carga corría con **el uid real de quien la lanzó** y heredaba sus grupos
+  suplementarios. Medido con bubblewrap 0.9.0: `uid=1000(vbav)
+  groups=1000,65534` antes, `uid=65534(nobody) groups=65534` después.
+- **Los servicios ganan `--cap-drop ALL`**, que las cargas breves ya tenían y a
+  ellos les faltaba aunque su política exigía el control `capabilities`.
+- La evidencia registra la identidad aplicada en `limits.effective.user`.
+- Una prueba de contrato impide que ninguna política vuelva a declarar uid o
+  gid 0, que hasta ahora habría sido una anotación ignorada y ahora sería una
+  identidad de verdad.
+
 ### Added — un servicio puede contener la red y seguir publicando su puerto
 
 - **Reenviador TCP → socket Unix en el supervisor.** Hasta ahora, todo servicio

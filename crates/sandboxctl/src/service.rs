@@ -260,7 +260,20 @@ fn sandbox_command(
                     args.extend(["--ro-bind".into(), system.into(), system.into()]);
                 }
             }
-            args.extend(["--chdir".into(), "/workspace/app".into(), "--clearenv".into()]);
+            args.extend([
+                "--chdir".into(),
+                "/workspace/app".into(),
+                "--clearenv".into(),
+                "--cap-drop".into(),
+                "ALL".into(),
+                // La misma identidad no privilegiada que reciben las cargas
+                // breves. Sin esto el servicio corría con el uid real de quien
+                // lo levantó, que además es quien tiene acceso al repositorio.
+                "--uid".into(),
+                policy.process.user.to_string(),
+                "--gid".into(),
+                policy.process.group.to_string(),
+            ]);
             for (name, value) in &policy.process.environment {
                 args.extend(["--setenv".into(), name.clone(), value.clone()]);
             }

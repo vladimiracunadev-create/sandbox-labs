@@ -397,6 +397,17 @@ fn the_service_policy_names_the_host_network_it_actually_keeps() {
 }
 
 #[test]
+fn no_policy_runs_the_workload_as_root() {
+    // `process.user` y `process.group` dejaron de ser decorativos: bubblewrap
+    // los aplica con `--uid`/`--gid`. Un cero aquí ya no sería una anotación
+    // ignorada sino una identidad de verdad dentro del sandbox.
+    for policy in all_policies() {
+        assert_ne!(policy.process.user, 0, "{}: la carga no puede correr como uid 0", policy.id);
+        assert_ne!(policy.process.group, 0, "{}: la carga no puede correr como gid 0", policy.id);
+    }
+}
+
+#[test]
 fn a_policy_that_requires_network_either_isolates_or_fails_closed() {
     // Exigir el control `network` con un modo que no crea namespace propio
     // —hoy, `allowlist` y `unrestricted`— es pedir algo que ningún runtime
