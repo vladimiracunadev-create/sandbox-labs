@@ -220,16 +220,40 @@ perderse, y solo uno de ellos está cubierto por la suite de contención.
 
 | | |
 |---|---|
-| **Estado** | Abierto |
+| **Estado** | 🟡 Verificable; sin firmar |
 
-La evidencia ya lleva `schemaVersion`, los hashes de política, carga y binario,
-y la partición de controles solicitados/efectivos/no soportados. Le faltan:
-encadenado de hash entre eventos, manifiesto de artefactos, bloque de `cleanup`,
-`verdict` explícito y un `sandboxctl evidence verify` que compruebe todo eso.
+La evidencia lleva `schemaVersion`, los hashes de política, carga y binario, la
+partición de controles solicitados/efectivos/no soportados, y ahora los límites
+en tres bloques: pedido, aplicado y consumido.
 
-Los campos `violations`, `filesystemEvents`, `networkEvents` y `securityEvents`
-todavía no se rellenan en las ejecuciones normales: solo la suite de contención
-observa y reporta.
+**Cerrado:** cada evidencia se sella con `integrity.evidenceSha256`, un SHA-256
+de su propio contenido calculado con ese campo vacío. `sandboxctl evidence
+verify` lo recalcula y además vuelve a hashear la política y la carga que la
+evidencia dice haber ejecutado. Comprobado contra manipulación real:
+
+```text
+tal cual                          → ✅ exit 0
+status Planned → Completed        → ✗ huella propia, exit 1
+effectiveControls con uno de más  → ✗ huella propia, exit 1
+la carga cambia en el repositorio → ✗ carga sin cambios, exit 1
+```
+
+El último caso distingue lo que importa: la huella sigue bien —nadie tocó el
+informe— pero el código que describe ya no es el que hay. Un informe de hace
+tres semanas tiene que poder contar eso.
+
+Corre como paso de CI, así que una evidencia que no se verifique tumba el build.
+
+**Lo que queda:**
+
+- **No es una firma.** Quien pueda editar el fichero puede recalcular la huella.
+  Detecta alteración accidental o descuidada —un campo tocado a mano, una copia
+  truncada, un informe recortado antes de adjuntarlo—, que es el caso que se da
+  en la práctica. Una firma Ed25519 con clave local sigue pendiente.
+- **Sin encadenado entre eventos ni manifiesto de artefactos.** Los campos
+  `violations`, y los eventos de filesystem, red y seguridad, todavía no se
+  rellenan en las ejecuciones normales: solo la suite de contención observa y
+  reporta. Faltan también el bloque `cleanup` y un `verdict` explícito.
 
 ---
 

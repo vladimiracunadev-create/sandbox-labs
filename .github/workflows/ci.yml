@@ -74,6 +74,12 @@ jobs:
       - name: Humo — la evidencia generada cumple el esquema
         run: node scripts/validate-evidence.mjs
 
+      # El esquema dice que la evidencia tiene la forma correcta; esto dice que
+      # su contenido no se ha tocado y que la política y la carga que declara
+      # siguen siendo las mismas. Son dos preguntas distintas.
+      - name: Humo — la evidencia se verifica contra sí misma y contra el repositorio
+        run: cargo run --locked -q -p sandboxctl -- evidence verify
+
       - name: Resumen
         if: always()
         run: |

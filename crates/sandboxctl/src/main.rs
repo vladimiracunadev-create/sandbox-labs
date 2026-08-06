@@ -84,6 +84,13 @@ enum Command {
         #[command(subcommand)]
         action: ServiceAction,
     },
+    /// Comprueba evidencias: su propia huella y los hashes que declaran.
+    ///
+    /// Sin argumentos revisa todas las de `evidence/runs`.
+    Evidence {
+        #[command(subcommand)]
+        action: EvidenceAction,
+    },
     /// Compara el coste de arranque de cada frontera con la misma carga.
     Bench {
         #[arg(long, default_value = "workloads/benign/hello")]
@@ -101,6 +108,18 @@ enum Command {
         json: bool,
         #[arg(long)]
         report: Option<PathBuf>,
+    },
+}
+
+#[derive(Debug, Subcommand)]
+enum EvidenceAction {
+    /// Recalcula la huella de cada evidencia y vuelve a hashear la política y
+    /// la carga que dice haber ejecutado.
+    Verify {
+        /// Evidencia concreta; sin ella se revisan todas.
+        path: Option<PathBuf>,
+        #[arg(long)]
+        json: bool,
     },
 }
 
@@ -194,6 +213,9 @@ fn main() -> Result<()> {
                 ServiceAction::Forward { id } => service::forward(&ctx, &id),
             }
         }
+        Command::Evidence { action } => match action {
+            EvidenceAction::Verify { path, json } => evidence_verify(&root, path.as_deref(), json),
+        },
         Command::Bench { workload, policy, runtime, repeat, json, report } => bench::run(
             &root,
             &bench::BenchOptions {
@@ -345,4 +367,60 @@ fn resolve_inside(root: &Path, candidate: &Path) -> Result<PathBuf> {
 }
 fn canonical_or_original(path: &Path) -> PathBuf {
     path.canonicalize().unwrap_or_else(|_| path.to_path_buf())
+}
+
+/// `evidence verify`: comprueba una evidencia, o todas las de `evidence/runs`.
+///
+/// Devuelve código 1 si alguna comprobación falla, para poder usarlo como
+/// puerta. Las comprobaciones que **no se pudieron hacer** —la política ya no
+/// existe, la evidencia es anterior al sellado— se informan aparte y no cuentan
+/// como aprobado: un informe que no se puede verificar no es un informe
+/// verificado.
+fn evidence_verify(root: &Path, path: Option<&Path>, json: bool) -> Result<i32> {
+    let files = match path {
+        Some(single) => vec![resolve_inside(root, single)?],
+        None => {
+            let directory = root.join("evidence").join("runs");
+            let mut found: Vec<PathBuf> = std::fs::read_dir(&directory)
+                .with_context(|| format!("No se pudo leer {}", directory.display()))?
+                .filter_map(Result::ok)
+                .map(|entry| entry.path())
+                .filter(|path| path.extension().is_some_and(|value| value == "json"))
+                .collect();
+            found.sort();
+            found
+        }
+    };
+
+    let mut reports = Vec::new();
+    for file in &files {
+        reports.push(sandbox_core::evidence::verify(file, root)?);
+    }
+
+    if json {
+        println!("{}", serde_json::to_string_pretty(&reports)?);
+    } else if reports.is_empty() {
+        println!("No hay evidencias que comprobar en evidence/runs.");
+    } else {
+        for report in &reports {
+            let mark = if report.passed() { "✅" } else { "❌" };
+            println!("{mark} {} · {}", report.run_id, report.path);
+            for check in &report.checks {
+                let symbol = match check.passed {
+                    Some(true) => "  ✓",
+                    Some(false) => "  ✗",
+                    None => "  ⚠",
+                };
+                println!("{symbol} {}: {}", check.name, check.detail);
+            }
+        }
+        let failed = reports.iter().filter(|report| !report.passed()).count();
+        let unverifiable: usize = reports.iter().map(sandbox_core::evidence::VerificationReport::unverifiable).sum();
+        println!(
+            "\n{} evidencia(s) · {failed} con fallos · {unverifiable} comprobación(es) que no pudieron hacerse",
+            reports.len()
+        );
+    }
+
+    Ok(i32::from(reports.iter().any(|report| !report.passed())))
 }

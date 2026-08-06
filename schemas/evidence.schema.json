@@ -111,6 +111,10 @@
         "runnerVersion": {
           "type": "string",
           "minLength": 1
+        },
+        "evidenceSha256": {
+          "description": "SHA-256 del propio contenido de la evidencia, calculado con este campo vacío. Detecta alteración accidental; no es una firma.",
+          "type": "string"
         }
       }
     },

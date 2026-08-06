@@ -140,12 +140,222 @@ impl Evidence {
         }
     }
 
+    /// Huella del propio contenido de la evidencia.
+    ///
+    /// Se calcula sobre el JSON con `integrity.evidenceSha256` puesto a cadena
+    /// vacía, para que el campo pueda vivir dentro del objeto que resume sin
+    /// morderse la cola. `serde_json` ordena las claves de sus mapas, así que la
+    /// serialización es estable entre ejecuciones y máquinas.
+    ///
+    /// No es una firma: quien pueda editar el fichero puede recalcularla. Lo que
+    /// detecta es la **alteración accidental o descuidada** —un campo tocado a
+    /// mano, una copia truncada, un informe recortado antes de adjuntarlo— que
+    /// es el caso que se da en la práctica. La firma Ed25519 sigue en el
+    /// backlog.
+    pub fn digest(&self) -> Result<String> {
+        let mut copy = self.clone();
+        copy.integrity["evidenceSha256"] = Value::String(String::new());
+        Ok(sha256_hex(serde_json::to_vec(&copy)?))
+    }
+
+    /// Sella la evidencia con su propia huella. Idempotente.
+    pub fn seal(&mut self) -> Result<()> {
+        self.integrity["evidenceSha256"] = Value::String(String::new());
+        let digest = self.digest()?;
+        self.integrity["evidenceSha256"] = Value::String(digest);
+        Ok(())
+    }
+
     pub fn write(&self, directory: impl AsRef<Path>) -> Result<PathBuf> {
         let directory = directory.as_ref();
         fs::create_dir_all(directory).with_context(|| format!("No se pudo crear {}", directory.display()))?;
         let path = directory.join(format!("{}.json", self.run_id));
-        fs::write(&path, serde_json::to_string_pretty(self)?)
+        let mut sealed = self.clone();
+        sealed.seal()?;
+        fs::write(&path, serde_json::to_string_pretty(&sealed)?)
             .with_context(|| format!("No se pudo escribir {}", path.display()))?;
         Ok(path)
+    }
+}
+
+/// Resultado de comprobar una evidencia contra sí misma y contra el repositorio.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct VerificationReport {
+    pub path: String,
+    pub run_id: String,
+    /// Cada comprobación con su veredicto. `None` = no se pudo comprobar, que
+    /// no es lo mismo que fallar.
+    pub checks: Vec<VerificationCheck>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct VerificationCheck {
+    pub name: String,
+    pub passed: Option<bool>,
+    pub detail: String,
+}
+
+impl VerificationReport {
+    /// Falla si alguna comprobación dio negativo. Las que no pudieron hacerse
+    /// no cuentan como aprobado ni como fallo: se informan.
+    pub fn passed(&self) -> bool {
+        self.checks.iter().all(|check| check.passed != Some(false))
+    }
+
+    pub fn unverifiable(&self) -> usize {
+        self.checks.iter().filter(|check| check.passed.is_none()).count()
+    }
+}
+
+/// Comprueba una evidencia: su propia huella y los hashes que declara.
+///
+/// `root` es la raíz del repositorio, necesaria para volver a hashear la carga
+/// que la evidencia dice haber ejecutado. Una evidencia cuyo `workloadSha256` ya
+/// no coincide no está corrupta: dice que **la carga cambió desde entonces**, y
+/// eso es exactamente lo que un informe de hace tres semanas tiene que poder
+/// contar.
+pub fn verify(path: impl AsRef<Path>, root: impl AsRef<Path>) -> Result<VerificationReport> {
+    let path = path.as_ref();
+    let raw = fs::read_to_string(path).with_context(|| format!("No se pudo leer {}", path.display()))?;
+    let evidence: Evidence =
+        serde_json::from_str(&raw).with_context(|| format!("No es una evidencia válida: {}", path.display()))?;
+    let mut checks = Vec::new();
+
+    let recorded = evidence.integrity.get("evidenceSha256").and_then(Value::as_str).unwrap_or_default().to_string();
+    if recorded.is_empty() {
+        checks.push(VerificationCheck {
+            name: "huella propia".into(),
+            passed: None,
+            detail: "la evidencia es anterior al sellado y no trae evidenceSha256".into(),
+        });
+    } else {
+        let computed = evidence.digest()?;
+        checks.push(VerificationCheck {
+            name: "huella propia".into(),
+            passed: Some(computed == recorded),
+            detail: if computed == recorded {
+                format!("coincide ({})", &recorded[..16.min(recorded.len())])
+            } else {
+                format!("declara {recorded} y su contenido da {computed}")
+            },
+        });
+    }
+
+    let root = root.as_ref();
+    checks.push(rehash_policy(&evidence, root));
+    checks.push(rehash_workload(&evidence, root));
+
+    Ok(VerificationReport { path: path.display().to_string(), run_id: evidence.run_id.clone(), checks })
+}
+
+fn rehash_policy(evidence: &Evidence, root: &Path) -> VerificationCheck {
+    let name = "política sin cambios".to_string();
+    let recorded = evidence.integrity.get("policySha256").and_then(Value::as_str).unwrap_or_default();
+    let Some(id) = evidence.policy.get("id").and_then(Value::as_str) else {
+        return VerificationCheck { name, passed: None, detail: "la evidencia no nombra la política".into() };
+    };
+    let file = root.join("policies").join(format!("{id}.json"));
+    match Policy::hash(&file) {
+        Err(_) => VerificationCheck { name, passed: None, detail: format!("{id}.json ya no está en el repositorio") },
+        Ok(current) => VerificationCheck {
+            name,
+            passed: Some(current == recorded),
+            detail: if current == recorded {
+                format!("{id} coincide")
+            } else {
+                format!("{id} cambió desde esta ejecución: la evidencia describe otra política")
+            },
+        },
+    }
+}
+
+fn rehash_workload(evidence: &Evidence, root: &Path) -> VerificationCheck {
+    let name = "carga sin cambios".to_string();
+    let recorded = evidence.integrity.get("workloadSha256").and_then(Value::as_str).unwrap_or_default();
+    let Some(relative) = evidence.workload.get("path").and_then(Value::as_str) else {
+        return VerificationCheck { name, passed: None, detail: "la evidencia no nombra la carga".into() };
+    };
+    match Workload::load(root.join(relative)).and_then(|value| value.hash()) {
+        Err(_) => VerificationCheck { name, passed: None, detail: format!("{relative} ya no está en el repositorio") },
+        Ok(current) => VerificationCheck {
+            name,
+            passed: Some(current == recorded),
+            detail: if current == recorded {
+                format!("{relative} coincide")
+            } else {
+                format!("{relative} cambió desde esta ejecución: la evidencia describe otro código")
+            },
+        },
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn evidence() -> Evidence {
+        Evidence {
+            schema_version: "1.0".into(),
+            run_id: "prueba".into(),
+            timestamp: Utc::now(),
+            status: EvidenceStatus::Completed,
+            runtime: json!({"id": "bwrap"}),
+            host: json!({"os": "linux"}),
+            integrity: json!({"policySha256": "aa", "workloadSha256": "bb"}),
+            policy: json!({"id": "minimal", "effectiveControls": ["filesystem"]}),
+            workload: json!({"id": "hello", "path": "workloads/benign/hello"}),
+            limits: json!({"requested": {}, "effective": {}, "observed": {}}),
+            result: json!({"exitCode": 0}),
+            violations: vec![],
+            unsupported: vec![],
+            plan: vec![],
+        }
+    }
+
+    #[test]
+    fn sealing_is_idempotent() {
+        let mut once = evidence();
+        once.seal().expect("sellar");
+        let first = once.integrity["evidenceSha256"].clone();
+        once.seal().expect("volver a sellar");
+        assert_eq!(first, once.integrity["evidenceSha256"], "sellar dos veces no puede cambiar la huella");
+    }
+
+    #[test]
+    fn the_digest_ignores_its_own_field() {
+        // Si el campo entrara en su propio cálculo, sellar cambiaría la huella
+        // y nada volvería a verificar.
+        let mut sealed = evidence();
+        sealed.seal().expect("sellar");
+        let recorded = sealed.integrity["evidenceSha256"].as_str().expect("huella").to_string();
+        assert_eq!(sealed.digest().expect("recalcular"), recorded);
+    }
+
+    #[test]
+    fn any_edited_field_breaks_the_digest() {
+        // El caso peligroso de verdad: añadir a mano un control efectivo que
+        // nunca se aplicó, que es justo lo que este proyecto existe para que no
+        // pase inadvertido.
+        let mut sealed = evidence();
+        sealed.seal().expect("sellar");
+        let recorded = sealed.integrity["evidenceSha256"].as_str().expect("huella").to_string();
+
+        let mut forged = sealed.clone();
+        forged.policy["effectiveControls"] = json!(["filesystem", "network", "memory"]);
+        assert_ne!(forged.digest().expect("recalcular"), recorded, "un control inventado tiene que romper la huella");
+
+        let mut retitled = sealed.clone();
+        retitled.status = EvidenceStatus::Blocked;
+        assert_ne!(retitled.digest().expect("recalcular"), recorded, "cambiar el estado tiene que romper la huella");
+    }
+
+    #[test]
+    fn the_digest_is_stable_across_serializations() {
+        // Sin estabilidad, verificar sería una lotería: dos ejecuciones sobre
+        // el mismo contenido tienen que dar la misma huella.
+        let value = evidence();
+        assert_eq!(value.digest().expect("una"), value.digest().expect("otra"));
     }
 }

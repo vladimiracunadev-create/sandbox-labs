@@ -185,7 +185,11 @@ export class JobStore {
         effectiveControls: [], unsupportedControls: policy.enforcement.requiredControls
       },
       workload: { id: workload.id, path: relative(this.paths.repoRoot, workload.directory), risk: workload.risk, expected: workload.expected.outcome },
-      limits: { requested: policy.resources, effective: {} },
+      // `effective` y `observed` van vacíos a propósito: esta evidencia la
+      // escribe el panel cuando no hay CLI compilado, así que no se aplicó
+      // ningún control ni se midió ningún consumo. Rellenarlos con los valores
+      // pedidos sería inventar una ejecución que no ocurrió.
+      limits: { requested: policy.resources, effective: {}, observed: {} },
       result: {
         exitCode: null,
         reason: isDryRun ? "dry-run_without_compiled_cli" : "sandboxctl_unavailable",
