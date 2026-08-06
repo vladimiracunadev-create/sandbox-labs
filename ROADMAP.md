@@ -8,10 +8,23 @@
 
 ## v0.7.0 — Rootless Execution
 
-- Bubblewrap validado en Linux.
-- cgroups v2 y seccomp aplicados y observados.
-- Métricas reales de CPU, memoria y procesos.
-- Pruebas positivas y negativas reproducibles antes de marcar el runtime `ready`.
+- ✅ Bubblewrap validado en Linux: la suite de contención corre en CI y mide las
+  siete dimensiones con bubblewrap instalado de verdad.
+- ✅ cgroups v2 aplicados **y observados**: `memory.max`, `pids.max` y `cpu.max`
+  a través de un scope de systemd, con `memory.peak`, `pids.peak`, `cpu.stat` y
+  el contador de OOM leídos mientras la carga corre.
+- ✅ Métricas reales de CPU, memoria y procesos en `limits.observed` de la
+  evidencia.
+- ✅ Identidad no privilegiada: `--uid`/`--gid` de la política, aplicados.
+- ✅ Red contenida también en los servicios, mediante reenviador del supervisor.
+- ✅ Evidencia verificable: `sandboxctl evidence verify`.
+- ⛔ **seccomp**: pendiente. Los perfiles existen y ningún runtime los aplica —
+  ver [B-05](docs/IMPLEMENTATION_BACKLOG.md).
+- ⛔ **Egress con allowlist**: pendiente, sin enforcement — ver B-04.
+- ⛔ **Un solo compilador de política** para cargas y servicios — ver B-07.
+
+Nada de esto marca el runtime como `ready`: sigue siendo `experimental` hasta
+que los huecos de arriba estén cerrados.
 
 ## v0.8.0 — WASI Portable Runner
 

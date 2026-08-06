@@ -32,8 +32,29 @@ Versionado semántico.
   Regresión introducida al añadir cgroups y encontrada por la suite de
   contención en CI, no por una revisión: `--clearenv` de bubblewrap limpia el
   entorno de la carga, no el del propio `init`, así que la carga leía
-  `XDG_RUNTIME_DIR` y `DBUS_SESSION_BUS_ADDRESS` en `/proc/1/environ`. Se borran
-  con `env -u` entre el scope y el runtime.
+  `XDG_RUNTIME_DIR` y `DBUS_SESSION_BUS_ADDRESS` en `/proc/1/environ`. El primer
+  arreglo las borraba una a una con `env -u` y falló igual, porque systemd
+  inyecta `INVOCATION_ID` por su cuenta; la cadena intercala ahora un `env -i` y
+  el runtime arranca con el entorno vacío. El contrato es vaciar, no enumerar.
+
+### Added — la evidencia se puede verificar
+
+- **`integrity.evidenceSha256`**: cada evidencia se sella con un SHA-256 de su
+  propio contenido, calculado con ese campo vacío.
+- **`sandboxctl evidence verify`** recalcula la huella y vuelve a hashear la
+  política y la carga que la evidencia dice haber ejecutado. Distingue dos cosas
+  que se confunden: que alguien editara el informe (huella rota, hashes bien) y
+  que el código haya cambiado desde entonces (huella bien, hash roto). Lo
+  segundo no es corrupción; es un informe viejo diciendo con razón que ya no
+  describe el código de hoy.
+- Comprobado contra manipulación real: cambiar el estado o añadir a mano un
+  control efectivo que nunca se aplicó rompen la huella y devuelven código 1.
+- Corre como paso de CI: una evidencia que no se verifique tumba el build.
+- **No es una firma.** Quien pueda editar el fichero puede recalcular la huella.
+  Detecta la alteración accidental o descuidada, que es el caso que se da en la
+  práctica. La firma con clave local sigue en el backlog.
+- Las comprobaciones que no se pudieron hacer se informan aparte y no cuentan
+  como aprobado.
 
 ### Added — la evidencia dice también lo que la carga consumió
 
