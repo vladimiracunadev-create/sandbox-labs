@@ -7,6 +7,50 @@ Versionado semántico.
 
 ## [Unreleased]
 
+### Fixed — tres afirmaciones del núcleo que no eran ciertas
+
+- **La evidencia declaraba una red aislada que bubblewrap no aislaba.** El
+  adaptador escribía siempre `network → "isolated network namespace"` en los
+  límites efectivos, pero `--unshare-net` solo se añade con `network.mode:
+  none`. La política de **todos** los servicios del catálogo pedía otra cosa, así
+  que justo donde la carga conservaba la red del host la evidencia decía lo
+  contrario. El cálculo salió a la función pura `effective_limits`, con pruebas.
+- **`loopback` era un sinónimo suave de «sin aislar».** De los cuatro modos de
+  red, solo `none` creaba namespace propio; los otros tres conservaban la red
+  del host entera. Ahora `none` y `loopback` crean namespace, `allowlist` y
+  `unrestricted` no, y la diferencia vive en `NetworkPolicy::isolates_host_network()`
+  en vez de en cuatro comparaciones sueltas contra la cadena `"none"`.
+- **`ai-agent-restricted` vendía un filtrado de egress inexistente.** No hay
+  proxy de salida ni reglas de firewall que hagan cumplir `network.hosts`. La
+  política se queda como la frontera que se quiere, pero su descripción avisa de
+  que ningún runtime la aplica y de que, al ser estricta, no ejecuta.
+- **Un servicio TCP con red aislada esperaba veinte segundos a nada.** El puerto
+  nacía dentro del namespace y no era alcanzable desde el host. Ahora
+  `sandboxctl service up` falla en cerrado, nombra el modo que lo provoca y da
+  las dos salidas.
+- **Las variables del bus de systemd se filtraban al PID 1 del sandbox.**
+  Regresión introducida al añadir cgroups y encontrada por la suite de
+  contención en CI, no por una revisión: `--clearenv` de bubblewrap limpia el
+  entorno de la carga, no el del propio `init`, así que la carga leía
+  `XDG_RUNTIME_DIR` y `DBUS_SESSION_BUS_ADDRESS` en `/proc/1/environ`. Se borran
+  con `env -u` entre el scope y el runtime.
+
+### Added — límites de recursos que existen de verdad
+
+- **cgroups v2 en bubblewrap.** `memoryMb`, `processes` y `cpu` pasan de
+  documentación a `memory.max`, `pids.max` y `cpu.max` a través de
+  `systemd-run --user --scope`. Escribir el cgroup a mano no vale en la
+  plataforma objetivo: en WSL2 el proceso arranca en `/init.scope`, que existe y
+  no es escribible.
+- **El sondeo usa el mecanismo en vez de suponerlo.** Antes de la primera
+  ejecución se levanta un scope real con los tres límites puestos —la misma
+  forma de comando que se ejecutará después— y solo si el kernel los acepta se
+  declaran los controles. `sandboxctl doctor` muestra el resultado y deja de
+  comprobar únicamente que `/sys/fs/cgroup/cgroup.controllers` exista.
+- **`docs/IMPLEMENTATION_BACKLOG.md`**: los huecos del núcleo con qué falta, qué
+  se hace en su lugar y qué haría falta para cerrarlos. El código lo enlazaba
+  desde un comentario y no existía.
+
 ### Added — el repositorio deja de describir aislamiento y pasa a medirlo
 
 - **`sandboxctl escape`: suite de contención.** Siete sondas que **intentan

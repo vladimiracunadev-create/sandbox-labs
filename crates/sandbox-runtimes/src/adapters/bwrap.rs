@@ -145,8 +145,14 @@ impl RuntimeAdapter for BwrapAdapter {
                 program = outer;
                 args = outer_args;
                 // `systemd-run` necesita encontrar el bus del gestor de
-                // usuario. Solo lo lee él: bubblewrap hace `--clearenv` después,
-                // así que estas dos variables no entran al sandbox.
+                // usuario. Solo las lee él: la cadena que devuelve `wrap`
+                // intercala un `env -i` antes del runtime, así que bubblewrap
+                // arranca con el entorno vacío igual que sin envolver.
+                //
+                // No basta con confiar en el `--clearenv` de bubblewrap: eso
+                // limpia el entorno de la CARGA, no el de su propio `init`, que
+                // es el PID 1 dentro del sandbox y cuyo `/proc/1/environ` la
+                // carga puede leer.
                 for name in sandbox_core::cgroup::REQUIRED_ENVIRONMENT {
                     if let Ok(value) = std::env::var(name) {
                         environment.insert(name.to_string(), value);

@@ -163,49 +163,50 @@ fn build_chain(program: &str, args: &[String], limits: &ResourcePolicy) -> (Stri
     let mut wrapped = vec!["--user".into(), "--scope".into(), "--quiet".into(), "--collect".into()];
     wrapped.extend(scope_properties(limits));
     wrapped.push("--".into());
-    wrapped.extend(strip_bus_environment());
+    wrapped.push(EMPTY_ENVIRONMENT.0.into());
+    wrapped.push(EMPTY_ENVIRONMENT.1.into());
     wrapped.push(program.to_string());
     wrapped.extend_from_slice(args);
     ("systemd-run".into(), wrapped)
 }
 
-/// `env -u` que borra las variables del bus en cuanto `systemd-run` las ha
-/// leído, antes de que lleguen al runtime.
+/// `env -i`: el runtime arranca con el entorno **vacío**, que es exactamente lo
+/// que tenía antes de que existiera este envoltorio.
 ///
-/// # Por qué hace falta
+/// # Por qué se vacía entero en vez de borrar variables concretas
 ///
-/// Sin esto, `XDG_RUNTIME_DIR` y `DBUS_SESSION_BUS_ADDRESS` sobreviven hasta el
-/// proceso `init` de bubblewrap, que es el PID 1 **dentro** del sandbox. El
-/// `--clearenv` de bubblewrap limpia el entorno de la carga, no el suyo propio,
-/// así que la carga las leía en `/proc/1/environ`.
+/// El entorno con el que arranca el runtime acaba siendo el del proceso `init`
+/// de bubblewrap, que es el PID 1 **dentro** del sandbox. El `--clearenv` de
+/// bubblewrap limpia el entorno de la carga, no el suyo propio, así que la
+/// carga puede leerlo en `/proc/1/environ`. La sonda de filesystem marca fuga
+/// cuando ese PID 1 expone variables que la carga no tiene.
 ///
-/// Lo detectó la suite de contención en CI, no una revisión:
+/// El primer intento borró con `env -u` las dos variables que `systemd-run`
+/// necesita leer, y la suite volvió a fallar por lo mismo. Medido:
 ///
 /// ```text
-/// filesystem-escape        ❌ DECLARADO
-///   · bwrap declara filesystem — rutas sensibles legibles: /proc/1/environ
+/// env -i XDG_RUNTIME_DIR=… DBUS_SESSION_BUS_ADDRESS=… systemd-run --user --scope -- env
+///   XDG_RUNTIME_DIR=/run/user/1000
+///   DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1000/bus
+///   INVOCATION_ID=c35c6a9fd9a84594ac84703699f62e7a   ← lo inyecta systemd
 /// ```
 ///
-/// Antes de envolver en un scope, bubblewrap se lanzaba con el entorno
-/// completamente vacío y ese `/proc/1/environ` no tenía nada que leer.
+/// `INVOCATION_ID` no lo pusimos nosotros. Enumerar lo que systemd inyecta es
+/// una lista que se queda corta con la siguiente versión, así que se vacía
+/// entero: lo que no está no puede filtrarse.
 ///
 /// `env` hace `exec`, así que no añade un proceso al árbol ni deja al de dentro
-/// huérfano cuando el supervisor mata por timeout.
-fn strip_bus_environment() -> Vec<String> {
-    let mut args = vec!["env".to_string()];
-    for name in REQUIRED_ENVIRONMENT {
-        args.push("-u".into());
-        args.push(name.to_string());
-    }
-    args
-}
+/// huérfano cuando el supervisor mata por timeout. Sin `PATH`, `execvp` recurre
+/// a la ruta por defecto del sistema, que es donde viven `prlimit` y `bwrap`.
+const EMPTY_ENVIRONMENT: (&str, &str) = ("env", "-i");
 
 /// Variables que `systemd-run --user` necesita para encontrar el bus del gestor
 /// de usuario.
 ///
-/// Importa porque los adaptadores limpian el entorno antes de ejecutar. Estas
-/// dos las lee `systemd-run`, no la carga: bubblewrap hace su propio
-/// `--clearenv` después, así que no llegan dentro del sandbox.
+/// Importa porque los adaptadores limpian el entorno antes de ejecutar, así que
+/// hay que volver a ponerlas para el proceso más externo. Solo las lee
+/// `systemd-run`: el `env -i` de la cadena las borra —junto con todo lo demás—
+/// antes de que lleguen al runtime. Ver `EMPTY_ENVIRONMENT`.
 pub const REQUIRED_ENVIRONMENT: [&str; 2] = ["XDG_RUNTIME_DIR", "DBUS_SESSION_BUS_ADDRESS"];
 
 #[cfg(test)]
@@ -241,22 +242,29 @@ mod tests {
         assert_eq!(&args[target + 1..], &inner[..], "los argumentos internos no se tocan");
     }
 
-    /// La regresión que encontró la suite de contención en CI.
+    /// La regresión que encontró la suite de contención en CI, dos veces.
     ///
-    /// Las variables del bus tienen que morir entre `systemd-run` y el runtime.
-    /// Si sobreviven, acaban en el `/proc/1/environ` del sandbox y la carga las
-    /// lee — con bubblewrap declarando el control `filesystem`, que es la peor
-    /// combinación posible: una falsa garantía.
+    /// Nada del entorno puede sobrevivir hasta el runtime: acaba en el
+    /// `/proc/1/environ` del sandbox y la carga lo lee — con bubblewrap
+    /// declarando el control `filesystem`, que es la peor combinación posible:
+    /// una falsa garantía.
+    ///
+    /// La primera corrección borraba con `-u` las dos variables del bus y falló
+    /// igual, porque systemd inyecta `INVOCATION_ID` por su cuenta. Por eso el
+    /// contrato es vaciar, no enumerar.
     #[test]
-    fn the_bus_variables_never_reach_the_runtime() {
+    fn the_runtime_starts_with_an_empty_environment() {
         let (_, args) = build_chain("bwrap", &[], &limits());
         let target = args.iter().position(|value| value == "bwrap").expect("el programa envuelto");
-        let before = &args[..target];
-        for name in REQUIRED_ENVIRONMENT {
-            let position = before.iter().position(|value| value == name).unwrap_or_else(|| panic!("falta {name}"));
-            assert_eq!(before[position - 1], "-u", "{name} tiene que borrarse, no fijarse");
-        }
-        assert!(before.contains(&"env".to_string()), "el borrado lo hace `env`, que hace exec");
+        assert_eq!(
+            &args[target - 2..target],
+            &["env".to_string(), "-i".to_string()],
+            "el runtime va precedido de `env -i`, no de una lista de variables a borrar"
+        );
+        assert!(
+            !args[..target].iter().any(|value| value == "-u"),
+            "borrar variables una a una es la lista que se queda corta con la siguiente versión de systemd"
+        );
     }
 
     #[test]
