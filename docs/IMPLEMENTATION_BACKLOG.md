@@ -81,6 +81,28 @@ confiar.
 que solo abra los destinos de la lista y registre cada conexión. Sin registro de
 conexiones no hay control, solo intención.
 
+### B-04b · Un servicio en namespace de red propio no puede publicar un puerto
+
+| | |
+|---|---|
+| **Estado** | Abierto |
+| **Control afectado** | `network`, en los servicios |
+| **Se declara hoy** | No. Los servicios usan `unrestricted` y así consta. |
+
+`loopback` ya está implementado —crea namespace propio— pero un servicio con
+`transport: tcp` no puede usarlo: su puerto nace dentro del sandbox y nadie
+fuera lo alcanza. Hoy `sandboxctl service up` **falla en cerrado** y explica las
+dos salidas, en vez de arrancar algo que nunca responderá.
+
+Eso deja a los casos `02-ai-code-runner` y `03-file-detonation` con la red del
+host, que es la frontera abierta más grande que queda en el catálogo.
+
+**Para cerrarlo:** un reenviador en el supervisor que escuche el puerto en el
+loopback del **host** y lo empalme con un socket Unix montado dentro del
+sandbox. El servicio pasaría a `loopback` sin cambiar su código, y el control
+`network` sería efectivo también para los servicios. Es el mismo mecanismo que
+el caso `05` ya usa a mano.
+
 ### B-05 · Perfiles seccomp declarados y no aplicados
 
 | | |

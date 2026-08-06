@@ -45,11 +45,11 @@ impl RuntimeAdapter for BwrapAdapter {
         let temp = tempdir()?;
         let output = temp.path().join("output");
         std::fs::create_dir_all(&output)?;
-        // `--unshare-all` incluye la red. Un servicio con `network.mode` distinto
-        // de `none` necesita conservar el loopback del host para poder publicar
-        // un puerto; si no, el sandbox arranca y nadie puede hablar con él.
-        // Antes se cortaba siempre, así que la política se ignoraba en silencio.
-        let network_isolated = policy.network.mode == "none";
+        // `none` y `loopback` crean namespace de red propio; `allowlist` y
+        // `unrestricted` conservan la del host. Un servicio que necesite
+        // publicar un puerto tiene que pedir uno de los dos últimos y decirlo
+        // en su política, no colarse por un modo que suena contenido.
+        let network_isolated = policy.network.isolates_host_network();
         let mut args = vec![
             "--die-with-parent",
             "--new-session",

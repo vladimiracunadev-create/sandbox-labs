@@ -1,7 +1,7 @@
 {
   "$schema": "../schemas/policy.schema.json",
   "id": "web-application",
-  "description": "Aplicación web local con loopback y directorio temporal.",
+  "description": "Aplicación web local: conserva la red del host para publicar un puerto y acota filesystem, tiempo y salida. El control `network` no se declara porque aquí no hay ninguno.",
   "enforcement": {
     "mode": "best-effort",
     "requiredControls": [
@@ -22,7 +22,7 @@
     "followSymlinks": false
   },
   "network": {
-    "mode": "loopback",
+    "mode": "unrestricted",
     "hosts": [],
     "dns": "disabled"
   },

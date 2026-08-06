@@ -50,12 +50,50 @@ pub struct FilesystemPolicy {
     pub follow_symlinks: bool,
 }
 
+/// Qué significa cada modo de red, con precisión suficiente para que la
+/// evidencia no tenga que interpretarlo:
+///
+/// | Modo | Namespace de red propio | Salida al exterior | Puerto publicable al host |
+/// |---|---|---|---|
+/// | `none` | sí | no | no |
+/// | `loopback` | sí | no | no — solo socket Unix |
+/// | `allowlist` | no | sí, sin filtrar | sí |
+/// | `unrestricted` | no | sí | sí |
+///
+/// `allowlist` aparece ahí arriba con «sin filtrar» a propósito: hoy no existe
+/// proxy de salida, ni reglas de firewall, ni resolución DNS controlada. La
+/// lista de hosts se valida y después no la hace cumplir nadie, así que el
+/// control `network` **no** se declara con este modo y una política estricta
+/// que lo exija no llega a ejecutar. Ver B-04 en
+/// [el backlog técnico](../../../docs/IMPLEMENTATION_BACKLOG.md).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NetworkPolicy {
     pub mode: String,
     #[serde(default)]
     pub hosts: Vec<String>,
     pub dns: String,
+}
+
+impl NetworkPolicy {
+    /// ¿La carga corre en un namespace de red propio, sin ruta hacia fuera?
+    ///
+    /// Es la única pregunta que decide si el control `network` puede
+    /// declararse. `loopback` cuenta: el namespace se crea igual y el runtime
+    /// levanta `lo` dentro. Lo que distingue a `loopback` de `none` es la
+    /// intención —la carga habla consigo misma— y que un servicio con este modo
+    /// no puede publicar un puerto al host.
+    pub fn isolates_host_network(&self) -> bool {
+        matches!(self.mode.as_str(), "none" | "loopback")
+    }
+
+    /// ¿Puede un servicio con esta política publicar un puerto TCP en el host?
+    ///
+    /// Con un namespace de red propio, no: el puerto existe dentro del sandbox
+    /// y nadie fuera puede alcanzarlo. La puerta que sí queda es el socket
+    /// Unix, que entra por el filesystem.
+    pub fn allows_published_port(&self) -> bool {
+        !self.isolates_host_network()
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

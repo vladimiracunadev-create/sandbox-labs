@@ -28,7 +28,7 @@ impl RuntimeAdapter for UnshareAdapter {
                 .into_iter()
                 .map(String::from)
                 .collect::<Vec<_>>();
-        if policy.network.mode == "none" {
+        if policy.network.isolates_host_network() {
             args.push("--net".into());
         }
         args.push("--".into());
@@ -38,8 +38,8 @@ impl RuntimeAdapter for UnshareAdapter {
         let mut limits = BTreeMap::new();
         limits.insert("namespaces".into(), "user,mount,pid,uts,ipc".into());
         limits.insert("timeout".into(), format!("{}s", policy.resources.timeout_seconds));
-        if policy.network.mode == "none" {
-            limits.insert("network".into(), "isolated network namespace".into());
+        if policy.network.isolates_host_network() {
+            limits.insert("network".into(), "isolated network namespace (--net)".into());
         }
         limits.insert("output".into(), format!("{} bytes", policy.resources.output_bytes));
 

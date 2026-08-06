@@ -17,10 +17,30 @@ Controles válidos: `filesystem`, `network`, `processes`, `memory`, `cpu`, `time
 
 ## Network
 
-- `none`: sin interfaz de red utilizable.
-- `loopback`: solo localhost; no todos los adaptadores lo aplican.
-- `allowlist`: requiere proxy o firewall controlado; no se implementa por simple resolución DNS.
-- `unrestricted`: solo para entornos descartables.
+Solo dos de los cuatro modos crean un namespace de red propio. Esa es la línea
+que decide si el control `network` puede declararse efectivo:
+
+| `mode` | Namespace propio | Salida al exterior | Puerto TCP publicable | Control `network` |
+|---|---|---|---|---|
+| `none` | sí | no | no | efectivo |
+| `loopback` | sí | no | no — solo socket Unix | efectivo |
+| `allowlist` | **no** | **sí, sin filtrar** | sí | **nunca efectivo** |
+| `unrestricted` | no | sí | sí | nunca efectivo |
+
+- `none`: sin interfaz de red utilizable hacia fuera.
+- `loopback`: la carga habla consigo misma dentro de su propio namespace. Un
+  servicio con este modo **no puede publicar un puerto en el host**: el puerto
+  nace dentro del sandbox. `sandboxctl service up` falla en cerrado y dice que
+  el servicio tiene que pasar a `transport: unix-socket`.
+- `allowlist`: hoy **no hay nada que haga cumplir la lista**. No existe proxy de
+  salida, ni reglas de firewall, ni resolución DNS controlada. `hosts` se valida
+  y después se ignora, así que el control nunca sale efectivo y una política
+  estricta que lo exija no ejecuta. Ver
+  [B-04](IMPLEMENTATION_BACKLOG.md) — es un hueco conocido, no un modo listo.
+- `unrestricted`: la red del host, escrito con todas sus letras. Es lo que
+  necesita cualquier servicio que publique un puerto, y por eso las políticas
+  `service-sandbox` y `web-application` lo usan. Ninguna de las dos exige el
+  control `network`, porque ahí no hay ninguno que exigir.
 
 ## Recursos
 

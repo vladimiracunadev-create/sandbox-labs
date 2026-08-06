@@ -84,7 +84,7 @@ permisos, ni quien lo escribió decide sus límites.
 ```json
 {
   "filesystem": { "root": "ephemeral", "writable": ["/workspace/output"] },
-  "network":    { "mode": "loopback" },
+  "network":    { "mode": "none" },
   "resources":  { "memoryMb": 512, "processes": 32 },
   "process":    { "capabilities": [], "allowedEnvironment": [] }
 }

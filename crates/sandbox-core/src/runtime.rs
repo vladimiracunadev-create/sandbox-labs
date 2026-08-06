@@ -191,13 +191,11 @@ impl RuntimeKind {
         if matches!(self, Self::Bwrap | Self::Unshare) && command_exists("prlimit") {
             values.insert("memory".into());
         }
-        if self == Self::Bwrap && policy.network.mode != "none" {
-            values.remove("network");
-        }
-        if self == Self::Unshare && policy.network.mode != "none" {
-            values.remove("network");
-        }
-        if self == Self::Wasi && policy.network.mode != "none" {
+        // El control `network` sobrevive solo si la política pide un namespace
+        // de red propio. Con `allowlist` o `unrestricted` la carga conserva la
+        // red del host: da igual lo que declare el runtime, ahí no hay control
+        // que declarar.
+        if matches!(self, Self::Bwrap | Self::Unshare | Self::Wasi) && !policy.network.isolates_host_network() {
             values.remove("network");
         }
         values

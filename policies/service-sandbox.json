@@ -1,7 +1,7 @@
 {
   "$schema": "../schemas/policy.schema.json",
   "id": "service-sandbox",
-  "description": "Servicios de larga duración: conserva el loopback para poder publicar un puerto y contiene todo lo demás. Un servicio sin red no puede servir nada, así que esa frontera se abre a propósito y queda escrita aquí.",
+  "description": "Servicios de larga duración: conserva la red del host para poder publicar un puerto y contiene todo lo demás. El modo se llama «unrestricted» y no «loopback» porque eso es lo que ocurre: la carga ve la red del host entera. Por eso el control `network` NO figura entre los requeridos — un servicio que necesite red aislada de verdad tiene que hablar por socket Unix con network.mode «loopback».",
   "enforcement": {
     "mode": "best-effort",
     "requiredControls": [
@@ -24,7 +24,7 @@
     "followSymlinks": false
   },
   "network": {
-    "mode": "loopback",
+    "mode": "unrestricted",
     "hosts": [],
     "dns": "disabled"
   },

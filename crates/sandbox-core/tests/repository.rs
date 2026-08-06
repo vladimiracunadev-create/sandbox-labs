@@ -43,6 +43,13 @@ fn load_policy(id: &str) -> Policy {
     Policy::load(repo_root().join("policies").join(format!("{id}.json"))).expect("política del repositorio")
 }
 
+fn all_policies() -> Vec<Policy> {
+    policy_files()
+        .into_iter()
+        .map(|path| Policy::load(&path).unwrap_or_else(|e| panic!("{}: {e}", path.display())))
+        .collect()
+}
+
 fn load_workload(relative: &str) -> Workload {
     Workload::load(repo_root().join(relative)).expect("carga del repositorio")
 }
@@ -364,19 +371,66 @@ fn service_policies_and_runtimes_are_registered() {
 }
 
 #[test]
-fn the_service_policy_keeps_loopback_open_on_purpose() {
-    // Un servicio sin red no puede publicar nada. La política de servicios abre
-    // esa frontera a propósito y lo dice; si alguien la cambiara a `none`, los
-    // servicios arrancarían y nadie podría hablar con ellos.
+fn the_service_policy_names_the_host_network_it_actually_keeps() {
+    // Un servicio sin red no puede publicar nada, así que la política de
+    // servicios abre esa frontera a propósito. Lo que no puede hacer es
+    // llamarla `loopback`: ese modo crea un namespace de red propio, y lo que
+    // los servicios reciben es la red del host entera. El nombre tiene que
+    // decir lo que pasa.
     let policy = load_policy("service-sandbox");
-    assert_eq!(policy.network.mode, "loopback", "los servicios necesitan loopback para publicar un puerto");
-    assert!(policy.description.to_lowercase().contains("loopback"), "la política debe explicar por qué abre la red");
+    assert_eq!(policy.network.mode, "unrestricted", "los servicios conservan la red del host, y así debe llamarse");
+    assert!(
+        !policy.network.isolates_host_network(),
+        "si esto aislara, el puerto publicado no sería alcanzable desde el host"
+    );
+    assert!(
+        !policy.enforcement.required_controls.iter().any(|value| value == "network"),
+        "una política que conserva la red del host no puede exigir el control `network`"
+    );
     // Y el resto de la contención sigue exigida.
     for control in ["filesystem", "capabilities", "environment"] {
         assert!(
             policy.enforcement.required_controls.iter().any(|value| value == control),
             "la política de servicios debe seguir exigiendo {control}"
         );
+    }
+}
+
+#[test]
+fn a_policy_that_requires_network_either_isolates_or_fails_closed() {
+    // Exigir el control `network` con un modo que no crea namespace propio
+    // —hoy, `allowlist` y `unrestricted`— es pedir algo que ningún runtime
+    // sabe aplicar. Eso no está prohibido: una política puede declarar la
+    // frontera que quiere aunque todavía no exista quien la haga cumplir. Lo
+    // que no puede pasar es que se ejecute igual y nadie se entere.
+    //
+    // La forma honesta de que exista es `strict`, que la bloquea. Esta prueba
+    // comprueba las dos mitades: la declaración y la consecuencia.
+    let workload = load_workload("workloads/benign/hello");
+    for policy in all_policies() {
+        if !policy.enforcement.required_controls.iter().any(|value| value == "network") {
+            continue;
+        }
+        if policy.network.isolates_host_network() {
+            continue;
+        }
+        assert_eq!(
+            policy.enforcement.mode,
+            EnforcementMode::Strict,
+            "{}: exige `network` con mode «{}», que no lo aplica nadie. En best-effort se ejecutaría \
+             sin el control; tiene que ser estricta para fallar cerrado",
+            policy.id,
+            policy.network.mode
+        );
+        for runtime in [RuntimeKind::Bwrap, RuntimeKind::Unshare, RuntimeKind::Wasi] {
+            let plan = ExecutionPlan::build(runtime, &workload, &policy).expect("plan");
+            assert!(
+                plan.controls.unsupported.iter().any(|value| value == "network"),
+                "{} con {runtime}: `network` tiene que constar como no soportado",
+                policy.id
+            );
+            assert!(!plan.executable, "{} con {runtime}: tiene que fallar cerrado", policy.id);
+        }
     }
 }
 

@@ -228,10 +228,12 @@ fn sandbox_command(
                 .iter()
                 .map(|value| value.to_string()),
             );
-            // La red se conserva a propósito: un servicio sin loopback no puede
-            // publicar nada. La contención sigue viva en filesystem, PIDs,
-            // capabilities y entorno — y la tarjeta del panel lo dice.
-            if policy.network.mode == "none" {
+            // La red se conserva a propósito cuando la política lo dice con
+            // todas sus letras (`unrestricted`): un servicio que publica un
+            // puerto TCP no puede estar en un namespace de red propio. La
+            // contención sigue viva en filesystem, PIDs, capabilities y
+            // entorno — y la tarjeta del panel lo dice.
+            if policy.network.isolates_host_network() {
                 args.push("--unshare-net".into());
             }
             args.extend(["--ro-bind".into(), workdir.clone(), "/workspace/app".into()]);
@@ -274,7 +276,7 @@ fn sandbox_command(
                     .iter()
                     .map(|value| value.to_string()),
             );
-            if policy.network.mode == "none" {
+            if policy.network.isolates_host_network() {
                 args.push("--net".into());
             }
             args.push("--".into());
@@ -291,6 +293,32 @@ fn sandbox_command(
             (service.command.clone(), plain)
         }
     }
+}
+
+/// Falla en cerrado cuando el transporte del servicio y su política de red no
+/// pueden ser ciertos a la vez.
+///
+/// Un servicio con `transport: tcp` publica un puerto en el loopback del host.
+/// Con `network.mode` en `none` o `loopback` ese puerto nace **dentro** del
+/// namespace de red del sandbox y nadie fuera lo alcanza: el servicio arranca,
+/// el proceso vive, y el sondeo de salud espera veinte segundos a algo que
+/// nunca va a responder. Antes eso se veía como «el servicio no levanta»; ahora
+/// se dice qué está mal y cuáles son las dos salidas.
+fn check_transport_matches_network(service: &Service, policy: &Policy) -> Result<()> {
+    if service.is_socket() || policy.network.allows_published_port() {
+        return Ok(());
+    }
+    bail!(
+        "{}: la política {} pide network.mode «{}», que crea un namespace de red propio, \
+         pero el servicio declara transport «tcp» y publica el puerto {}. Ese puerto no sería \
+         alcanzable desde el host.\n   → o el servicio pasa a transport «unix-socket», \
+         que entra por el filesystem y no necesita red;\n   → o la política declara \
+         network.mode «unrestricted», y entonces el control `network` no se cuenta como efectivo.",
+        service.id,
+        policy.id,
+        policy.network.mode,
+        service.port
+    )
 }
 
 pub fn up(ctx: &ServiceContext, id: &str, wait: bool) -> Result<i32> {
@@ -317,6 +345,7 @@ pub fn up(ctx: &ServiceContext, id: &str, wait: bool) -> Result<i32> {
     }
 
     let policy = Policy::load(ctx.root.join("policies").join(format!("{}.json", service.policy)))?;
+    check_transport_matches_network(&service, &policy)?;
     let runtime = pick_runtime(&service)?;
     let (secrets, refused) = resolved_secrets(&service, &policy);
     let socket_dir = ctx.socket_dir();
@@ -642,3 +671,57 @@ pub fn call(ctx: &ServiceContext, id: &str, method: &str, path: &str, body: Opti
 /// Los dos transportes se usan igual; este alias evita duplicar `call`.
 trait ReadWrite: std::io::Read + std::io::Write {}
 impl<T: std::io::Read + std::io::Write> ReadWrite for T {}
+
+#[cfg(test)]
+mod transport_tests {
+    use super::*;
+
+    fn service(transport: &str) -> Service {
+        serde_json::from_value(serde_json::json!({
+            "id": "demo", "name": "Demo", "category": "platform",
+            "description": "d", "teaches": "t", "port": 8899, "kind": "python",
+            "entrypoint": "app.py", "command": "python3", "policy": "p",
+            "runtimes": ["bwrap"], "healthPath": "/health", "transport": transport
+        }))
+        .expect("servicio de prueba válido")
+    }
+
+    fn policy(mode: &str) -> Policy {
+        serde_json::from_value(serde_json::json!({
+            "id": "p",
+            "enforcement": { "mode": "best-effort", "requiredControls": [] },
+            "filesystem": { "root": "ephemeral", "readOnly": [], "writable": [], "maxWorkspaceMb": 64, "followSymlinks": false },
+            "network": { "mode": mode, "hosts": [], "dns": "disabled" },
+            "resources": { "cpu": 1.0, "memoryMb": 128, "processes": 8, "timeoutSeconds": 10, "openFiles": 32, "outputBytes": 4096 },
+            "process": { "capabilities": [], "environment": {}, "allowedEnvironment": [], "user": 65534, "group": 65534 }
+        }))
+        .expect("política de prueba válida")
+    }
+
+    #[test]
+    fn a_tcp_service_cannot_live_in_its_own_network_namespace() {
+        for mode in ["none", "loopback"] {
+            let error = check_transport_matches_network(&service("tcp"), &policy(mode))
+                .expect_err("un puerto dentro del namespace no es alcanzable desde el host");
+            let text = error.to_string();
+            assert!(text.contains("unix-socket"), "el error debe decir la salida: {text}");
+            assert!(text.contains(mode), "el error debe nombrar el modo que lo provoca: {text}");
+        }
+    }
+
+    #[test]
+    fn a_socket_service_can_keep_the_network_closed() {
+        // Es justo el patrón del custodio de claves: sin pila de red hacia
+        // fuera, y alcanzable por el filesystem.
+        for mode in ["none", "loopback"] {
+            check_transport_matches_network(&service("unix-socket"), &policy(mode))
+                .expect("un socket Unix no necesita red");
+        }
+    }
+
+    #[test]
+    fn a_tcp_service_runs_when_the_policy_admits_it_keeps_the_host_network() {
+        check_transport_matches_network(&service("tcp"), &policy("unrestricted"))
+            .expect("con la red del host el puerto sí se publica");
+    }
+}
