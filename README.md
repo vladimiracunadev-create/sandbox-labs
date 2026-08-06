@@ -7,11 +7,14 @@ namespaces, bubblewrap, WASI, gVisor, Kata y Firecracker.
 [![CI](https://github.com/vladimiracunadev-create/sandbox-labs/actions/workflows/ci.yml/badge.svg)](https://github.com/vladimiracunadev-create/sandbox-labs/actions/workflows/ci.yml)
 [![Docs](https://github.com/vladimiracunadev-create/sandbox-labs/actions/workflows/docs.yml/badge.svg)](https://github.com/vladimiracunadev-create/sandbox-labs/actions/workflows/docs.yml)
 [![Security](https://github.com/vladimiracunadev-create/sandbox-labs/actions/workflows/security.yml/badge.svg)](https://github.com/vladimiracunadev-create/sandbox-labs/actions/workflows/security.yml)
+[![Pages](https://github.com/vladimiracunadev-create/sandbox-labs/actions/workflows/pages.yml/badge.svg)](https://vladimiracunadev-create.github.io/sandbox-labs/)
 ![Version](https://img.shields.io/badge/version-0.7.0-blue)
 ![Platform](https://img.shields.io/badge/Platform-Linux%20%7C%20WSL2-orange)
 ![Rust](https://img.shields.io/badge/Rust-1.78%2B-b7410e)
 ![Node](https://img.shields.io/badge/Node-22%2B-3c873a)
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
+
+🌐 **[Sitio del proyecto](https://vladimiracunadev-create.github.io/sandbox-labs/)** · 📚 **[Documentación](docs/DOCUMENTATION_INDEX.md)** · 🛡️ **[Suite de contención](docs/CONTAINMENT_SUITE.md)**
 
 > [!IMPORTANT]
 > `experimental` **no** significa «seguro para código hostil». El valor de este
