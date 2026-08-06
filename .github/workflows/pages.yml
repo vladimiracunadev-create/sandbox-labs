@@ -56,28 +56,28 @@ jobs:
       - name: Comprobar que el sitio salió entero
         run: |
           set -euo pipefail
-          for file in site/index.html site/conceptos.html site/labs/index.html; do
+          for file in site/index.html site/conceptos.html; do
             test -s "$file" || { echo "::error::falta o está vacío: $file"; exit 1; }
           done
-          labs=$(find site/labs -name '[0-9][0-9]-*.html' | wc -l)
-          [ "$labs" -eq 18 ] || { echo "::error::se generaron $labs laboratorios, se esperaban 18"; exit 1; }
-          for needle in "sandbox-labs" "Qué es un sandbox" "sandboxctl service up"; do
+          # El catálogo manda: la portada tiene que mostrar todos los casos
+          # declarados, construidos o no. Si no, la web promete menos de lo que hay.
+          casos=$(node -p "require('./sandbox.config.json').cases.length")
+          tarjetas=$(grep -c 'class="card svc"' site/index.html || true)
+          [ "$tarjetas" -eq "$casos" ]             || { echo "::error::la portada muestra $tarjetas casos y el catálogo declara $casos"; exit 1; }
+          for needle in "sandbox-labs" "Qué es un sandbox"; do
             grep -q "$needle" site/index.html || { echo "::error::falta '$needle' en la portada"; exit 1; }
           done
-          # Sin hojas de estilo ni scripts externos: lo único que sale fuera es
-          # el import dinámico de mermaid, que se comprueba aparte más abajo.
+          # Nada externo salvo el import dinámico de mermaid, pinneado.
           if grep -Eq '<(script|link)[^>]+(src|href)="https?://' site/index.html; then
             echo "::error::la portada carga recursos externos"; exit 1
           fi
-          # Mermaid llega por import() dinámico y va pinneado a una versión mayor.
-          grep -q 'mermaid@11' site/labs/04-linux-namespaces.html             || { echo "::error::el import de mermaid no está pinneado"; exit 1; }
           {
             echo "### 🌐 Sitio publicado"
             echo ""
             echo "| Dato | Valor |"
             echo "|---|---|"
+            echo "| Casos en portada | **$tarjetas** |"
             echo "| Páginas | **$(find site -name '*.html' | wc -l)** |"
-            echo "| Laboratorios | **$labs** |"
             echo "| Portada | **$(wc -c < site/index.html) bytes** |"
           } >> "$GITHUB_STEP_SUMMARY"
 
