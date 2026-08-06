@@ -1,0 +1,20 @@
+{
+  "$schema": "../../schemas/service.schema.json",
+  "id": "file-detonation",
+  "name": "Detonación de archivo sospechoso",
+  "category": "platform",
+  "description": "Recibe un archivo ZIP que no controlas, lo extrae dentro de la jaula y devuelve su contenido. Se defiende de zip slip y de zip bomb, y reporta qué entradas rechazó y por qué.",
+  "teaches": "El caso donde el sandbox no es opcional: extraer un archivo ajeno. Un ZIP con ../../etc/cron.d/ dentro ha sobrescrito binarios de sistema en incidentes reales.",
+  "port": 8803,
+  "kind": "python",
+  "entrypoint": "app.py",
+  "command": "python3",
+  "args": [],
+  "policy": "service-sandbox",
+  "runtimes": [
+    "bwrap",
+    "unshare"
+  ],
+  "healthPath": "/health",
+  "transport": "tcp"
+}

@@ -211,121 +211,59 @@ ${body}
 const catalog = JSON.parse(await readFile(join(root, "sandbox.config.json"), "utf8"));
 
 const services = [];
-for (const entry of await readdir(join(root, "services"), { withFileTypes: true })) {
+for (const entry of await readdir(join(root, catalog.casesDirectory), { withFileTypes: true })) {
   if (!entry.isDirectory()) continue;
-  services.push(JSON.parse(await readFile(join(root, "services", entry.name, "service.json"), "utf8")));
+  services.push(JSON.parse(await readFile(join(root, catalog.casesDirectory, entry.name, "service.json"), "utf8")));
 }
 services.sort((a, b) => a.port - b.port);
 
-const labs = [];
-for (const lab of catalog.labs) {
-  const slug = `${lab.id}-${lab.slug}`;
-  const markdown = await readFile(join(root, "labs", slug, "README.md"), "utf8");
-  labs.push({ ...lab, slug, markdown });
-}
+const cases = catalog.cases.map((item) => {
+  const built = services.find((service) => service.id === item.slug);
+  return { ...item, built: Boolean(built), service: built ?? null };
+});
 
 await rm(out, { recursive: true, force: true });
-await mkdir(join(out, "labs"), { recursive: true });
+await mkdir(out, { recursive: true });
 await writeFile(join(out, "_style.css"), STYLE);
 
-// Página de cada laboratorio
-for (const [index, lab] of labs.entries()) {
-  const previous = labs[index - 1];
-  const next = labs[index + 1];
-  const pager =
-    `<div class="pager">` +
-    (previous ? `<a href="${previous.slug}.html">← ${escape(previous.title)}</a>` : `<span></span>`) +
-    (next ? `<a href="${next.slug}.html">${escape(next.title)} →</a>` : `<span></span>`) +
-    `</div>`;
-  await writeFile(
-    join(out, "labs", `${lab.slug}.html`),
-    page({
-      title: `Lab ${lab.id} · ${lab.title} — sandbox-labs`,
-      description: lab.title,
-      active: "labs/",
-      depth: 1,
-      body: `<article class="doc">${renderMarkdown(lab.markdown)}${pager}</article>`,
-    })
-  );
-}
+const STATUS = { ready: ["ready", "listo"], building: ["documented", "en obra"], planned: ["manual", "pendiente"] };
 
-// Índice de laboratorios
-const byLevel = new Map();
-for (const lab of labs) {
-  if (!byLevel.has(lab.level)) byLevel.set(lab.level, []);
-  byLevel.get(lab.level).push(lab);
-}
-const LEVEL_LABEL = { initial: "Fundamentos", core: "Controles del kernel", advanced: "Fronteras fuertes", platform: "Plataforma" };
-const labsIndex = [...byLevel.entries()]
-  .map(
-    ([level, group]) => `<h2>${escape(LEVEL_LABEL[level] ?? level)}</h2>
-<div class="grid">${group
-      .map(
-        (lab) => `<a class="card lab" href="${lab.slug}.html">
-  <div class="card-top"><span class="num">${escape(lab.id)}</span><span class="chip ${lab.status}">${escape(lab.status)}</span></div>
-  <h3>${escape(lab.title)}</h3>
-  <p>${escape(lab.markdown.split("\n").find((line) => line && !line.startsWith("#") && !line.startsWith(">")) ?? "")}</p>
-</a>`
-      )
-      .join("")}</div>`
-  )
+const caseCards = cases
+  .map((item) => {
+    const [chip, label] = STATUS[item.status] ?? STATUS.planned;
+    return `<div class="card svc">
+  <div class="card-top"><span class="num">${escape(item.id)} · :${item.port}</span><span class="chip ${chip}">${escape(label)}</span></div>
+  <h3>${escape(item.title)}</h3>
+  <p class="teaches"><b>La idea:</b> ${escape(item.idea)}</p>
+  ${item.built ? `<p>${escape(item.service.description)}</p><code class="cmd">sandboxctl service up ${escape(item.slug)}</code>` : `<p>Todavía no construido.</p>`}
+</div>`;
+  })
   .join("");
 
-await writeFile(
-  join(out, "labs", "index.html"),
-  page({
-    title: "Laboratorios — sandbox-labs",
-    description: "18 laboratorios de aislamiento, del baseline sin restricciones a la plataforma multi-tenant.",
-    active: "labs/",
-    depth: 1,
-    body: `<section class="hero small">
-  <span class="eyebrow">${labs.length} laboratorios</span>
-  <h1>Del baseline sin restricciones a la plataforma multi-tenant</h1>
-  <p>Cada laboratorio aísla una dimensión y la mide. Empieza por el 01: sin ver qué alcanza
-  una carga cuando nadie la contiene, los controles siguientes no significan nada.</p>
-</section>
-${labsIndex}`,
-  })
-);
-
-// Conceptos
 await writeFile(
   join(out, "conceptos.html"),
   page({
     title: "Qué es un sandbox y por qué importa — sandbox-labs",
-    description: "Qué es un sandbox, qué problema resuelve, qué fronteras existen y cuál elegir.",
+    description: "Qué es un sandbox, qué problema resuelve y en qué se diferencia de Docker, WSL y un unikernel.",
     active: "conceptos.html",
     body: await readFile(join(root, "site-src", "conceptos.html"), "utf8"),
   })
 );
 
-// Portada
-const serviceCards = services
-  .map(
-    (service) => `<div class="card svc">
-  <div class="card-top"><span class="num">:${service.port}</span><span class="chip ${escape(service.category)}">${escape(service.category)}</span></div>
-  <h3>${escape(service.name)}</h3>
-  <p>${escape(service.description)}</p>
-  <p class="teaches"><b>Enseña:</b> ${escape(service.teaches)}</p>
-  <code class="cmd">sandboxctl service up ${escape(service.id)}</code>
-</div>`
-  )
-  .join("");
-
 await writeFile(
   join(out, "index.html"),
   page({
-    title: "sandbox-labs — levanta sandboxes y comprueba qué contienen",
+    title: "sandbox-labs — ejecuta código que no controlas",
     description:
-      "Levanta servicios dentro de un sandbox, ábrelos en el navegador y comprueba con sondas qué contiene realmente cada frontera de aislamiento.",
+      "Cada caso es un producto que se levanta en su propio localhost, donde haces tareas reales, y que se apaga dejando constancia de qué pudo tocar.",
     body: (await readFile(join(root, "site-src", "index.html"), "utf8"))
-      .replace("<!--SERVICES-->", serviceCards)
-      .replace(/<!--LABS_COUNT-->/g, String(labs.length))
-      .replace(/<!--SERVICES_COUNT-->/g, String(services.length))
+      .replace("<!--SERVICES-->", caseCards)
+      .replace(/<!--LABS_COUNT-->/g, String(cases.length))
+      .replace(/<!--SERVICES_COUNT-->/g, String(cases.filter((c) => c.built).length))
       .replace(/<!--VERSION-->/g, catalog.project.version),
   })
 );
 
 console.log(
-  `✅ Sitio generado: ${labs.length + 3} páginas (portada, conceptos, índice de labs y ${labs.length} laboratorios)`
+  `✅ Sitio generado: portada y conceptos · ${cases.length} casos (${cases.filter((c) => c.built).length} construidos)`
 );

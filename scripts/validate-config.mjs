@@ -42,19 +42,6 @@ for (const runtime of catalog.runtimes) {
 assert(runtimeIds.has(catalog.project.defaultRuntime), "defaultRuntime no registrado");
 assert(catalog.runtimes.find((value) => value.id === catalog.project.defaultRuntime)?.status === "ready", "defaultRuntime debe estar ready");
 
-const labIds = new Set();
-const registeredLabDirectories = new Set();
-for (const lab of catalog.labs) {
-  assert(!labIds.has(lab.id), `ID de laboratorio duplicado: ${lab.id}`);
-  labIds.add(lab.id);
-  const name = `${lab.id}-${lab.slug}`;
-  const directory = resolve(root, "labs", name);
-  assert((await stat(directory)).isDirectory(), `Falta laboratorio: labs/${name}`);
-  await access(resolve(directory, "README.md"));
-  registeredLabDirectories.add(name);
-}
-const diskLabDirectories = (await readdir(resolve(root, "labs"), { withFileTypes: true })).filter((entry) => entry.isDirectory()).map((entry) => entry.name);
-for (const name of diskLabDirectories) assert(registeredLabDirectories.has(name), `Laboratorio no registrado en catálogo: labs/${name}`);
 
 const policiesDirectory = resolve(root, catalog.policiesDirectory);
 const policyIds = new Set();
@@ -91,7 +78,7 @@ assert(workloadIds.size > 0, "No hay workloads");
 // Servicios: puertos únicos, política y runtimes existentes, entrypoint real.
 // Dos servicios con el mismo puerto se pisarían al levantarse, y el segundo
 // fallaría con un error de socket en vez de decir qué pasa.
-const serviceRoot = resolve(root, "services");
+const serviceRoot = resolve(root, catalog.casesDirectory);
 const servicePorts = new Map();
 const serviceIds = new Set();
 for (const entry of await readdir(serviceRoot, { withFileTypes: true })) {
@@ -107,7 +94,21 @@ for (const entry of await readdir(serviceRoot, { withFileTypes: true })) {
   for (const runtime of service.runtimes) assert(runtimeIds.has(runtime), `${service.id}: runtime desconocido (${runtime})`);
   await access(resolve(serviceRoot, entry.name, service.entrypoint));
 }
-assert(serviceIds.size > 0, "No hay servicios registrados");
+assert(serviceIds.size > 0, "No hay casos construidos");
+
+// El catálogo no puede prometer un caso que no existe en disco.
+const caseIds = new Set();
+const casePorts = new Map();
+for (const item of catalog.cases) {
+  assert(!caseIds.has(item.id), `Caso duplicado: ${item.id}`);
+  caseIds.add(item.id);
+  assert(!casePorts.has(item.port), `Puerto ${item.port} repetido entre casos`);
+  casePorts.set(item.port, item.slug);
+  if (item.status !== "planned") {
+    const file = resolve(root, catalog.casesDirectory, `${item.id}-${item.slug}`, "service.json");
+    await access(file);
+  }
+}
 
 // Suite de contención: cada sonda debe apuntar a una carga registrada y a una
 // dimensión declarada. Una sonda huérfana no mediría nada y pasaría por buena.
@@ -127,4 +128,4 @@ for (const dimension of dimensionIds) {
   assert(suite.probes.some((probe) => probe.dimension === dimension), `La dimensión ${dimension} no tiene ninguna sonda`);
 }
 
-console.log(`✅ Configuración válida: ${catalog.labs.length} labs, ${catalog.runtimes.length} runtimes, ${policyIds.size} policies, ${workloadIds.size} workloads, ${serviceIds.size} servicios, ${probeIds.size} sondas · v${catalog.project.version}`);
+console.log(`✅ Configuración válida: ${catalog.cases.length} casos (${serviceIds.size} construidos), ${catalog.runtimes.length} runtimes, ${policyIds.size} políticas, ${workloadIds.size} cargas, ${probeIds.size} sondas · v${catalog.project.version}`);

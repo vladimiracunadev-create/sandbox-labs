@@ -53,7 +53,7 @@ const policyById = new Map(policies.map((policy) => [policy.id, policy]));
 setText(byId("hero-version"), `v${system.version}`);
 setText(byId("foot-version"), `Sandbox Labs v${system.version}`);
 setText(byId("bind-address"), `${system.host}:${system.port}`);
-setText(byId("lab-count"), `${catalog.labs.length} laboratorios`);
+setText(byId("lab-count"), `${catalog.cases.length} casos`);
 // El badge se reconstruye entero para no depender del orden de los nodos.
 {
   const badge = byId("safe-mode");
@@ -71,7 +71,7 @@ setText(byId("lab-count"), `${catalog.labs.length} laboratorios`);
 function renderMetrics() {
   const available = catalog.runtimes.filter((runtime) => runtime.status === "ready" || runtime.status === "experimental");
   const entries = [
-    ["Laboratorios", catalog.labs.length],
+    ["Casos", catalog.cases.length],
     ["Runtimes", `${available.length}/${catalog.runtimes.length}`],
     ["Políticas", policies.length],
     ["Cargas", workloads.length],

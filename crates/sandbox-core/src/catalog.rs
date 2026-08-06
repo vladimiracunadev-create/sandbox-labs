@@ -7,9 +7,12 @@ use std::{collections::BTreeSet, fs, path::Path};
 pub struct Catalog {
     pub project: Project,
     pub runtimes: Vec<RuntimeDescriptor>,
-    pub labs: Vec<Lab>,
+    /// Los casos del sistema. Cada uno es un producto que se levanta en su
+    /// propio puerto y donde se hacen tareas, no un tema que se explica.
+    pub cases: Vec<Case>,
     pub workloads_directory: String,
     pub policies_directory: String,
+    pub cases_directory: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -35,11 +38,14 @@ pub struct RuntimeDescriptor {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Lab {
+pub struct Case {
     pub id: String,
     pub slug: String,
     pub title: String,
-    pub level: String,
+    /// La idea que este caso enseña y ningún otro enseña. Si dos casos
+    /// comparten idea, uno de los dos sobra.
+    pub idea: String,
+    pub port: u16,
     pub status: String,
 }
 
@@ -57,14 +63,20 @@ impl Catalog {
         if self.project.control_center_port == 0 {
             bail!("controlCenterPort debe ser mayor que cero");
         }
-        let mut lab_ids = BTreeSet::new();
+        let mut case_ids = BTreeSet::new();
         let mut slugs = BTreeSet::new();
-        for lab in &self.labs {
-            if !lab_ids.insert(&lab.id) {
-                bail!("ID de laboratorio duplicado: {}", lab.id);
+        let mut ports = BTreeSet::new();
+        for case in &self.cases {
+            if !case_ids.insert(&case.id) {
+                bail!("ID de caso duplicado: {}", case.id);
             }
-            if !slugs.insert(&lab.slug) {
-                bail!("Slug de laboratorio duplicado: {}", lab.slug);
+            if !slugs.insert(&case.slug) {
+                bail!("Slug de caso duplicado: {}", case.slug);
+            }
+            // Dos casos en el mismo puerto se pisan al levantarse y el segundo
+            // falla con un error de socket que no explica nada.
+            if !ports.insert(case.port) {
+                bail!("Puerto duplicado entre casos: {}", case.port);
             }
         }
         let mut runtime_ids = BTreeSet::new();

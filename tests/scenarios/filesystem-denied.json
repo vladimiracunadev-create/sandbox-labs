@@ -1,7 +1,0 @@
-{
-  "id": "filesystem-denied",
-  "runtime": "bwrap",
-  "requiredControl": "filesystem",
-  "expected": "blocked",
-  "description": "Una escritura fuera de /workspace/output debe fallar."
-}

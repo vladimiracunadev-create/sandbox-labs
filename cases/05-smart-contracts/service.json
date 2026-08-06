@@ -1,0 +1,23 @@
+{
+  "$schema": "../../schemas/service.schema.json",
+  "id": "smart-contracts",
+  "name": "Contratos inteligentes",
+  "category": "platform",
+  "description": "Firma transacciones con una clave privada que vive solo dentro del sandbox, en un proceso sin ninguna salida de red.",
+  "teaches": "El patrón real de un custodio: la clave no puede salir porque no hay por dónde. Fuera solo salen firmas.",
+  "port": 8805,
+  "kind": "python",
+  "entrypoint": "app.py",
+  "command": "python3",
+  "args": [],
+  "policy": "key-custody",
+  "runtimes": [
+    "bwrap",
+    "unshare"
+  ],
+  "healthPath": "/health",
+  "secrets": [
+    "SANDBOX_WALLET_KEY"
+  ],
+  "transport": "unix-socket"
+}

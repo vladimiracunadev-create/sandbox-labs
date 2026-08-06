@@ -4,11 +4,12 @@
   "type": "object",
   "additionalProperties": false,
   "required": [
+    "cases",
+    "casesDirectory",
+    "policiesDirectory",
     "project",
     "runtimes",
-    "labs",
-    "workloadsDirectory",
-    "policiesDirectory"
+    "workloadsDirectory"
   ],
   "properties": {
     "$schema": {
@@ -99,7 +100,18 @@
         }
       }
     },
-    "labs": {
+    "workloadsDirectory": {
+      "type": "string",
+      "minLength": 1
+    },
+    "policiesDirectory": {
+      "type": "string",
+      "minLength": 1
+    },
+    "casesDirectory": {
+      "type": "string"
+    },
+    "cases": {
       "type": "array",
       "minItems": 1,
       "items": {
@@ -109,13 +121,14 @@
           "id",
           "slug",
           "title",
-          "level",
+          "idea",
+          "port",
           "status"
         ],
         "properties": {
           "id": {
             "type": "string",
-            "pattern": "^\\d{2}$"
+            "pattern": "^[0-9]{2}$"
           },
           "slug": {
             "type": "string",
@@ -125,33 +138,25 @@
             "type": "string",
             "minLength": 1
           },
-          "level": {
-            "enum": [
-              "initial",
-              "intermediate",
-              "advanced",
-              "product"
-            ]
+          "idea": {
+            "type": "string",
+            "minLength": 1,
+            "description": "La idea que este caso enseña y ningún otro enseña."
+          },
+          "port": {
+            "type": "integer",
+            "minimum": 1024,
+            "maximum": 65535
           },
           "status": {
             "enum": [
-              "ready",
-              "experimental",
-              "documented",
-              "manual",
-              "planned"
+              "planned",
+              "building",
+              "ready"
             ]
           }
         }
       }
-    },
-    "workloadsDirectory": {
-      "type": "string",
-      "minLength": 1
-    },
-    "policiesDirectory": {
-      "type": "string",
-      "minLength": 1
     }
   }
 }

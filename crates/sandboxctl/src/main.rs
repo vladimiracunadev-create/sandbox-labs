@@ -25,7 +25,8 @@ enum Command {
         #[arg(long)]
         json: bool,
     },
-    Labs,
+    /// Los casos del sistema y su estado.
+    Cases,
     Runtimes {
         #[arg(long)]
         json: bool,
@@ -151,7 +152,7 @@ fn main() -> Result<()> {
     // CI, y un informe con fugas tiene que poder tumbar el build.
     let code = match cli.command {
         Command::Doctor { json } => doctor(json).map(|_| 0),
-        Command::Labs => labs(&root).map(|_| 0),
+        Command::Cases => cases(&root).map(|_| 0),
         Command::Runtimes { json } => runtimes(json).map(|_| 0),
         Command::Validate { policy, workload } => validate(&root, &policy, workload.as_deref()).map(|_| 0),
         Command::Plan { workload, runtime, policy, json } => plan(&root, &workload, &runtime, &policy, json).map(|_| 0),
@@ -215,11 +216,15 @@ fn doctor(json: bool) -> Result<()> {
     Ok(())
 }
 
-fn labs(root: &Path) -> Result<()> {
+fn cases(root: &Path) -> Result<()> {
     let catalog = Catalog::load(root.join("sandbox.config.json"))?;
-    println!("{} v{}", catalog.project.name, catalog.project.version);
-    for lab in catalog.labs {
-        println!("{} {:30} {:14} {}", lab.id, lab.slug, lab.level, lab.status);
+    println!(
+        "{} v{}
+",
+        catalog.project.name, catalog.project.version
+    );
+    for case in catalog.cases {
+        println!("{} {:22} :{:<6} {:10} {}", case.id, case.slug, case.port, case.status, case.idea);
     }
     Ok(())
 }

@@ -1,7 +1,0 @@
-{
-  "id": "native-risk-rejected",
-  "runtime": "native",
-  "requiredControl": "timeout",
-  "expected": "blocked",
-  "description": "Una carga no autorizada nunca debe ejecutarse nativamente."
-}

@@ -63,7 +63,7 @@ impl ServiceContext {
     }
 
     pub fn services(&self) -> Result<Vec<Service>> {
-        let directory = self.root.join("services");
+        let directory = self.root.join("cases");
         let mut found = Vec::new();
         let Ok(entries) = fs::read_dir(&directory) else {
             return Ok(found);
@@ -540,7 +540,7 @@ pub fn list(ctx: &ServiceContext, json_output: bool) -> Result<i32> {
     }
 
     if observed.is_empty() {
-        println!("No hay servicios registrados en services/.");
+        println!("No hay casos registrados en cases/.");
         return Ok(0);
     }
 

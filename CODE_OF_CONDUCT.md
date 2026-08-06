@@ -61,4 +61,4 @@ versión 2.1.
 
 ## 🔗 Ver también
 
-- [Cómo contribuir](CONTRIBUTING.md) · [Soporte](SUPPORT.md) · [Seguridad](SECURITY.md)
+- [Cómo contribuir](CONTRIBUTING.md) · [Seguridad](SECURITY.md)

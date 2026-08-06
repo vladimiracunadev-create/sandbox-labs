@@ -47,26 +47,27 @@ fn load_workload(relative: &str) -> Workload {
     Workload::load(repo_root().join(relative)).expect("carga del repositorio")
 }
 
-#[test]
-fn catalog_loads_and_validates() {
-    let catalog = Catalog::load(repo_root().join("sandbox.config.json")).expect("catálogo válido");
-    assert!(!catalog.labs.is_empty(), "el catálogo debe declarar laboratorios");
-    assert!(!catalog.runtimes.is_empty(), "el catálogo debe declarar runtimes");
-    assert_eq!(catalog.project.name, "Sandbox Labs");
+/// Los casos que existen en disco (los que ya están construidos).
+fn built_cases() -> Vec<sandbox_core::Service> {
+    let mut found = Vec::new();
+    let Ok(entries) = fs::read_dir(repo_root().join("cases")) else { return found };
+    for entry in entries.filter_map(Result::ok) {
+        let manifest = entry.path().join("service.json");
+        if manifest.is_file() {
+            found
+                .push(sandbox_core::Service::load(&manifest).unwrap_or_else(|e| panic!("{}: {e}", manifest.display())));
+        }
+    }
+    found.sort_by(|a, b| a.id.cmp(&b.id));
+    found
 }
 
 #[test]
-fn catalog_labs_match_directories() {
+fn catalog_loads_and_validates() {
     let catalog = Catalog::load(repo_root().join("sandbox.config.json")).expect("catálogo válido");
-    // El directorio combina id y slug: 01-baseline-unrestricted.
-    let declared: BTreeSet<String> = catalog.labs.iter().map(|lab| format!("{}-{}", lab.id, lab.slug)).collect();
-    let on_disk: BTreeSet<String> = fs::read_dir(repo_root().join("labs"))
-        .expect("directorio labs")
-        .filter_map(Result::ok)
-        .filter(|entry| entry.path().is_dir())
-        .map(|entry| entry.file_name().to_string_lossy().to_string())
-        .collect();
-    assert_eq!(declared, on_disk, "el catálogo y el directorio labs/ se desincronizaron");
+    assert!(!catalog.cases.is_empty(), "el catálogo debe declarar casos");
+    assert!(!catalog.runtimes.is_empty(), "el catálogo debe declarar runtimes");
+    assert_eq!(catalog.project.name, "Sandbox Labs");
 }
 
 #[test]
@@ -330,49 +331,8 @@ fn escape_probes_pass_the_real_resource_budget() {
 }
 
 #[test]
-fn lab_readmes_agree_with_the_catalog() {
-    // El estado de un laboratorio vive en dos sitios que se leen por separado:
-    // el catálogo (lo consume el panel) y su README (lo lee una persona). Si
-    // divergen, uno de los dos miente y no hay forma de saber cuál.
-    let catalog = Catalog::load(repo_root().join("sandbox.config.json")).expect("catálogo válido");
-    for lab in &catalog.labs {
-        let path = repo_root().join("labs").join(format!("{}-{}", lab.id, lab.slug)).join("README.md");
-        let content = fs::read_to_string(&path).unwrap_or_else(|_| panic!("falta {}", path.display()));
-
-        let declared = content
-            .lines()
-            .find_map(|line| line.split("**Estado:** `").nth(1)?.split('`').next())
-            .unwrap_or_else(|| panic!("{} no declara estado", path.display()))
-            .to_string();
-        assert_eq!(declared, lab.status, "{} declara {declared} y el catálogo {}", path.display(), lab.status);
-
-        // Un laboratorio sin contenido real es una plantilla: se exige que
-        // traiga diagrama, práctica y verificación, no solo encabezados.
-        for section in ["```mermaid", "## ▶️ Práctica", "## ✅ Cómo se verifica", "## 🏭 Caso de uso real"] {
-            assert!(content.contains(section), "{} no incluye «{section}»", path.display());
-        }
-        assert!(content.lines().count() >= 60, "{} es demasiado corto para ser útil", path.display());
-    }
-}
-
-// ── Servicios sandboxeados ───────────────────────────────────────────────────
-
-fn services() -> Vec<sandbox_core::Service> {
-    let mut found = Vec::new();
-    for entry in fs::read_dir(repo_root().join("services")).expect("directorio services").filter_map(Result::ok) {
-        let manifest = entry.path().join("service.json");
-        if manifest.is_file() {
-            found
-                .push(sandbox_core::Service::load(&manifest).unwrap_or_else(|e| panic!("{}: {e}", manifest.display())));
-        }
-    }
-    found.sort_by(|a, b| a.id.cmp(&b.id));
-    found
-}
-
-#[test]
 fn every_service_loads_and_validates() {
-    let all = services();
+    let all = built_cases();
     assert!(!all.is_empty(), "no hay servicios registrados");
     let mut ids = BTreeSet::new();
     for service in &all {
@@ -386,7 +346,7 @@ fn services_never_share_a_port() {
     // Dos servicios en el mismo puerto se pisan al levantarse y el segundo
     // falla con un error de socket que no dice qué pasó.
     let mut ports = BTreeSet::new();
-    for service in services() {
+    for service in built_cases() {
         assert!(ports.insert(service.port), "puerto {} repetido en {}", service.port, service.id);
     }
 }
@@ -395,7 +355,7 @@ fn services_never_share_a_port() {
 fn service_policies_and_runtimes_are_registered() {
     let policies: BTreeSet<String> =
         policy_files().iter().map(|p| p.file_stem().unwrap().to_string_lossy().to_string()).collect();
-    for service in services() {
+    for service in built_cases() {
         assert!(policies.contains(&service.policy), "{}: política no registrada ({})", service.id, service.policy);
         for runtime in &service.runtimes {
             RuntimeKind::from_str(runtime).unwrap_or_else(|_| panic!("{}: runtime desconocido {runtime}", service.id));
@@ -422,7 +382,49 @@ fn the_service_policy_keeps_loopback_open_on_purpose() {
 
 #[test]
 fn service_ports_are_unprivileged() {
-    for service in services() {
+    for service in built_cases() {
         assert!(service.port >= 1024, "{} usa un puerto privilegiado: {}", service.id, service.port);
+    }
+}
+
+// ── Casos ────────────────────────────────────────────────────────────────────
+
+#[test]
+fn catalog_cases_are_coherent() {
+    let catalog = Catalog::load(repo_root().join("sandbox.config.json")).expect("catálogo válido");
+    assert!(!catalog.cases.is_empty(), "el catálogo debe declarar casos");
+
+    let mut ports = BTreeSet::new();
+    for case in &catalog.cases {
+        assert!(ports.insert(case.port), "puerto duplicado: {}", case.port);
+        assert!(case.port >= 1024, "{} usa un puerto privilegiado", case.slug);
+        // Un caso sin idea propia es un tema, no un caso.
+        assert!(case.idea.len() > 20, "{} no explica qué idea enseña", case.slug);
+        assert!(
+            matches!(case.status.as_str(), "planned" | "building" | "ready"),
+            "{} declara un estado desconocido: {}",
+            case.slug,
+            case.status
+        );
+    }
+}
+
+#[test]
+fn built_cases_live_in_the_cases_directory() {
+    // Un caso `ready` o `building` tiene que existir en disco; uno `planned`
+    // todavía no. Así el catálogo no puede prometer algo que no está.
+    let catalog = Catalog::load(repo_root().join("sandbox.config.json")).expect("catálogo válido");
+    for case in &catalog.cases {
+        let directory = repo_root().join(&catalog.cases_directory).join(format!("{}-{}", case.id, case.slug));
+        match case.status.as_str() {
+            "planned" => {}
+            _ => assert!(
+                directory.join("service.json").is_file(),
+                "{} está en estado {} pero no existe {}",
+                case.slug,
+                case.status,
+                directory.display()
+            ),
+        }
     }
 }

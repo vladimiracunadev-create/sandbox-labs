@@ -141,7 +141,7 @@ hacía pasar por control de contención algo que no lo era.
 
 **Corregido**: se retiró `--nproc` y el control `processes` **ya no se
 declara**. Un techo real de PIDs necesita el controlador `pids` de cgroups v2 —
-está en [el backlog](IMPLEMENTATION_BACKLOG.md).
+necesita el controlador `pids` de cgroups v2.
 
 ### 3. `--strict` aprobaba sin haber medido nada
 
@@ -232,7 +232,5 @@ además que ninguna dimensión se quede sin sonda.
 
 ## 🔗 Ver también
 
-- [Lab 16 · Suite de contención](../labs/16-escape-test-suite/) — el recorrido guiado
-- [Matriz de controles](CONTROL_ENFORCEMENT_MATRIX.md) — qué declara cada runtime
 - [Modelo de amenazas](THREAT_MODEL.md) — qué protege el sistema y qué no
 - [Formato de evidencia](EVIDENCE_FORMAT.md)

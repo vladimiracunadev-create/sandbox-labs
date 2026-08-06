@@ -2,7 +2,7 @@
   "$schema": "./schemas/catalog.schema.json",
   "project": {
     "name": "Sandbox Labs",
-    "version": "0.8.0",
+    "version": "0.1.0",
     "controlCenterPort": 9093,
     "defaultRuntime": "dry-run",
     "evidenceDirectory": "evidence/runs",
@@ -154,134 +154,49 @@
       ]
     }
   ],
-  "labs": [
+  "workloadsDirectory": "workloads",
+  "policiesDirectory": "policies",
+  "casesDirectory": "cases",
+  "cases": [
     {
       "id": "01",
-      "slug": "baseline-unrestricted",
-      "title": "Baseline sin restricciones",
-      "level": "initial",
-      "status": "ready"
+      "slug": "untrusted-render",
+      "title": "Contenido web no confiable",
+      "idea": "Aislar por proceso: quien interpreta contenido ajeno no toca el disco",
+      "port": 8801,
+      "status": "planned"
     },
     {
       "id": "02",
-      "slug": "users-and-permissions",
-      "title": "Usuarios y permisos",
-      "level": "initial",
-      "status": "ready"
+      "slug": "ai-code-runner",
+      "title": "Código generado por IA",
+      "idea": "Efímero y sin red: se crea, ejecuta y se destruye",
+      "port": 8802,
+      "status": "building"
     },
     {
       "id": "03",
-      "slug": "filesystem-jail",
-      "title": "Jail de filesystem",
-      "level": "initial",
-      "status": "ready"
+      "slug": "file-detonation",
+      "title": "Detonación de archivo sospechoso",
+      "idea": "El sandbox como microscopio: el informe vale más que el bloqueo",
+      "port": 8803,
+      "status": "building"
     },
     {
       "id": "04",
-      "slug": "linux-namespaces",
-      "title": "Namespaces Linux",
-      "level": "intermediate",
-      "status": "ready"
+      "slug": "third-party-plugins",
+      "title": "Plugins de terceros",
+      "idea": "Conceder capacidades una a una en vez de restar permisos",
+      "port": 8804,
+      "status": "planned"
     },
     {
       "id": "05",
-      "slug": "cgroups-limits",
-      "title": "Límites con cgroups v2",
-      "level": "intermediate",
-      "status": "documented"
-    },
-    {
-      "id": "06",
-      "slug": "linux-capabilities",
-      "title": "Linux capabilities",
-      "level": "intermediate",
-      "status": "ready"
-    },
-    {
-      "id": "07",
-      "slug": "seccomp-syscalls",
-      "title": "Seccomp y syscalls",
-      "level": "intermediate",
-      "status": "documented"
-    },
-    {
-      "id": "08",
-      "slug": "landlock-policies",
-      "title": "Políticas Landlock",
-      "level": "intermediate",
-      "status": "documented"
-    },
-    {
-      "id": "09",
-      "slug": "network-egress",
-      "title": "Control de salida de red",
-      "level": "intermediate",
-      "status": "ready"
-    },
-    {
-      "id": "10",
-      "slug": "rootless-sandbox",
-      "title": "Sandbox rootless",
-      "level": "intermediate",
-      "status": "ready"
-    },
-    {
-      "id": "11",
-      "slug": "gvisor-runsc",
-      "title": "gVisor runsc",
-      "level": "advanced",
-      "status": "documented"
-    },
-    {
-      "id": "12",
-      "slug": "kata-containers",
-      "title": "Kata Containers",
-      "level": "advanced",
-      "status": "documented"
-    },
-    {
-      "id": "13",
-      "slug": "firecracker-microvm",
-      "title": "Firecracker microVM",
-      "level": "advanced",
-      "status": "manual"
-    },
-    {
-      "id": "14",
-      "slug": "wasm-wasi",
-      "title": "WebAssembly y WASI",
-      "level": "intermediate",
-      "status": "documented"
-    },
-    {
-      "id": "15",
-      "slug": "ai-code-runner",
-      "title": "AI Code Runner",
-      "level": "product",
-      "status": "ready"
-    },
-    {
-      "id": "16",
-      "slug": "escape-test-suite",
-      "title": "Escape Test Suite",
-      "level": "advanced",
-      "status": "ready"
-    },
-    {
-      "id": "17",
-      "slug": "sandbox-benchmarks",
-      "title": "Benchmarks reproducibles",
-      "level": "advanced",
-      "status": "ready"
-    },
-    {
-      "id": "18",
-      "slug": "multi-tenant-platform",
-      "title": "Plataforma multi-tenant",
-      "level": "product",
-      "status": "documented"
+      "slug": "smart-contracts",
+      "title": "Contratos inteligentes",
+      "idea": "Sin entrada ni salida, con el trabajo medido en vez del tiempo",
+      "port": 8805,
+      "status": "building"
     }
-  ],
-  "workloadsDirectory": "workloads",
-  "policiesDirectory": "policies"
+  ]
 }

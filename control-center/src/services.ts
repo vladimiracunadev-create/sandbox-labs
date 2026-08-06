@@ -17,7 +17,7 @@ const ACTIONS = new Set(["up", "down"]);
 const ACTION_TIMEOUT_MS = 180_000;
 
 export async function loadServices(paths) {
-  const directory = join(paths.repoRoot, "services");
+  const directory = join(paths.repoRoot, "cases");
   const found = [];
   let entries;
   try {

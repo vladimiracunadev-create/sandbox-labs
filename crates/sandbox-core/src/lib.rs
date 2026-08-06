@@ -10,7 +10,7 @@ pub mod service;
 pub mod workload;
 
 pub use bench::{BenchmarkReport, RuntimeBenchmark, Stats};
-pub use catalog::{Catalog, Lab, Project, RuntimeDescriptor};
+pub use catalog::{Case, Catalog, Project, RuntimeDescriptor};
 pub use doctor::{DoctorCheck, DoctorReport};
 pub use escape::{EscapeSuite, Probe, ProbeResult, RuntimeReport, SuiteReport, Verdict};
 pub use evidence::{Evidence, EvidenceStatus, Violation};

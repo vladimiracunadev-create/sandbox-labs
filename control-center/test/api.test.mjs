@@ -81,7 +81,9 @@ test("publica catálogo y metadatos sin exponer rutas del host", async (t) => {
   assert.equal(system.executionModel, "registered-workloads-only");
 
   const catalog = await fetch(`${base}/api/catalog`).then((response) => response.json());
-  assert.ok(Array.isArray(catalog.labs) && catalog.labs.length > 0);
+  assert.ok(Array.isArray(catalog.cases) && catalog.cases.length > 0);
+  // Cada caso debe declarar la idea que enseña: sin eso es un tema, no un caso.
+  assert.ok(catalog.cases.every((value) => typeof value.idea === "string" && value.idea.length > 20));
 
   const policies = await fetch(`${base}/api/policies`).then((response) => response.json());
   assert.ok(policies.length > 0);
