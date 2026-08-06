@@ -234,6 +234,11 @@ pub struct ServiceRecord {
     /// uso, señalando a un servicio que ya no existe.
     #[serde(default)]
     pub proxy_pid: Option<u32>,
+    /// Momento de arranque del reenviador, por la misma razón que
+    /// `start_ticks`: el PID por sí solo no identifica a nadie, y señalizar a
+    /// quien heredó el número es peor que dejar un proceso vivo.
+    #[serde(default)]
+    pub proxy_start_ticks: Option<u64>,
     /// Controles que el runtime declaró aplicar al levantarlo. Se guardan aquí
     /// para que la tarjeta del panel muestre bajo qué contención corre, no solo
     /// que corre.

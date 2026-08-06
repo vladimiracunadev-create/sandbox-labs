@@ -463,11 +463,13 @@ pub fn up(ctx: &ServiceContext, id: &str, wait: bool) -> Result<i32> {
     // y empalma con el socket en cuanto el servicio lo enlace. Una conexión que
     // llegue antes se cierra sola sin tumbarlo.
     let proxy_pid = if service.needs_proxy() { Some(spawn_proxy(ctx, &service)?) } else { None };
+    let proxy_start_ticks = proxy_pid.and_then(process_start_ticks);
 
     let record = ServiceRecord {
         id: service.id.clone(),
         pid: child.id(),
         proxy_pid,
+        proxy_start_ticks,
         port: service.port,
         runtime: runtime.to_string(),
         policy: policy.id.clone(),
@@ -543,17 +545,21 @@ pub fn down(ctx: &ServiceContext, id: &str) -> Result<i32> {
     // sobrevive, deja el puerto ocupado y el siguiente `up` falla diciendo que
     // está en uso, señalando a un servicio que ya no existe.
     //
-    // Sin comprobación de `start_ticks` porque el registro no la guarda para
-    // este PID: se manda TERM y después KILL, que es lo que hace el reenviador
-    // esperable. El riesgo de PID reutilizado se acota comprobando antes que el
-    // registro que lo nombra sigue siendo el vigente.
+    // Con la misma comprobación de identidad que el sandbox: el PID por sí solo
+    // no identifica a nadie, y este repositorio ya se llevó el susto de matar a
+    // quien había heredado el número. Si el reenviador ya no es ese proceso, no
+    // se señaliza a nadie.
     if let Some(proxy) = record.proxy_pid {
-        terminate(proxy);
-        let started = Instant::now();
-        while started.elapsed() < Duration::from_secs(3) && port_responds(service.port) {
-            std::thread::sleep(Duration::from_millis(150));
+        if same_process(proxy, record.proxy_start_ticks) {
+            terminate(proxy);
+            let started = Instant::now();
+            while started.elapsed() < Duration::from_secs(3) && same_process(proxy, record.proxy_start_ticks) {
+                std::thread::sleep(Duration::from_millis(150));
+            }
+            if same_process(proxy, record.proxy_start_ticks) {
+                kill(proxy);
+            }
         }
-        kill(proxy);
     }
 
     ServiceRecord::remove(&ctx.data_root, &service.id);
