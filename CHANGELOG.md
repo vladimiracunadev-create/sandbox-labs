@@ -35,6 +35,24 @@ Versionado semántico.
   `XDG_RUNTIME_DIR` y `DBUS_SESSION_BUS_ADDRESS` en `/proc/1/environ`. Se borran
   con `env -u` entre el scope y el runtime.
 
+### Added — la evidencia dice también lo que la carga consumió
+
+- **`limits.observed`**: `memoryPeakBytes`, `pidsPeak`, `cpuUsageUsec` y
+  `oomKills`, leídos del cgroup **mientras la carga corre**. Hay que muestrear
+  porque systemd retira el cgroup en cuanto el scope termina: leer al final no
+  encuentra nada. Aplicar un límite y medir el consumo son cosas distintas, y
+  hasta ahora solo se hacía lo primero.
+- **`oomKills` convierte un código de salida inexplicable en un hecho.** Sin él,
+  un proceso que el kernel mató por memoria se parece a uno que falló solo.
+- El muestreo solo ocurre cuando hubo cgroup propio. Sin envoltorio,
+  `/proc/<pid>/cgroup` apunta al de la sesión del host, y publicar sus cifras
+  como consumo de la carga serían números reales de la máquina equivocada.
+- Un campo ausente significa «no se pudo leer», nunca «cero»: lo que no se midió
+  no se publica.
+- Una prueba envuelve un proceso real, le hace reservar 40 MB y comprueba que el
+  pico observado los refleja — si el muestreo llegara tarde, no habría nada que
+  leer y lo diría.
+
 ### Fixed — la carga corría con tu identidad, no con la de la política
 
 - **`--uid`/`--gid` de la política, aplicados.** `process.user` y

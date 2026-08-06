@@ -3,73 +3,301 @@
   "title": "Sandbox Labs Evidence",
   "type": "object",
   "additionalProperties": false,
-  "required": ["schemaVersion", "runId", "timestamp", "status", "runtime", "host", "integrity", "policy", "workload", "limits", "result", "violations", "unsupported", "plan"],
+  "required": [
+    "schemaVersion",
+    "runId",
+    "timestamp",
+    "status",
+    "runtime",
+    "host",
+    "integrity",
+    "policy",
+    "workload",
+    "limits",
+    "result",
+    "violations",
+    "unsupported",
+    "plan"
+  ],
   "properties": {
-    "schemaVersion": { "const": "1.0" },
-    "runId": { "type": "string", "minLength": 8, "maxLength": 80, "pattern": "^[a-zA-Z0-9-]+$" },
-    "timestamp": { "type": "string", "minLength": 20 },
-    "status": { "enum": ["planned", "running", "completed", "failed", "blocked", "cancelled", "timeout"] },
+    "schemaVersion": {
+      "const": "1.0"
+    },
+    "runId": {
+      "type": "string",
+      "minLength": 8,
+      "maxLength": 80,
+      "pattern": "^[a-zA-Z0-9-]+$"
+    },
+    "timestamp": {
+      "type": "string",
+      "minLength": 20
+    },
+    "status": {
+      "enum": [
+        "planned",
+        "running",
+        "completed",
+        "failed",
+        "blocked",
+        "cancelled",
+        "timeout"
+      ]
+    },
     "runtime": {
-      "type": "object", "additionalProperties": false,
-      "required": ["id", "version", "available"],
-      "properties": { "id": { "type": "string", "minLength": 1 }, "version": { "type": "string" }, "available": { "type": "boolean" } }
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "version",
+        "available"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "version": {
+          "type": "string"
+        },
+        "available": {
+          "type": "boolean"
+        }
+      }
     },
     "host": {
-      "type": "object", "additionalProperties": false,
-      "required": ["os", "architecture"],
-      "properties": { "os": { "type": "string" }, "architecture": { "type": "string" }, "family": { "type": "string" }, "kernel": { "type": "string" } }
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "os",
+        "architecture"
+      ],
+      "properties": {
+        "os": {
+          "type": "string"
+        },
+        "architecture": {
+          "type": "string"
+        },
+        "family": {
+          "type": "string"
+        },
+        "kernel": {
+          "type": "string"
+        }
+      }
     },
     "integrity": {
-      "type": "object", "additionalProperties": false,
-      "required": ["policySha256", "workloadSha256", "runnerVersion"],
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "policySha256",
+        "workloadSha256",
+        "runnerVersion"
+      ],
       "properties": {
-        "policySha256": { "type": "string", "minLength": 16 },
-        "workloadSha256": { "type": "string", "minLength": 16 },
-        "runnerSha256": { "type": "string", "minLength": 1 },
-        "runnerVersion": { "type": "string", "minLength": 1 }
+        "policySha256": {
+          "type": "string",
+          "minLength": 16
+        },
+        "workloadSha256": {
+          "type": "string",
+          "minLength": 16
+        },
+        "runnerSha256": {
+          "type": "string",
+          "minLength": 1
+        },
+        "runnerVersion": {
+          "type": "string",
+          "minLength": 1
+        }
       }
     },
     "policy": {
-      "type": "object", "additionalProperties": false,
-      "required": ["id", "enforcement", "requestedControls"],
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "enforcement",
+        "requestedControls"
+      ],
       "properties": {
-        "id": { "type": "string" }, "enforcement": { "enum": ["strict", "best-effort"] },
-        "requestedControls": { "type": "array", "items": { "type": "string" }, "uniqueItems": true },
-        "effectiveControls": { "type": "array", "items": { "type": "string" }, "uniqueItems": true },
-        "unsupportedControls": { "type": "array", "items": { "type": "string" }, "uniqueItems": true }
+        "id": {
+          "type": "string"
+        },
+        "enforcement": {
+          "enum": [
+            "strict",
+            "best-effort"
+          ]
+        },
+        "requestedControls": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "uniqueItems": true
+        },
+        "effectiveControls": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "uniqueItems": true
+        },
+        "unsupportedControls": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "uniqueItems": true
+        }
       }
     },
     "workload": {
-      "type": "object", "additionalProperties": false,
-      "required": ["id", "path", "risk", "expected"],
-      "properties": { "id": { "type": "string" }, "path": { "type": "string" }, "risk": { "type": "string" }, "expected": { "type": "string" } }
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "path",
+        "risk",
+        "expected"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "path": {
+          "type": "string"
+        },
+        "risk": {
+          "type": "string"
+        },
+        "expected": {
+          "type": "string"
+        }
+      }
     },
     "limits": {
-      "type": "object", "additionalProperties": false,
-      "required": ["requested", "effective"],
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "requested",
+        "effective",
+        "observed"
+      ],
       "properties": {
-        "requested": { "type": "object" },
-        "effective": { "type": "object", "additionalProperties": { "type": ["string", "number", "boolean", "null"] } }
+        "requested": {
+          "type": "object"
+        },
+        "effective": {
+          "type": "object",
+          "additionalProperties": {
+            "type": [
+              "string",
+              "number",
+              "boolean",
+              "null"
+            ]
+          }
+        },
+        "observed": {
+          "description": "Consumo real leído del cgroup mientras la carga corría. Vacío si no hubo cgroup propio que observar: nunca se rellena con cifras del host.",
+          "type": "object",
+          "additionalProperties": {
+            "type": [
+              "string",
+              "number",
+              "boolean",
+              "null"
+            ]
+          }
+        }
       }
     },
     "result": {
-      "type": "object", "additionalProperties": false,
-      "required": ["exitCode", "reason", "durationMs", "stdout", "stderr", "stdoutTruncated", "stderrTruncated"],
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "exitCode",
+        "reason",
+        "durationMs",
+        "stdout",
+        "stderr",
+        "stdoutTruncated",
+        "stderrTruncated"
+      ],
       "properties": {
-        "exitCode": { "type": ["integer", "null"] }, "reason": { "type": ["string", "null"] },
-        "durationMs": { "type": "integer", "minimum": 0 }, "stdout": { "type": "string" }, "stderr": { "type": "string" },
-        "stdoutTruncated": { "type": "boolean" }, "stderrTruncated": { "type": "boolean" }
+        "exitCode": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "reason": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "durationMs": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "stdout": {
+          "type": "string"
+        },
+        "stderr": {
+          "type": "string"
+        },
+        "stdoutTruncated": {
+          "type": "boolean"
+        },
+        "stderrTruncated": {
+          "type": "boolean"
+        }
       }
     },
     "violations": {
       "type": "array",
       "items": {
-        "type": "object", "additionalProperties": false,
-        "required": ["control", "operation", "target", "result"],
-        "properties": { "control": { "type": "string" }, "operation": { "type": "string" }, "target": { "type": "string" }, "result": { "type": "string" } }
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "control",
+          "operation",
+          "target",
+          "result"
+        ],
+        "properties": {
+          "control": {
+            "type": "string"
+          },
+          "operation": {
+            "type": "string"
+          },
+          "target": {
+            "type": "string"
+          },
+          "result": {
+            "type": "string"
+          }
+        }
       }
     },
-    "unsupported": { "type": "array", "items": { "type": "string" }, "uniqueItems": true },
-    "plan": { "type": "array", "items": { "type": "string" } }
+    "unsupported": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "uniqueItems": true
+    },
+    "plan": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
   }
 }

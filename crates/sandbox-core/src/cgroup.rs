@@ -34,17 +34,33 @@
 //! devuelve «no disponible» y los controles **no se declaran**. Nunca se
 //! sustituyen por un `prlimit` disfrazado.
 //!
-//! # Qué NO hace todavía
+//! # Aplicar y observar son cosas distintas
 //!
-//! Aplicar los límites y observar el consumo son cosas distintas. Esto aplica.
-//! Leer `memory.peak`, `pids.peak` y el contador `oom_kill` de `memory.events`
-//! exige muestrear el cgroup mientras la carga corre, porque systemd retira el
-//! cgroup en cuanto el scope termina. Está en B-02 del backlog técnico.
+//! Un límite dice lo que el kernel impedirá; el consumo dice lo que pasó. Este
+//! módulo hace las dos: `wrap` aplica y `Sampler` observa.
+//!
+//! Observar obliga a muestrear **mientras** la carga corre, porque systemd
+//! retira el cgroup en cuanto el scope termina. Medido:
+//!
+//! ```text
+//! durante : memory.peak = 46288896   pids.peak = 1   oom_kill = 0
+//! después : el directorio ya no existe
+//! ```
+//!
+//! Y solo se muestrea cuando el envoltorio existe. Sin él, `/proc/<pid>/cgroup`
+//! apunta al cgroup de la sesión del host, y publicar sus cifras como consumo
+//! de la carga sería peor que no medir nada.
 
 use crate::ResourcePolicy;
 use std::{
+    path::{Path, PathBuf},
     process::{Command, Stdio},
-    sync::OnceLock,
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        Arc, OnceLock,
+    },
+    thread::JoinHandle,
+    time::Duration,
 };
 
 /// Qué puede respaldar el host en materia de límites de recursos.
@@ -90,8 +106,8 @@ fn probe() -> CgroupSupport {
         return CgroupSupport::unavailable("no hay cgroups v2 montado en /sys/fs/cgroup");
     }
     // El sondeo ejecuta la MISMA forma de comando que `wrap`, incluido el
-    // `env -u` que borra las variables del bus. Si sondeara una forma más
-    // simple, podría salir disponible y luego fallar al ejecutar de verdad.
+    // `env -i` que vacía el entorno. Si sondeara una forma más simple, podría
+    // salir disponible y luego fallar al ejecutar de verdad.
     let (program, args) = build_chain("true", &[], &probe_limits());
     let mut command = Command::new(program);
     command.args(args).stdin(Stdio::null()).stdout(Stdio::null()).stderr(Stdio::piped());
@@ -200,6 +216,148 @@ fn build_chain(program: &str, args: &[String], limits: &ResourcePolicy) -> (Stri
 /// a la ruta por defecto del sistema, que es donde viven `prlimit` y `bwrap`.
 const EMPTY_ENVIRONMENT: (&str, &str) = ("env", "-i");
 
+/// Lo que la carga consumió de verdad, leído del cgroup mientras corría.
+///
+/// Aplicar un límite y medir el consumo son cosas distintas: lo primero dice lo
+/// que el kernel impedirá, lo segundo lo que pasó. Un `Ninguno` aquí significa
+/// que no se pudo leer, nunca que valga cero.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct Usage {
+    /// Marca de agua de memoria, de `memory.peak`.
+    pub memory_peak_bytes: Option<u64>,
+    /// Máximo de procesos vivos a la vez, de `pids.peak`.
+    pub pids_peak: Option<u64>,
+    /// CPU consumida, de `usage_usec` en `cpu.stat`.
+    pub cpu_usage_usec: Option<u64>,
+    /// Veces que el kernel mató un proceso por falta de memoria, de
+    /// `oom_kill` en `memory.events`. Es lo que convierte un código de salida
+    /// inexplicable en un hecho.
+    pub oom_kills: Option<u64>,
+}
+
+impl Usage {
+    /// Se queda con el mayor de cada campo.
+    ///
+    /// Los contadores del kernel ya son monotónicos, así que esto solo protege
+    /// del caso en que una lectura tardía falle —el cgroup desaparece en cuanto
+    /// el scope termina— y devuelva `None` sobre un valor que sí se había leído.
+    fn merge(&mut self, other: &Self) {
+        fn keep_max(current: &mut Option<u64>, new: Option<u64>) {
+            if let Some(value) = new {
+                *current = Some(current.map_or(value, |old| old.max(value)));
+            }
+        }
+        keep_max(&mut self.memory_peak_bytes, other.memory_peak_bytes);
+        keep_max(&mut self.pids_peak, other.pids_peak);
+        keep_max(&mut self.cpu_usage_usec, other.cpu_usage_usec);
+        keep_max(&mut self.oom_kills, other.oom_kills);
+    }
+
+    /// En la forma que espera la evidencia: solo lo que se pudo medir.
+    pub fn to_map(&self) -> std::collections::BTreeMap<String, String> {
+        let mut map = std::collections::BTreeMap::new();
+        if let Some(value) = self.memory_peak_bytes {
+            map.insert("memoryPeakBytes".into(), value.to_string());
+        }
+        if let Some(value) = self.pids_peak {
+            map.insert("pidsPeak".into(), value.to_string());
+        }
+        if let Some(value) = self.cpu_usage_usec {
+            map.insert("cpuUsageUsec".into(), value.to_string());
+        }
+        if let Some(value) = self.oom_kills {
+            map.insert("oomKills".into(), value.to_string());
+        }
+        map
+    }
+}
+
+/// Directorio del cgroup de un proceso, según `/proc/<pid>/cgroup`.
+///
+/// La línea de cgroups v2 es `0::<ruta>`, relativa a la raíz de la jerarquía.
+pub fn directory_of(pid: u32) -> Option<PathBuf> {
+    let content = std::fs::read_to_string(format!("/proc/{pid}/cgroup")).ok()?;
+    let relative = content.lines().find_map(|line| line.strip_prefix("0::"))?.trim();
+    let directory = PathBuf::from("/sys/fs/cgroup").join(relative.trim_start_matches('/'));
+    directory.is_dir().then_some(directory)
+}
+
+fn read_number(directory: &Path, file: &str) -> Option<u64> {
+    std::fs::read_to_string(directory.join(file)).ok()?.trim().parse().ok()
+}
+
+/// Busca `clave <número>` en un fichero de pares, como `cpu.stat` o
+/// `memory.events`.
+fn read_field(directory: &Path, file: &str, key: &str) -> Option<u64> {
+    let content = std::fs::read_to_string(directory.join(file)).ok()?;
+    content.lines().find_map(|line| {
+        let mut parts = line.split_whitespace();
+        (parts.next()? == key).then(|| parts.next()?.parse().ok())?
+    })
+}
+
+/// Lee el consumo actual del cgroup. Barato: son ficheros de `/sys`.
+pub fn read_usage(directory: &Path) -> Usage {
+    Usage {
+        memory_peak_bytes: read_number(directory, "memory.peak"),
+        pids_peak: read_number(directory, "pids.peak"),
+        cpu_usage_usec: read_field(directory, "cpu.stat", "usage_usec"),
+        oom_kills: read_field(directory, "memory.events", "oom_kill"),
+    }
+}
+
+/// Muestrea el cgroup de un proceso mientras vive.
+///
+/// Hace falta porque systemd **retira el cgroup en cuanto el scope termina**:
+/// leer al final no encuentra nada. Comprobado — la ruta existe durante la
+/// ejecución y ha desaparecido justo después.
+pub struct Sampler {
+    stop: Arc<AtomicBool>,
+    worker: Option<JoinHandle<Usage>>,
+}
+
+impl Sampler {
+    /// Arranca el muestreo del cgroup de `pid`.
+    ///
+    /// Devuelve `None` cuando no hay cgroup propio que mirar. Es deliberado:
+    /// sin el envoltorio de systemd, `/proc/<pid>/cgroup` apunta al cgroup de
+    /// la **sesión del host**, y publicar sus cifras como consumo de la carga
+    /// sería peor que no medir nada.
+    pub fn start(pid: u32) -> Option<Self> {
+        let directory = directory_of(pid)?;
+        let stop = Arc::new(AtomicBool::new(false));
+        let flag = Arc::clone(&stop);
+        let worker = std::thread::spawn(move || {
+            let mut total = Usage::default();
+            loop {
+                total.merge(&read_usage(&directory));
+                if flag.load(Ordering::SeqCst) {
+                    // Una última lectura después de la señal: el proceso puede
+                    // haber consumido su pico entre la penúltima vuelta y el
+                    // final.
+                    total.merge(&read_usage(&directory));
+                    return total;
+                }
+                std::thread::sleep(Duration::from_millis(SAMPLE_INTERVAL_MS));
+            }
+        });
+        Some(Self { stop, worker: Some(worker) })
+    }
+
+    /// Detiene el muestreo y devuelve lo observado.
+    pub fn finish(mut self) -> Usage {
+        self.stop.store(true, Ordering::SeqCst);
+        self.worker.take().and_then(|worker| worker.join().ok()).unwrap_or_default()
+    }
+}
+
+/// Cada cuánto se releen los contadores.
+///
+/// Los picos del kernel son marcas de agua, así que el intervalo no cambia el
+/// valor final mientras el cgroup exista; solo acota cuánto tarda el hilo en
+/// enterarse de que debe parar.
+const SAMPLE_INTERVAL_MS: u64 = 40;
+
 /// Variables que `systemd-run --user` necesita para encontrar el bus del gestor
 /// de usuario.
 ///
@@ -284,6 +442,108 @@ mod tests {
         if !support().available {
             assert!(wrap("bwrap", &[], &limits()).is_none());
         }
+    }
+
+    fn fake_cgroup(name: &str, files: &[(&str, &str)]) -> PathBuf {
+        let directory = std::env::temp_dir().join(format!("sandbox-labs-cg-{name}-{}", std::process::id()));
+        std::fs::create_dir_all(&directory).expect("directorio de prueba");
+        for (file, content) in files {
+            std::fs::write(directory.join(file), content).expect("fichero de prueba");
+        }
+        directory
+    }
+
+    #[test]
+    fn reads_the_counters_the_kernel_actually_publishes() {
+        // Los contenidos son los medidos en un WSL2 real, incluido el formato
+        // de pares de `cpu.stat` y `memory.events`.
+        let directory = fake_cgroup(
+            "read",
+            &[
+                ("memory.peak", "46288896\n"),
+                ("pids.peak", "3\n"),
+                ("cpu.stat", "usage_usec 20103\nuser_usec 20103\nsystem_usec 0\nnr_periods 1\n"),
+                ("memory.events", "low 0\nhigh 0\nmax 2\noom 1\noom_kill 1\noom_group_kill 0\n"),
+            ],
+        );
+        let usage = read_usage(&directory);
+        assert_eq!(usage.memory_peak_bytes, Some(46_288_896));
+        assert_eq!(usage.pids_peak, Some(3));
+        assert_eq!(usage.cpu_usage_usec, Some(20_103));
+        // `oom_kill`, no `oom` ni `max`: los tres están en el mismo fichero y
+        // solo uno significa «el kernel mató un proceso».
+        assert_eq!(usage.oom_kills, Some(1));
+        std::fs::remove_dir_all(&directory).ok();
+    }
+
+    #[test]
+    fn a_counter_that_cannot_be_read_is_none_never_zero() {
+        // La diferencia importa: cero es un hecho medido, ausente es «no se
+        // pudo mirar». Confundirlos convierte un hueco en una afirmación.
+        let directory = fake_cgroup("parcial", &[("pids.peak", "7\n")]);
+        let usage = read_usage(&directory);
+        assert_eq!(usage.pids_peak, Some(7));
+        assert_eq!(usage.memory_peak_bytes, None);
+        assert_eq!(usage.oom_kills, None);
+        assert!(!usage.to_map().contains_key("memoryPeakBytes"), "lo no medido no se publica");
+        std::fs::remove_dir_all(&directory).ok();
+    }
+
+    #[test]
+    fn merging_keeps_the_high_water_mark() {
+        // Protege del caso real: la última lectura llega cuando systemd ya
+        // retiró el cgroup y devuelve todo a `None`. El pico ya leído no puede
+        // perderse por eso.
+        let mut total = Usage { memory_peak_bytes: Some(500), pids_peak: Some(4), ..Usage::default() };
+        total.merge(&Usage { memory_peak_bytes: Some(120), pids_peak: None, ..Usage::default() });
+        assert_eq!(total.memory_peak_bytes, Some(500));
+        assert_eq!(total.pids_peak, Some(4));
+    }
+
+    #[test]
+    fn nothing_observed_publishes_nothing() {
+        assert!(Usage::default().to_map().is_empty());
+    }
+
+    /// La única prueba que demuestra que el muestreo sirve para algo.
+    ///
+    /// Las demás ejercitan el parseo con ficheros inventados. Esta envuelve un
+    /// proceso de verdad en un scope de systemd, le hace reservar 40 MB y
+    /// comprueba que el pico observado los refleja. Si el muestreo llegara
+    /// tarde —systemd retira el cgroup en cuanto el scope termina— aquí no
+    /// habría nada que leer y la prueba lo diría.
+    ///
+    /// Se salta donde no hay gestor de usuario de systemd, que es la misma
+    /// condición bajo la que los controles no se declaran.
+    #[test]
+    fn observes_the_real_consumption_of_a_wrapped_process() {
+        if !support().available {
+            return;
+        }
+        let program = "python3";
+        let script = "import time; blob = bytearray(40 * 1024 * 1024); time.sleep(0.5); len(blob)";
+        let Some((outer, args)) = wrap(program, &["-c".to_string(), script.to_string()], &limits()) else {
+            panic!("con soporte disponible, `wrap` tiene que envolver");
+        };
+        let mut child = match Command::new(&outer).args(&args).stdout(Stdio::null()).stderr(Stdio::null()).spawn() {
+            Ok(child) => child,
+            // Sin python3 en la ruta por defecto no hay nada que medir, y eso
+            // no es un fallo del muestreo.
+            Err(_) => return,
+        };
+        let sampler = Sampler::start(child.id());
+        let status = child.wait().expect("esperar al hijo");
+        let usage = sampler.map(Sampler::finish).unwrap_or_default();
+        if !status.success() {
+            return;
+        }
+        let peak = usage.memory_peak_bytes.expect("el cgroup tenía que publicar memory.peak mientras corría");
+        assert!(
+            peak > 30 * 1024 * 1024,
+            "se reservaron 40MB y el pico observado fue {peak} bytes: el muestreo llegó tarde"
+        );
+        assert!(usage.pids_peak.is_some(), "pids.peak tenía que leerse");
+        assert_eq!(usage.oom_kills, Some(0), "no hubo OOM: el límite era 256MB");
     }
 
     #[test]

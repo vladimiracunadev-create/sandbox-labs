@@ -96,10 +96,11 @@ impl Evidence {
             .filter(|value| value.status.success())
             .map(|value| String::from_utf8_lossy(&value.stdout).trim().to_string())
             .unwrap_or_else(|| "unknown".into());
-        let (status, result, effective_limits) = match outcome {
+        let (status, result, effective_limits, observed) = match outcome {
             None => (
                 if plan.runtime.to_string() == "dry-run" { EvidenceStatus::Planned } else { EvidenceStatus::Blocked },
                 json!({"exitCode": null, "reason": plan.block_reason, "durationMs": 0, "stdout": "", "stderr": "", "stdoutTruncated": false, "stderrTruncated": false}),
+                BTreeMap::<String, String>::new(),
                 BTreeMap::<String, String>::new(),
             ),
             Some(value) => {
@@ -113,6 +114,7 @@ impl Evidence {
                     status,
                     json!({"exitCode": value.exit_code, "reason": value.reason, "durationMs": value.duration_ms, "stdout": value.stdout, "stderr": value.stderr, "stdoutTruncated": value.stdout_truncated, "stderrTruncated": value.stderr_truncated}),
                     value.effective_limits.clone(),
+                    value.observed.clone(),
                 )
             }
         };
@@ -126,7 +128,11 @@ impl Evidence {
             integrity: json!({"policySha256": policy_hash, "workloadSha256": workload_hash, "runnerSha256": runner_sha256, "runnerVersion": env!("CARGO_PKG_VERSION")}),
             policy: json!({"id": policy.id, "enforcement": policy.enforcement.mode, "requestedControls": plan.controls.requested, "effectiveControls": plan.controls.effective, "unsupportedControls": plan.controls.unsupported}),
             workload: json!({"id": workload.id, "path": workload.portable_path(), "risk": workload.risk, "expected": workload.expected.outcome}),
-            limits: json!({"requested": policy.resources, "effective": effective_limits}),
+            // `observed` es lo que la carga consumió de verdad, no lo que se le
+            // permitía. Va vacío cuando no hubo cgroup propio del que leerlo:
+            // publicar ahí las cifras de la sesión del host sería peor que no
+            // medir nada.
+            limits: json!({"requested": policy.resources, "effective": effective_limits, "observed": observed}),
             result,
             violations: vec![],
             unsupported: plan.controls.unsupported.clone(),

@@ -41,6 +41,7 @@ impl RuntimeAdapter for WasiAdapter {
                 clear_env: true,
                 environment: BTreeMap::new(),
                 effective_limits: limits,
+                observe_cgroup: false,
             },
             policy,
         )

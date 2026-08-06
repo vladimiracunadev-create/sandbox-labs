@@ -18,6 +18,12 @@ pub struct CommandSpec {
     pub clear_env: bool,
     pub environment: BTreeMap<String, String>,
     pub effective_limits: BTreeMap<String, String>,
+    /// ¿Envolvimos la ejecución en un cgroup propio?
+    ///
+    /// Decide si se muestrea el consumo. Sin envoltorio, `/proc/<pid>/cgroup`
+    /// apunta al cgroup de la sesión del host, y publicar sus cifras como
+    /// consumo de la carga sería peor que no medir nada.
+    pub observe_cgroup: bool,
 }
 
 pub fn run(spec: CommandSpec, policy: &Policy) -> Result<ExecutionOutcome> {
@@ -32,6 +38,9 @@ pub fn run(spec: CommandSpec, policy: &Policy) -> Result<ExecutionOutcome> {
     command.envs(&spec.environment);
     let started = Instant::now();
     let mut child = command.spawn().with_context(|| format!("No se pudo iniciar {}", spec.program))?;
+    // Antes de nada: systemd retira el cgroup en cuanto el scope termina, así
+    // que el consumo hay que leerlo MIENTRAS la carga corre.
+    let sampler = spec.observe_cgroup.then(|| sandbox_core::cgroup::Sampler::start(child.id())).flatten();
     let stdout = child.stdout.take().context("stdout no disponible")?;
     let stderr = child.stderr.take().context("stderr no disponible")?;
     let cap = policy.resources.output_bytes as usize;
@@ -45,6 +54,7 @@ pub fn run(spec: CommandSpec, policy: &Policy) -> Result<ExecutionOutcome> {
             (child.wait()?, "timeout".to_string())
         }
     };
+    let observed = sampler.map(|value| value.finish().to_map()).unwrap_or_default();
     let (stdout, stdout_truncated) = out_thread.join().unwrap_or_else(|_| (String::new(), false));
     let (stderr, stderr_truncated) = err_thread.join().unwrap_or_else(|_| (String::new(), false));
     let timed_out = reason == "timeout";
@@ -64,6 +74,7 @@ pub fn run(spec: CommandSpec, policy: &Policy) -> Result<ExecutionOutcome> {
         stdout_truncated,
         stderr_truncated,
         effective_limits: spec.effective_limits,
+        observed,
     })
 }
 

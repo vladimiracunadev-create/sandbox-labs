@@ -32,6 +32,7 @@ impl RuntimeAdapter for NativeAdapter {
                 clear_env: true,
                 environment: policy.process.environment.clone(),
                 effective_limits: limits,
+                observe_cgroup: false,
             },
             policy,
         )

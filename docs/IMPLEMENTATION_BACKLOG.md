@@ -18,7 +18,7 @@ haría falta para cerrarla.
 
 | | |
 |---|---|
-| **Estado** | ✅ Cerrado en bubblewrap · abierto en `unshare` |
+| **Estado** | ✅ Cerrado en bubblewrap · no aplica a `unshare` |
 | **Control afectado** | `processes` |
 | **Se declara hoy** | Sí, en bubblewrap y **solo si el host lo admite**: el sondeo levanta un scope de systemd real antes de declarar nada. Donde no hay gestor de usuario, el control no se declara. |
 
@@ -39,13 +39,13 @@ usuario sí funciona y sin privilegios.
 **Lo que queda:** `unshare` no lo recibe a propósito — `systemd-run` necesita
 `XDG_RUNTIME_DIR` y `DBUS_SESSION_BUS_ADDRESS` en el entorno, y `unshare` se los
 pasaría tal cual a la carga. Bubblewrap no, porque hace su propio `--clearenv`
-después. Y falta leer `pids.peak`, que es B-02.
+después. `pids.peak` sí se observa: va en `limits.observed` de la evidencia.
 
 ### B-02 · Techo real de memoria con `memory.max`
 
 | | |
 |---|---|
-| **Estado** | 🟡 Aplicado; falta observar |
+| **Estado** | ✅ Cerrado |
 | **Control afectado** | `memory` |
 | **Se declara hoy** | Sí. Con cgroup disponible la evidencia dice «cgroup memory.max»; sin él, «RLIMIT_AS», que es lo que de verdad se aplicó. |
 
@@ -56,25 +56,28 @@ virtual que nunca toca.
 
 **Aplicado:** `MemoryMax` en el scope, que systemd traduce a `memory.max`.
 
-**Lo que queda:** observar. Aplicar un límite y medir el consumo son cosas
-distintas. Leer `memory.peak` y el contador `oom_kill` de `memory.events` exige
-muestrear el cgroup **mientras** la carga corre, porque systemd retira el cgroup
-en cuanto el scope termina. Sin eso, un proceso matado por OOM deja un código de
-salida sin explicar.
+**Observado:** `limits.observed` de la evidencia lleva `memoryPeakBytes` y
+`oomKills`, leídos de `memory.peak` y de `memory.events` **mientras** la carga
+corre — systemd retira el cgroup en cuanto el scope termina, así que leer al
+final no encuentra nada. Con `oomKills` un código de salida inexplicable pasa a
+ser un hecho.
+
+Una prueba envuelve un proceso real, le hace reservar 40 MB y comprueba que el
+pico observado los refleja. Se salta donde no hay gestor de usuario de systemd,
+que es la misma condición bajo la que el control no se declara.
 
 ### B-03 · Cuota de CPU
 
 | | |
 |---|---|
-| **Estado** | 🟡 Aplicado; falta observar |
+| **Estado** | ✅ Cerrado |
 | **Control afectado** | `cpu` |
 | **Se declara hoy** | Sí, en bubblewrap y solo con cgroup disponible. |
 
 **Aplicado:** `CPUQuota=N%` en el scope —el porcentaje va sobre **un** núcleo,
 así que `cpu: 2.0` son 200%— que systemd traduce a `cpu.max`.
 
-**Lo que queda:** leer `cpu.stat` al terminar, con el mismo problema de
-muestreo que B-02.
+**Observado:** `cpuUsageUsec`, de `usage_usec` en `cpu.stat`.
 
 ### B-04 · `network: allowlist` sin enforcement
 

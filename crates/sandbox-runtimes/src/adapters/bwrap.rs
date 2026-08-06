@@ -177,7 +177,15 @@ impl RuntimeAdapter for BwrapAdapter {
         };
         let limits = effective_limits(policy, network_isolated, wrapped_in_prlimit, wrapped_in_cgroup);
         run(
-            CommandSpec { program, args, current_dir: None, clear_env: true, environment, effective_limits: limits },
+            CommandSpec {
+                program,
+                args,
+                current_dir: None,
+                clear_env: true,
+                environment,
+                effective_limits: limits,
+                observe_cgroup: wrapped_in_cgroup,
+            },
             policy,
         )
     }

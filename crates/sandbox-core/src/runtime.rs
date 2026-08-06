@@ -97,6 +97,10 @@ pub struct ExecutionOutcome {
     pub stdout_truncated: bool,
     pub stderr_truncated: bool,
     pub effective_limits: BTreeMap<String, String>,
+    /// Lo que la carga consumió de verdad, leído del cgroup mientras corría.
+    /// Vacío cuando no hubo cgroup propio que mirar.
+    #[serde(default)]
+    pub observed: BTreeMap<String, String>,
 }
 
 impl RuntimeKind {

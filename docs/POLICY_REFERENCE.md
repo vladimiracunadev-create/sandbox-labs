@@ -88,6 +88,27 @@ ejecuta. `sandboxctl doctor` muestra el resultado de ese sondeo.
 Dónde suele fallar: hosts sin gestor de usuario de systemd (contenedores, CI,
 sesiones no interactivas). Ahí `systemd-run --user` no encuentra el bus.
 
+### Y lo que se consumió de verdad
+
+Aplicar un límite y medir el consumo son cosas distintas. La evidencia lleva las
+dos: `limits.effective` dice lo que el kernel impedía y `limits.observed` lo que
+la carga gastó, leído del cgroup **mientras corría** —systemd lo retira en
+cuanto el scope termina, así que mirar al final no encuentra nada—:
+
+| Campo observado | De dónde sale |
+|---|---|
+| `memoryPeakBytes` | `memory.peak` |
+| `pidsPeak` | `pids.peak` |
+| `cpuUsageUsec` | `usage_usec` de `cpu.stat` |
+| `oomKills` | `oom_kill` de `memory.events` |
+
+`oomKills` es el que convierte un código de salida inexplicable en un hecho: sin
+él, un proceso que el kernel mató por memoria se parece a uno que falló solo.
+
+`limits.observed` va **vacío** cuando no hubo cgroup propio. No se rellena con
+las cifras del cgroup de la sesión, que es lo que `/proc/<pid>/cgroup` devuelve
+sin envoltorio: serían números reales de la máquina equivocada.
+
 `prlimit` sigue puesto como defensa adicional —`RLIMIT_AS` y `RLIMIT_NOFILE`—
 pero **no** sustituye a cgroups: acota el espacio de direcciones virtual, no la
 memoria residente. Cuando los dos están, la evidencia nombra el cgroup, que es
