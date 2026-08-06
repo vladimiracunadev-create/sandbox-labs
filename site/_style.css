@@ -230,3 +230,30 @@ a { color: var(--accent-dark); }
 .foot a { color: var(--muted); }
 
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+
+/* Diagrama que no pudo renderizarse: se muestra el código con un aviso, en vez
+   de dejar un hueco silencioso donde debería haber un gráfico. */
+pre.mermaid-fallback {
+  text-align: left;
+  background: var(--code-bg);
+  color: var(--code-fg);
+  position: relative;
+  padding-top: 34px;
+}
+
+pre.mermaid-fallback::before {
+  content: attr(data-note);
+  position: absolute;
+  top: 8px;
+  left: 18px;
+  font-size: 0.74rem;
+  color: var(--warn);
+  font-weight: 700;
+}
+
+/* Mientras mermaid no ha corrido, el bloque no debe verse como código roto. */
+pre.mermaid:not(.mermaid-fallback) {
+  min-height: 60px;
+}
+
+pre.mermaid svg { max-width: 100%; height: auto; }

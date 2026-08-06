@@ -1,45 +1,41 @@
 {
   "$schema": "../schemas/policy.schema.json",
-  "id": "ai-agent-restricted",
-  "description": "Código generado por IA con salida de red restringida a una allowlist. La red se abre solo para los hosts declarados: un agente necesita llamar a su API, no a internet entero.",
+  "id": "key-custody",
+  "description": "Custodia de claves: la clave vive dentro del sandbox y NO hay salida de red. Una clave privada más una conexión a internet es la receta de un robo de fondos; aquí el camino de salida sencillamente no existe.",
   "enforcement": {
-    "mode": "strict",
+    "mode": "best-effort",
     "requiredControls": [
       "filesystem",
       "network",
       "processes",
       "memory",
-      "timeout",
       "capabilities",
+      "devices",
       "environment",
       "output"
     ]
   },
   "filesystem": {
     "root": "ephemeral",
-    "readOnly": [
-      "/workspace/input"
-    ],
+    "readOnly": [],
     "writable": [
       "/workspace/output"
     ],
-    "maxWorkspaceMb": 256,
+    "maxWorkspaceMb": 128,
     "followSymlinks": false
   },
   "network": {
-    "mode": "allowlist",
-    "hosts": [
-      "api.anthropic.com"
-    ],
-    "dns": "system"
+    "mode": "none",
+    "hosts": [],
+    "dns": "disabled"
   },
   "resources": {
-    "cpu": 1,
-    "memoryMb": 512,
-    "processes": 40,
+    "cpu": 1.0,
+    "memoryMb": 256,
+    "processes": 32,
     "timeoutSeconds": 86400,
-    "openFiles": 128,
-    "outputBytes": 262144
+    "openFiles": 256,
+    "outputBytes": 1048576
   },
   "process": {
     "capabilities": [],
@@ -47,12 +43,12 @@
       "LANG": "C.UTF-8",
       "NO_COLOR": "1",
       "PATH": "/usr/local/bin:/usr/bin:/bin",
-      "HOME": "/workspace"
+      "HOME": "/workspace",
+      "PYTHONDONTWRITEBYTECODE": "1",
+      "PYTHONUNBUFFERED": "1"
     },
     "allowedEnvironment": [
-      "SANDBOX_AI_API_KEY",
-      "SANDBOX_AI_ENDPOINT",
-      "SANDBOX_EGRESS_ALLOWLIST"
+      "SANDBOX_WALLET_KEY"
     ],
     "user": 65534,
     "group": 65534

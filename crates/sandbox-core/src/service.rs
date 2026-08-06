@@ -43,11 +43,33 @@ pub struct Service {
     pub runtimes: Vec<String>,
     /// Ruta de salud, relativa a la raíz del servicio.
     pub health_path: String,
+    /// Variables que el servicio necesita para operar en modo real.
+    ///
+    /// Solo se inyectan si **la política las declara** en `allowedEnvironment`
+    /// y además existen en el host. Un secreto que la política no declara no
+    /// entra al sandbox, y el servicio arranca en modo plan en vez de fallar.
+    #[serde(default)]
+    pub secrets: Vec<String>,
+    /// Cómo se alcanza el servicio: `tcp` publica un puerto en el loopback;
+    /// `unix-socket` entra por el sistema de archivos y permite que el sandbox
+    /// conserve `network: none`. Un custodio de claves necesita lo segundo:
+    /// con loopback tendría pila de red, y una clave privada más una pila de
+    /// red es exactamente lo que no debe coexistir.
+    #[serde(default = "default_transport")]
+    pub transport: String,
     #[serde(skip)]
     pub directory: PathBuf,
 }
 
+fn default_transport() -> String {
+    "tcp".to_string()
+}
+
 impl Service {
+    pub fn is_socket(&self) -> bool {
+        self.transport == "unix-socket"
+    }
+
     pub fn load(path: impl AsRef<Path>) -> Result<Self> {
         let supplied = path.as_ref();
         let manifest = if supplied.is_dir() { supplied.join("service.json") } else { supplied.to_path_buf() };
@@ -76,6 +98,9 @@ impl Service {
         }
         if self.runtimes.is_empty() {
             bail!("{}: debe declarar al menos un runtime", self.id);
+        }
+        if !matches!(self.transport.as_str(), "tcp" | "unix-socket") {
+            bail!("{}: transporte desconocido: {}", self.id, self.transport);
         }
         if !self.health_path.starts_with('/') {
             bail!("{}: healthPath debe empezar por /", self.id);
@@ -135,6 +160,14 @@ pub struct ServiceRecord {
     pub runtime: String,
     pub policy: String,
     pub started_at: String,
+    /// Momento de arranque del proceso según el kernel (campo 22 de
+    /// `/proc/<pid>/stat`, en ticks desde el arranque de la máquina).
+    ///
+    /// Sin esto, bajar un servicio cuyo registro quedó obsoleto enviaría la
+    /// señal a **otro proceso que reutilizó el PID**. Ya pasó: mató la shell
+    /// que ejecutaba las pruebas. El PID por sí solo no identifica nada.
+    #[serde(default)]
+    pub start_ticks: Option<u64>,
     pub log_path: String,
     /// Controles que el runtime declaró aplicar al levantarlo. Se guardan aquí
     /// para que la tarjeta del panel muestre bajo qué contención corre, no solo
@@ -149,7 +182,14 @@ impl ServiceRecord {
 
     pub fn write(&self, data_root: &Path) -> Result<()> {
         let path = Self::path(data_root, &self.id);
-        fs::create_dir_all(path.parent().expect("directorio de servicios"))?;
+        let directory = path.parent().expect("directorio de servicios");
+        // Sobre DrvFs (un disco de Windows montado en WSL) `create_dir_all`
+        // puede devolver EEXIST aunque el directorio ya esté: no es un error.
+        if let Err(error) = fs::create_dir_all(directory) {
+            if error.kind() != std::io::ErrorKind::AlreadyExists {
+                return Err(error).with_context(|| format!("No se pudo crear {}", directory.display()));
+            }
+        }
         fs::write(&path, serde_json::to_string_pretty(self)?)
             .with_context(|| format!("No se pudo registrar el servicio en {}", path.display()))?;
         Ok(())
@@ -182,6 +222,40 @@ pub fn process_alive(pid: u32) -> bool {
     }
 }
 
+/// Marca de arranque del proceso, para distinguirlo de otro que herede su PID.
+pub fn process_start_ticks(pid: u32) -> Option<u64> {
+    #[cfg(target_os = "linux")]
+    {
+        let raw = fs::read_to_string(format!("/proc/{pid}/stat")).ok()?;
+        // El nombre del ejecutable va entre paréntesis y puede contener
+        // espacios: se corta por el último ')' antes de dividir por campos.
+        let rest = raw.rsplit_once(')')?.1;
+        rest.split_whitespace().nth(19)?.parse().ok()
+    }
+    #[cfg(not(target_os = "linux"))]
+    {
+        let _ = pid;
+        None
+    }
+}
+
+/// ¿El proceso registrado sigue siendo **el mismo**?
+///
+/// Comprueba que el PID exista y que su marca de arranque coincida con la
+/// guardada. Un PID vivo con otra marca es un proceso distinto que reutilizó el
+/// número, y señalizarlo sería matar a un tercero.
+pub fn same_process(pid: u32, expected_ticks: Option<u64>) -> bool {
+    if !process_alive(pid) {
+        return false;
+    }
+    match (expected_ticks, process_start_ticks(pid)) {
+        (Some(expected), Some(actual)) => expected == actual,
+        // Registro antiguo sin marca: se es conservador y NO se señaliza.
+        (None, _) => false,
+        (_, None) => false,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -202,6 +276,8 @@ mod tests {
             policy: "service-sandbox".into(),
             runtimes: vec!["bwrap".into()],
             health_path: "/health".into(),
+            secrets: vec![],
+            transport: default_transport(),
             directory: PathBuf::from("."),
         }
     }

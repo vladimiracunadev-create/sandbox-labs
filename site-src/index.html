@@ -85,6 +85,13 @@
     Ábrelo y verás la contención desde dentro, no en un documento.
   </p>
   <div class="grid"><!--SERVICES--></div>
+  <div class="callout note" style="margin-top:18px">
+    <b>Dos modos, uno solo de ellos necesita credenciales.</b> Los laboratorios que llaman a una
+    API o firman con una clave arrancan igual sin ella: en <b>modo plan</b> muestran exactamente
+    la petición que harían y qué controles la dejarían pasar. Si exportas la variable, el mismo
+    servicio pasa a <b>modo real</b> y la ejecuta — por el mismo camino vigilado. Un secreto que
+    la política no declara no entra al sandbox, aunque exista en tu equipo.
+  </div>
 </section>
 
 <section>

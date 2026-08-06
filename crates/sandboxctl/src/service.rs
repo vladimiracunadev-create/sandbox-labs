@@ -6,7 +6,7 @@
 
 use anyhow::{bail, Context, Result};
 use sandbox_core::{
-    service::{process_alive, Service, ServiceRecord, ServiceState},
+    service::{process_start_ticks, same_process, Service, ServiceRecord, ServiceState},
     Policy, RuntimeKind,
 };
 use std::{
@@ -19,6 +19,37 @@ use std::{
 
 /// Tiempo máximo esperando a que el puerto responda tras levantar.
 const READY_TIMEOUT: Duration = Duration::from_secs(20);
+
+/// Crea el directorio si no existe, tolerando que ya exista.
+///
+/// `create_dir_all` es idempotente en un filesystem normal, pero sobre DrvFs
+/// —el montaje de un disco de Windows dentro de WSL— puede devolver EEXIST
+/// igualmente. Tratar eso como error impedía levantar cualquier servicio desde
+/// un repositorio alojado en `/mnt/c`.
+fn ensure_dir(path: &Path) -> Result<()> {
+    match fs::create_dir_all(path) {
+        Ok(()) => {}
+        Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => {}
+        Err(error) => return Err(error).with_context(|| format!("No se pudo crear {}", path.display())),
+    }
+    if path.is_dir() {
+        return Ok(());
+    }
+    // EEXIST sin que el directorio exista: la caché de DrvFs quedó
+    // desincronizada, típicamente porque alguien borró la ruta desde Windows
+    // mientras WSL la tenía vista. Un reintento la refresca; si aún así no
+    // está, se dice qué pasa en vez de fallar más adelante con un ENOENT
+    // opaco al abrir el log.
+    std::thread::sleep(Duration::from_millis(150));
+    fs::create_dir_all(path).ok();
+    if path.is_dir() {
+        return Ok(());
+    }
+    bail!(
+        "No se pudo crear {}: el sistema de archivos dice que ya existe pero no está.          Si el repositorio vive en /mnt/c y borraste el directorio desde Windows,          cierra WSL (`wsl --shutdown`) y vuelve a intentarlo.",
+        path.display()
+    )
+}
 
 pub struct ServiceContext {
     pub root: PathBuf,
@@ -57,6 +88,22 @@ impl ServiceContext {
     pub fn log_path(&self, id: &str) -> PathBuf {
         self.data_root.join("services").join(format!("{id}.log"))
     }
+
+    /// Directorio de sockets en el host.
+    ///
+    /// **No** va bajo `.sandbox-data`: si el repositorio vive en `/mnt/c`, ese
+    /// directorio está en DrvFs, y sobre DrvFs no se pueden crear sockets Unix
+    /// —el servicio moría al enlazar sin decir por qué—. Los sockets viven
+    /// donde les corresponde: el directorio de runtime del sistema.
+    pub fn socket_dir(&self) -> PathBuf {
+        std::env::var_os("XDG_RUNTIME_DIR").map(PathBuf::from).unwrap_or_else(std::env::temp_dir).join("sandbox-labs")
+    }
+
+    /// Socket del servicio en el host. El sandbox lo ve en una ruta fija de su
+    /// propio árbol; el bind mount los conecta.
+    pub fn socket_path(&self, id: &str) -> PathBuf {
+        self.socket_dir().join(format!("{id}.sock"))
+    }
 }
 
 /// Estado observado de un servicio: registro + proceso + puerto.
@@ -68,13 +115,32 @@ pub struct Observed {
 
 pub fn observe(ctx: &ServiceContext, service: Service) -> Observed {
     let record = ServiceRecord::read(&ctx.data_root, &service.id);
+    let ready = endpoint_responds(ctx, &service);
     let state = match &record {
         None => ServiceState::Stopped,
-        Some(value) if !process_alive(value.pid) => ServiceState::Crashed,
-        Some(_) if port_responds(service.port) => ServiceState::Running,
+        Some(value) if !same_process(value.pid, value.start_ticks) => ServiceState::Crashed,
+        Some(_) if ready => ServiceState::Running,
         Some(_) => ServiceState::Starting,
     };
     Observed { service, record, state }
+}
+
+/// ¿Responde el servicio por su transporte?
+///
+/// Un servicio con `network: none` no tiene puerto que sondear: se comprueba
+/// que el socket exista y acepte una conexión.
+fn endpoint_responds(ctx: &ServiceContext, service: &Service) -> bool {
+    if service.is_socket() {
+        #[cfg(unix)]
+        {
+            return std::os::unix::net::UnixStream::connect(ctx.socket_path(&service.id)).is_ok();
+        }
+        #[cfg(not(unix))]
+        {
+            return false;
+        }
+    }
+    port_responds(service.port)
 }
 
 /// ¿Hay algo escuchando en el puerto del loopback?
@@ -105,7 +171,39 @@ fn pick_runtime(service: &Service) -> Result<RuntimeKind> {
 ///
 /// No se reutiliza el adaptador de cargas porque ahí el proceso es hijo y se
 /// espera a que termine. Un servicio tiene que sobrevivir al CLI que lo levanta.
-fn sandbox_command(runtime: RuntimeKind, service: &Service, policy: &Policy) -> (String, Vec<String>) {
+/// Secretos que de verdad entran al sandbox.
+///
+/// Intersección de tres conjuntos: lo que el servicio pide, lo que la política
+/// permite y lo que existe en el host. Los tres tienen que coincidir. Un
+/// secreto que el servicio pide pero la política no declara **no entra**, y eso
+/// no es un fallo: es la política haciendo su trabajo.
+fn resolved_secrets(service: &Service, policy: &Policy) -> (Vec<(String, String)>, Vec<String>) {
+    let mut injected = Vec::new();
+    let mut refused = Vec::new();
+    for name in &service.secrets {
+        if !policy.process.allowed_environment.contains(name) {
+            refused.push(format!("{name} (la política {} no lo declara)", policy.id));
+            continue;
+        }
+        match std::env::var(name) {
+            Ok(value) if !value.is_empty() => injected.push((name.clone(), value)),
+            _ => refused.push(format!("{name} (ausente en el host)")),
+        }
+    }
+    (injected, refused)
+}
+
+/// Ruta del socket **dentro** del sandbox. Fija a propósito: el servicio no
+/// necesita saber dónde vive en el host.
+const SANDBOX_SOCKET_DIR: &str = "/workspace/socket";
+
+fn sandbox_command(
+    runtime: RuntimeKind,
+    service: &Service,
+    policy: &Policy,
+    secrets: &[(String, String)],
+    socket_dir: &Path,
+) -> (String, Vec<String>) {
     let workdir = service.directory.display().to_string();
     let mut args: Vec<String> = Vec::new();
 
@@ -137,6 +235,12 @@ fn sandbox_command(runtime: RuntimeKind, service: &Service, policy: &Policy) -> 
                 args.push("--unshare-net".into());
             }
             args.extend(["--ro-bind".into(), workdir.clone(), "/workspace/app".into()]);
+            if service.is_socket() {
+                // El socket entra por el filesystem, que es la única puerta que
+                // le queda a un sandbox sin red. Montaje de escritura: el
+                // servicio tiene que poder crear el fichero del socket.
+                args.extend(["--bind".into(), socket_dir.display().to_string(), SANDBOX_SOCKET_DIR.into()]);
+            }
             for system in ["/usr", "/bin", "/lib", "/lib64", "/etc/passwd", "/etc/group", "/etc/resolv.conf"] {
                 if Path::new(system).exists() {
                     args.extend(["--ro-bind".into(), system.into(), system.into()]);
@@ -148,6 +252,16 @@ fn sandbox_command(runtime: RuntimeKind, service: &Service, policy: &Policy) -> 
             }
             args.extend(["--setenv".into(), "SANDBOX_RUNTIME".into(), "bwrap".into()]);
             args.extend(["--setenv".into(), "SANDBOX_PORT".into(), service.port.to_string()]);
+            for (name, value) in secrets {
+                args.extend(["--setenv".into(), name.clone(), value.clone()]);
+            }
+            if service.is_socket() {
+                args.extend([
+                    "--setenv".into(),
+                    "SANDBOX_SOCKET".into(),
+                    format!("{SANDBOX_SOCKET_DIR}/{}.sock", service.id),
+                ]);
+            }
             args.push("--".into());
             args.push(service.command.clone());
             args.push(service.entrypoint.clone());
@@ -193,20 +307,37 @@ pub fn up(ctx: &ServiceContext, id: &str, wait: bool) -> Result<i32> {
         println!("⚠️  {} tenía un registro huérfano de un proceso muerto; se limpia.", service.id);
         ServiceRecord::remove(&ctx.data_root, &service.id);
     }
-    if port_responds(service.port) {
+    if !service.is_socket() && port_responds(service.port) {
         bail!("El puerto {} ya está ocupado por otro proceso. Bájalo o cambia el puerto del servicio.", service.port);
+    }
+    if service.is_socket() {
+        // Un socket huérfano de una ejecución anterior impediría enlazar.
+        ensure_dir(&ctx.socket_dir())?;
+        let _ = fs::remove_file(ctx.socket_path(&service.id));
     }
 
     let policy = Policy::load(ctx.root.join("policies").join(format!("{}.json", service.policy)))?;
     let runtime = pick_runtime(&service)?;
-    let (program, args) = sandbox_command(runtime, &service, &policy);
+    let (secrets, refused) = resolved_secrets(&service, &policy);
+    let socket_dir = ctx.socket_dir();
+    let (program, args) = sandbox_command(runtime, &service, &policy, &secrets, &socket_dir);
 
     let log_path = ctx.log_path(&service.id);
-    fs::create_dir_all(log_path.parent().expect("directorio de servicios"))?;
+    ensure_dir(log_path.parent().expect("directorio de servicios"))?;
     let log = fs::File::create(&log_path)?;
     let log_err = log.try_clone()?;
 
     println!("▶ Levantando {} con {} · política {}", service.id, runtime, policy.id);
+    if !secrets.is_empty() {
+        // Se nombran, nunca se imprime el valor.
+        println!("   secretos inyectados: {}", secrets.iter().map(|(n, _)| n.as_str()).collect::<Vec<_>>().join(", "));
+    }
+    for reason in &refused {
+        println!("   ⚠ sin inyectar: {reason}");
+    }
+    if !refused.is_empty() && secrets.len() < service.secrets.len() {
+        println!("   → el servicio arrancará en modo plan: mostrará qué haría, sin hacerlo.");
+    }
 
     let mut command = Command::new(&program);
     command
@@ -233,6 +364,14 @@ pub fn up(ctx: &ServiceContext, id: &str, wait: bool) -> Result<i32> {
         command.envs(&policy.process.environment);
         command.env("SANDBOX_RUNTIME", "unshare");
         command.env("SANDBOX_PORT", service.port.to_string());
+        for (name, value) in &secrets {
+            command.env(name, value);
+        }
+        if service.is_socket() {
+            // unshare no monta una raíz nueva: el sandbox ve el árbol del host,
+            // así que la ruta real del socket vale tal cual.
+            command.env("SANDBOX_SOCKET", ctx.socket_path(&service.id));
+        }
         command.env("PATH", "/usr/local/bin:/usr/bin:/bin");
     }
 
@@ -247,6 +386,7 @@ pub fn up(ctx: &ServiceContext, id: &str, wait: bool) -> Result<i32> {
         runtime: runtime.to_string(),
         policy: policy.id.clone(),
         started_at: chrono::Utc::now().to_rfc3339(),
+        start_ticks: process_start_ticks(child.id()),
         log_path: log_path.display().to_string(),
         effective_controls: runtime.supported_controls(&policy).into_iter().collect(),
     };
@@ -259,13 +399,18 @@ pub fn up(ctx: &ServiceContext, id: &str, wait: bool) -> Result<i32> {
 
     let started = Instant::now();
     while started.elapsed() < READY_TIMEOUT {
-        if port_responds(service.port) {
-            println!("✅ {} responde en {}", service.id, service.url());
+        if endpoint_responds(ctx, &service) {
+            let endpoint = if service.is_socket() {
+                format!("unix:{}", ctx.socket_path(&service.id).display())
+            } else {
+                service.url()
+            };
+            println!("✅ {} responde en {}", service.id, endpoint);
             println!("   contención efectiva: {}", record.effective_controls.join(", "));
             println!("   logs: {}", log_path.display());
             return Ok(0);
         }
-        if !process_alive(record.pid) {
+        if !same_process(record.pid, record.start_ticks) {
             let tail = fs::read_to_string(&log_path).unwrap_or_default();
             eprintln!("❌ {} murió al arrancar. Últimas líneas:", service.id);
             for line in tail.lines().rev().take(10).collect::<Vec<_>>().into_iter().rev() {
@@ -288,20 +433,28 @@ pub fn down(ctx: &ServiceContext, id: &str) -> Result<i32> {
         return Ok(0);
     };
 
-    if process_alive(record.pid) {
+    if same_process(record.pid, record.start_ticks) {
         terminate(record.pid);
         // Se le da margen a terminar por las buenas antes de insistir: un
         // servicio que cierra bien deja el puerto libre de inmediato.
         let started = Instant::now();
-        while started.elapsed() < Duration::from_secs(5) && process_alive(record.pid) {
+        while started.elapsed() < Duration::from_secs(5) && same_process(record.pid, record.start_ticks) {
             std::thread::sleep(Duration::from_millis(200));
         }
-        if process_alive(record.pid) {
+        if same_process(record.pid, record.start_ticks) {
             kill(record.pid);
         }
+    } else {
+        // El PID ya no es de este servicio. Se limpia el registro y no se
+        // señaliza a nadie: matar a quien heredó el número sería mucho peor
+        // que dejar un registro obsoleto.
+        println!("· el registro de {} estaba obsoleto (PID reutilizado o proceso muerto)", service.id);
     }
 
     ServiceRecord::remove(&ctx.data_root, &service.id);
+    if service.is_socket() {
+        let _ = fs::remove_file(ctx.socket_path(&service.id));
+    }
     println!("⏹ {} detenido", service.id);
     Ok(0)
 }
@@ -313,9 +466,17 @@ pub fn down(ctx: &ServiceContext, id: &str) -> Result<i32> {
 /// más. Sin grupo propio esto mataría al proceso que lo levantó.
 #[cfg(target_os = "linux")]
 fn signal_group(pid: u32, signal: &str) {
-    let _ = Command::new("kill").arg(signal).arg(format!("-{pid}")).status();
-    // Y al proceso suelto, por si el grupo ya no existe pero él sigue vivo.
-    let _ = Command::new("kill").arg(signal).arg(pid.to_string()).status();
+    // El `--` no es opcional: sin él, `/bin/kill -TERM -1234` puede leer el
+    // objetivo negativo como una opción, y en el peor caso acabar señalizando
+    // a procesos que no son el servicio. Aquí ya se llevó por delante la shell
+    // que ejecutaba las pruebas.
+    // stderr se descarta: matar el grupo suele llevarse también al proceso, y
+    // el segundo intento imprimiría entonces un «No such process» que no es un
+    // problema sino la señal de que ya funcionó.
+    for target in [format!("-{pid}"), pid.to_string()] {
+        let _ =
+            Command::new("kill").arg(signal).arg("--").arg(target).stdout(Stdio::null()).stderr(Stdio::null()).status();
+    }
 }
 
 #[cfg(target_os = "linux")]
@@ -361,7 +522,12 @@ pub fn list(ctx: &ServiceContext, json_output: bool) -> Result<i32> {
                     "description": value.service.description,
                     "teaches": value.service.teaches,
                     "port": value.service.port,
-                    "url": value.service.url(),
+                    "transport": value.service.transport,
+                    // Un servicio por socket no tiene URL que abrir en el
+                    // navegador: se dice explícitamente en vez de dar una que
+                    // no responde.
+                    "url": if value.service.is_socket() { serde_json::Value::Null } else { value.service.url().into() },
+                    "socket": if value.service.is_socket() { ctx.socket_path(&value.service.id).display().to_string().into() } else { serde_json::Value::Null },
                     "policy": value.service.policy,
                     "runtimes": value.service.runtimes,
                     "state": value.state,
@@ -393,7 +559,11 @@ pub fn list(ctx: &ServiceContext, json_output: bool) -> Result<i32> {
             value.service.id,
             value.state.label(),
             value.service.port,
-            if value.state == ServiceState::Running { value.service.url() } else { "—".into() },
+            match (value.state, value.service.is_socket()) {
+                (ServiceState::Running, true) => format!("unix:{}.sock", value.service.id),
+                (ServiceState::Running, false) => value.service.url(),
+                _ => "—".into(),
+            },
             runtime
         );
     }
@@ -413,3 +583,62 @@ pub fn logs(ctx: &ServiceContext, id: &str, lines: usize) -> Result<i32> {
     }
     Ok(0)
 }
+
+/// Habla con un servicio, por TCP o por socket Unix indistintamente.
+///
+/// Existe porque un sandbox con `network: none` no se puede alcanzar con
+/// `curl http://127.0.0.1:...`: no hay pila de red. Sin este comando, un
+/// custodio de claves correctamente aislado sería inoperable desde la terminal.
+pub fn call(ctx: &ServiceContext, id: &str, method: &str, path: &str, body: Option<String>) -> Result<i32> {
+    use std::io::{Read, Write};
+
+    let service = ctx.find(id)?;
+    let payload = body.unwrap_or_default();
+    // CRLF explícito: HTTP lo exige y un salto de línea suelto haría que
+    // el servidor esperase indefinidamente la cabecera que falta.
+    const CRLF: &str = "\r\n";
+    let head = [
+        format!("{method} {path} HTTP/1.1"),
+        "Host: sandbox".into(),
+        "Connection: close".into(),
+        "content-type: application/json".into(),
+        format!("content-length: {}", payload.len()),
+    ]
+    .join(CRLF);
+    let request = format!("{head}{CRLF}{CRLF}{payload}");
+
+    let mut stream: Box<dyn ReadWrite> = if service.is_socket() {
+        #[cfg(unix)]
+        {
+            let path = ctx.socket_path(&service.id);
+            Box::new(std::os::unix::net::UnixStream::connect(&path).with_context(|| {
+                format!("No se pudo hablar con {} en {}. ¿Está levantado?", service.id, path.display())
+            })?)
+        }
+        #[cfg(not(unix))]
+        {
+            bail!("los sockets Unix solo están disponibles en Linux")
+        }
+    } else {
+        Box::new(
+            std::net::TcpStream::connect(("127.0.0.1", service.port))
+                .with_context(|| format!("No se pudo hablar con {} en el puerto {}", service.id, service.port))?,
+        )
+    };
+
+    stream.write_all(request.as_bytes())?;
+    let mut response = String::new();
+    stream.read_to_string(&mut response)?;
+
+    // Se imprime solo el cuerpo: la cabecera HTTP no aporta nada aquí.
+    let separator = format!("{CRLF}{CRLF}");
+    match response.split_once(separator.as_str()) {
+        Some((_, body)) => println!("{}", body.trim()),
+        None => println!("{response}"),
+    }
+    Ok(0)
+}
+
+/// Los dos transportes se usan igual; este alias evita duplicar `call`.
+trait ReadWrite: std::io::Read + std::io::Write {}
+impl<T: std::io::Read + std::io::Write> ReadWrite for T {}

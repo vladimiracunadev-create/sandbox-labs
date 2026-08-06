@@ -4,21 +4,107 @@
   "description": "Servicio de larga duración que se levanta dentro de un sandbox y publica un puerto en el loopback del host.",
   "type": "object",
   "additionalProperties": false,
-  "required": ["id", "name", "category", "description", "teaches", "port", "kind", "entrypoint", "command", "args", "policy", "runtimes", "healthPath"],
+  "required": [
+    "id",
+    "name",
+    "category",
+    "description",
+    "teaches",
+    "port",
+    "kind",
+    "entrypoint",
+    "command",
+    "args",
+    "policy",
+    "runtimes",
+    "healthPath"
+  ],
   "properties": {
-    "$schema": { "type": "string" },
-    "id": { "type": "string", "pattern": "^[a-z0-9-]+$" },
-    "name": { "type": "string", "minLength": 1 },
-    "category": { "enum": ["starter", "containment", "platform"] },
-    "description": { "type": "string", "minLength": 1 },
-    "teaches": { "type": "string", "minLength": 1 },
-    "port": { "type": "integer", "minimum": 1024, "maximum": 65535 },
-    "kind": { "enum": ["python", "node", "script", "binary"] },
-    "entrypoint": { "type": "string", "minLength": 1 },
-    "command": { "type": "string", "minLength": 1 },
-    "args": { "type": "array", "items": { "type": "string", "maxLength": 512 } },
-    "policy": { "type": "string", "pattern": "^[a-z0-9-]+$" },
-    "runtimes": { "type": "array", "minItems": 1, "items": { "type": "string", "pattern": "^[a-z0-9-]+$" } },
-    "healthPath": { "type": "string", "pattern": "^/" }
+    "$schema": {
+      "type": "string"
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9-]+$"
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1
+    },
+    "category": {
+      "enum": [
+        "starter",
+        "containment",
+        "platform"
+      ]
+    },
+    "description": {
+      "type": "string",
+      "minLength": 1
+    },
+    "teaches": {
+      "type": "string",
+      "minLength": 1
+    },
+    "port": {
+      "type": "integer",
+      "minimum": 1024,
+      "maximum": 65535
+    },
+    "kind": {
+      "enum": [
+        "python",
+        "node",
+        "script",
+        "binary"
+      ]
+    },
+    "entrypoint": {
+      "type": "string",
+      "minLength": 1
+    },
+    "command": {
+      "type": "string",
+      "minLength": 1
+    },
+    "args": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "maxLength": 512
+      }
+    },
+    "policy": {
+      "type": "string",
+      "pattern": "^[a-z0-9-]+$"
+    },
+    "runtimes": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z0-9-]+$"
+      }
+    },
+    "healthPath": {
+      "type": "string",
+      "pattern": "^/"
+    },
+    "secrets": {
+      "description": "Variables que el servicio necesita. Solo se inyectan si la política las declara en allowedEnvironment y existen en el host; si no, el servicio arranca en modo plan.",
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[A-Z][A-Z0-9_]*$"
+      }
+    },
+    "transport": {
+      "description": "Cómo se alcanza el servicio. `tcp` publica un puerto en el loopback; `unix-socket` entra por el sistema de archivos y permite que el sandbox conserve network:none.",
+      "enum": [
+        "tcp",
+        "unix-socket"
+      ],
+      "default": "tcp"
+    }
   }
 }

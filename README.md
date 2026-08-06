@@ -171,6 +171,29 @@ laboratorio, con el estado en vivo.
 | `static-web` | 8801 | Un servicio publica un puerto y sigue sin ver el filesystem, los procesos ni los secretos del equipo |
 | `containment-api` | 8802 | La contención se comprueba **mientras algo corre**, no solo al arrancar |
 | `code-runner` | 8803 | Ejecuta un fragmento de Python que nadie ha revisado, dentro de la jaula |
+| `ai-agent-gateway` | 8804 | Un agente que llama a una API de modelo con **salida de red bajo allowlist**: solo los hosts declarados |
+| `wallet-signer` | socket | Firma transacciones con una clave que **no tiene por dónde salir**: `network: none` y entrada por socket Unix |
+
+### Dos modos: con credencial y sin ella
+
+Los laboratorios que necesitan un secreto arrancan igual sin él. En **modo plan**
+muestran la petición exacta que harían; con la variable exportada pasan a **modo
+real** y la ejecutan por el mismo camino.
+
+```bash
+sandboxctl service up wallet-signer          # sin clave → modo plan
+export SANDBOX_WALLET_KEY=$(openssl rand -hex 32)
+sandboxctl service up wallet-signer          # con clave → firma de verdad
+sandboxctl service call wallet-signer --path /api/egress
+```
+
+```json
+{ "salidaBloqueada": true, "veredicto": "correcto: la clave no tiene por dónde salir" }
+```
+
+Un secreto que la política no declara en `allowedEnvironment` **no entra al
+sandbox**, aunque exista en tu equipo. Y `service call` existe porque un sandbox
+con `network: none` no se alcanza con `curl`: no tiene pila de red.
 
 Abre <http://127.0.0.1:8801> y la propia página te dice, desde dentro de la
 jaula, cuántos procesos ve, si alcanza tus credenciales y qué capabilities

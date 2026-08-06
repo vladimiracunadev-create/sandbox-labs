@@ -181,11 +181,24 @@ ${body}
   <a href="https://github.com/vladimiracunadev-create/sandbox-labs/blob/main/SECURITY.md">seguridad</a>
 </div></footer>
 <script type="module">
-  // Los diagramas se renderizan solo si hay alguno en la página.
-  if (document.querySelector("pre.mermaid")) {
-    const { default: mermaid } = await import("https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs");
-    const dark = matchMedia("(prefers-color-scheme: dark)").matches;
-    mermaid.initialize({ startOnLoad: true, theme: dark ? "dark" : "default", securityLevel: "strict" });
+  // startOnLoad solo actúa si mermaid se carga antes de que el DOM esté listo.
+  // Con un import dinámico posterior no hace nada: hay que llamar a run() a
+  // mano. Ese era el motivo por el que los diagramas no aparecían.
+  const blocks = document.querySelectorAll("pre.mermaid");
+  if (blocks.length) {
+    try {
+      const { default: mermaid } = await import("https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs");
+      const dark = matchMedia("(prefers-color-scheme: dark)").matches;
+      mermaid.initialize({ startOnLoad: false, theme: dark ? "dark" : "default", securityLevel: "strict" });
+      await mermaid.run({ nodes: blocks });
+    } catch (error) {
+      // Sin red, con el CDN caído o con un bloqueador de por medio, el
+      // diagrama se queda como código legible en vez de desaparecer sin más.
+      for (const block of blocks) {
+        block.classList.add("mermaid-fallback");
+        block.dataset.note = "diagrama sin renderizar · " + error.message;
+      }
+    }
   }
 </script>
 </body>

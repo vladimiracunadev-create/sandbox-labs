@@ -123,6 +123,19 @@ enum ServiceAction {
         #[arg(long)]
         json: bool,
     },
+    /// Habla con un servicio, por TCP o por socket Unix.
+    ///
+    /// Un sandbox con `network: none` no se alcanza con curl: no tiene pila de
+    /// red. Este comando entra por el socket.
+    Call {
+        id: String,
+        #[arg(long, default_value = "GET")]
+        method: String,
+        #[arg(long, default_value = "/api/status")]
+        path: String,
+        #[arg(long)]
+        body: Option<String>,
+    },
     /// Últimas líneas del log de un servicio.
     Logs {
         id: String,
@@ -166,6 +179,7 @@ fn main() -> Result<()> {
                         anyhow::bail!("Indica el id del servicio o usa --all")
                     }
                 },
+                ServiceAction::Call { id, method, path, body } => service::call(&ctx, &id, &method, &path, body),
                 ServiceAction::List { json } => service::list(&ctx, json),
                 ServiceAction::Logs { id, lines } => service::logs(&ctx, &id, lines),
             }
