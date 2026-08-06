@@ -18,9 +18,9 @@ haría falta para cerrarla.
 
 | | |
 |---|---|
-| **Estado** | Abierto |
+| **Estado** | ✅ Cerrado en bubblewrap · abierto en `unshare` |
 | **Control afectado** | `processes` |
-| **Se declara hoy** | No. Ningún runtime lo lista en `effectiveControls`. |
+| **Se declara hoy** | Sí, en bubblewrap y **solo si el host lo admite**: el sondeo levanta un scope de systemd real antes de declarar nada. Donde no hay gestor de usuario, el control no se declara. |
 
 `RLIMIT_NPROC` **no** sirve como sustituto: cuenta los procesos del UID real en
 todo el host, no los de la carga. Fijarlo al presupuesto de la política mata la
@@ -30,39 +30,51 @@ haría pasar por control de contención algo que no lo es.
 El control real es `pids.max` del controlador `pids` de cgroups v2. Requiere un
 cgroup delegado y escribible por el usuario que lanza el sandbox.
 
-**Para cerrarlo:** crear un cgroup hijo bajo la porción delegada del usuario,
-escribir `pids.max`, mover el proceso con `cgroup.procs`, leer `pids.peak` al
-terminar y borrar el cgroup en el teardown. Solo entonces declarar `processes`.
+**Cómo se cerró:** `systemd-run --user --scope -p TasksMax=N` envuelve el árbol
+entero (scope → `prlimit` → `bwrap` → carga). Escribir el cgroup a mano no vale
+en la plataforma objetivo: en WSL2 el proceso arranca en `/init.scope`, que
+existe y **no es escribible**, así que `mkdir` falla. Pedírselo al gestor de
+usuario sí funciona y sin privilegios.
+
+**Lo que queda:** `unshare` no lo recibe a propósito — `systemd-run` necesita
+`XDG_RUNTIME_DIR` y `DBUS_SESSION_BUS_ADDRESS` en el entorno, y `unshare` se los
+pasaría tal cual a la carga. Bubblewrap no, porque hace su propio `--clearenv`
+después. Y falta leer `pids.peak`, que es B-02.
 
 ### B-02 · Techo real de memoria con `memory.max`
 
 | | |
 |---|---|
-| **Estado** | Abierto |
+| **Estado** | 🟡 Aplicado; falta observar |
 | **Control afectado** | `memory` |
-| **Se declara hoy** | Sí, pero solo como `RLIMIT_AS` vía `prlimit`, y así consta en la evidencia. |
+| **Se declara hoy** | Sí. Con cgroup disponible la evidencia dice «cgroup memory.max»; sin él, «RLIMIT_AS», que es lo que de verdad se aplicó. |
 
 `RLIMIT_AS` acota el **espacio de direcciones virtual**, que no es lo mismo que
 la memoria residente. Un proceso puede quedarse muy por debajo del límite y aun
 así presionar la RAM del host, o al revés: fallar por reservar mucho espacio
 virtual que nunca toca.
 
-**Para cerrarlo:** `memory.max` y `memory.swap.max` en el cgroup, y leer
-`memory.peak` y el contador `oom_kill` de `memory.events` al terminar, para que
-la evidencia diga si hubo OOM en vez de dejar un código de salida sin explicar.
+**Aplicado:** `MemoryMax` en el scope, que systemd traduce a `memory.max`.
+
+**Lo que queda:** observar. Aplicar un límite y medir el consumo son cosas
+distintas. Leer `memory.peak` y el contador `oom_kill` de `memory.events` exige
+muestrear el cgroup **mientras** la carga corre, porque systemd retira el cgroup
+en cuanto el scope termina. Sin eso, un proceso matado por OOM deja un código de
+salida sin explicar.
 
 ### B-03 · Cuota de CPU
 
 | | |
 |---|---|
-| **Estado** | Abierto |
+| **Estado** | 🟡 Aplicado; falta observar |
 | **Control afectado** | `cpu` |
-| **Se declara hoy** | No. |
+| **Se declara hoy** | Sí, en bubblewrap y solo con cgroup disponible. |
 
-`policy.resources.cpu` se valida y se escribe en el plan, pero ningún runtime lo
-aplica. Hoy es documentación, no un límite.
+**Aplicado:** `CPUQuota=N%` en el scope —el porcentaje va sobre **un** núcleo,
+así que `cpu: 2.0` son 200%— que systemd traduce a `cpu.max`.
 
-**Para cerrarlo:** `cpu.max` en el cgroup y leer `cpu.stat` al terminar.
+**Lo que queda:** leer `cpu.stat` al terminar, con el mismo problema de
+muestreo que B-02.
 
 ### B-04 · `network: allowlist` sin enforcement
 

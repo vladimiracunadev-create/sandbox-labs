@@ -42,12 +42,24 @@ impl DoctorReport {
                 }
             })
             .collect::<Vec<_>>();
+        // No basta con que `/sys/fs/cgroup/cgroup.controllers` exista: eso solo
+        // dice que el kernel tiene cgroups v2 montado, no que este usuario pueda
+        // crear uno y escribir límites en él. Un WSL2 con systemd deja el
+        // proceso en `/init.scope`, que existe y no es escribible. El sondeo
+        // levanta un scope de verdad y responde a la pregunta que importa.
         #[cfg(target_os = "linux")]
-        checks.push(DoctorCheck {
-            name: "cgroup-v2".into(),
-            available: Path::new("/sys/fs/cgroup/cgroup.controllers").exists(),
-            detail: "/sys/fs/cgroup/cgroup.controllers".into(),
-        });
+        {
+            let support = crate::cgroup::support();
+            checks.push(DoctorCheck {
+                name: "cgroup-v2 (límites aplicables)".into(),
+                available: support.available,
+                detail: if support.available {
+                    format!("{} · controles: {}", support.detail, support.controls.join(", "))
+                } else {
+                    support.detail.clone()
+                },
+            });
+        }
         #[cfg(target_os = "linux")]
         checks.push(DoctorCheck {
             name: "KVM".into(),

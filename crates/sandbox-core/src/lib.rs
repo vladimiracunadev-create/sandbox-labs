@@ -1,5 +1,6 @@
 pub mod bench;
 pub mod catalog;
+pub mod cgroup;
 pub mod doctor;
 pub mod escape;
 pub mod evidence;
@@ -11,6 +12,7 @@ pub mod workload;
 
 pub use bench::{BenchmarkReport, RuntimeBenchmark, Stats};
 pub use catalog::{Case, Catalog, Project, RuntimeDescriptor};
+pub use cgroup::CgroupSupport;
 pub use doctor::{DoctorCheck, DoctorReport};
 pub use escape::{EscapeSuite, Probe, ProbeResult, RuntimeReport, SuiteReport, Verdict};
 pub use evidence::{Evidence, EvidenceStatus, Violation};

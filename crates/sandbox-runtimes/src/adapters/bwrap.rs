@@ -15,7 +15,12 @@ use tempfile::tempdir;
 /// siempre «isolated network namespace», también cuando la política pedía
 /// `loopback` o `allowlist` y por tanto **no** se añadió `--unshare-net`. La
 /// evidencia declaraba un aislamiento de red que no existía.
-fn effective_limits(policy: &Policy, network_isolated: bool, wrapped_in_prlimit: bool) -> BTreeMap<String, String> {
+fn effective_limits(
+    policy: &Policy,
+    network_isolated: bool,
+    wrapped_in_prlimit: bool,
+    wrapped_in_cgroup: bool,
+) -> BTreeMap<String, String> {
     let mut limits = BTreeMap::new();
     limits.insert("filesystem".into(), "bubblewrap mount namespace".into());
     if network_isolated {
@@ -26,6 +31,14 @@ fn effective_limits(policy: &Policy, network_isolated: bool, wrapped_in_prlimit:
     if wrapped_in_prlimit {
         limits.insert("memory".into(), format!("{}MB RLIMIT_AS", policy.resources.memory_mb));
         limits.insert("openFiles".into(), format!("{} RLIMIT_NOFILE", policy.resources.open_files));
+    }
+    if wrapped_in_cgroup {
+        // Pisa deliberadamente la entrada de `prlimit`: cuando los dos están,
+        // el que manda es el cgroup, y la evidencia debe nombrar el mecanismo
+        // que de verdad acota la memoria residente.
+        limits.insert("memory".into(), format!("{}MB cgroup memory.max", policy.resources.memory_mb));
+        limits.insert("processes".into(), format!("{} cgroup pids.max", policy.resources.processes));
+        limits.insert("cpu".into(), format!("{} núcleos cgroup cpu.max", policy.resources.cpu));
     }
     limits
 }
@@ -108,8 +121,8 @@ impl RuntimeAdapter for BwrapAdapter {
         // Sin `--nproc`: RLIMIT_NPROC cuenta los procesos del UID real en todo
         // el host, no los de esta carga. Aplicarlo aquí mata la ejecución nada
         // más empezar y haría pasar por control de contención algo que no lo
-        // es. Un techo real de PIDs necesita el controlador `pids` de cgroups
-        // v2; hasta entonces, el control `processes` no se declara.
+        // es. El techo real de PIDs lo pone `pids.max` del cgroup, unas líneas
+        // más abajo, y solo cuando el host lo admite.
         if command_exists("prlimit") {
             let mut wrapped = vec![
                 format!("--as={}", policy.resources.memory_mb * 1024 * 1024),
@@ -121,16 +134,30 @@ impl RuntimeAdapter for BwrapAdapter {
             args = wrapped;
             program = "prlimit".into();
         }
-        let limits = effective_limits(policy, network_isolated, program == "prlimit");
+        let wrapped_in_prlimit = program == "prlimit";
+        // El scope de systemd va por FUERA de todo lo demás: el cgroup tiene
+        // que contener al árbol entero, incluidos `prlimit` y el propio
+        // `bwrap`, no solo al proceso final.
+        let mut environment = BTreeMap::new();
+        let wrapped_in_cgroup = match sandbox_core::cgroup::wrap(&program, &args, &policy.resources) {
+            None => false,
+            Some((outer, outer_args)) => {
+                program = outer;
+                args = outer_args;
+                // `systemd-run` necesita encontrar el bus del gestor de
+                // usuario. Solo lo lee él: bubblewrap hace `--clearenv` después,
+                // así que estas dos variables no entran al sandbox.
+                for name in sandbox_core::cgroup::REQUIRED_ENVIRONMENT {
+                    if let Ok(value) = std::env::var(name) {
+                        environment.insert(name.to_string(), value);
+                    }
+                }
+                true
+            }
+        };
+        let limits = effective_limits(policy, network_isolated, wrapped_in_prlimit, wrapped_in_cgroup);
         run(
-            CommandSpec {
-                program,
-                args,
-                current_dir: None,
-                clear_env: true,
-                environment: BTreeMap::new(),
-                effective_limits: limits,
-            },
+            CommandSpec { program, args, current_dir: None, clear_env: true, environment, effective_limits: limits },
             policy,
         )
     }
@@ -154,7 +181,7 @@ mod tests {
 
     #[test]
     fn declares_network_isolation_when_the_namespace_exists() {
-        let contained = effective_limits(&policy_with_network("none"), true, false);
+        let contained = effective_limits(&policy_with_network("none"), true, false, false);
         assert!(contained.contains_key("network"), "con --unshare-net la red sí queda aislada");
     }
 
@@ -166,7 +193,7 @@ mod tests {
     #[test]
     fn never_declares_isolation_while_keeping_the_host_network() {
         for mode in ["loopback", "allowlist", "unrestricted"] {
-            let limits = effective_limits(&policy_with_network(mode), false, false);
+            let limits = effective_limits(&policy_with_network(mode), false, false, false);
             assert!(
                 !limits.contains_key("network"),
                 "con network={mode} no se creó namespace de red: declararlo sería mentir en la evidencia"
@@ -177,7 +204,29 @@ mod tests {
     #[test]
     fn declares_memory_only_when_prlimit_wraps_the_execution() {
         let policy = policy_with_network("none");
-        assert!(!effective_limits(&policy, true, false).contains_key("memory"));
-        assert!(effective_limits(&policy, true, true).contains_key("memory"));
+        assert!(!effective_limits(&policy, true, false, false).contains_key("memory"));
+        assert!(effective_limits(&policy, true, true, false).contains_key("memory"));
+    }
+
+    #[test]
+    fn declares_pids_and_cpu_only_under_a_cgroup() {
+        let policy = policy_with_network("none");
+        let sin = effective_limits(&policy, true, true, false);
+        assert!(!sin.contains_key("processes"), "RLIMIT_NPROC no es un techo de PIDs de la carga");
+        assert!(!sin.contains_key("cpu"), "sin cgroup no hay cuota de CPU que declarar");
+
+        let con = effective_limits(&policy, true, true, true);
+        assert!(con["processes"].contains("pids.max"));
+        assert!(con["cpu"].contains("cpu.max"));
+    }
+
+    #[test]
+    fn the_cgroup_wins_over_prlimit_when_naming_the_memory_ceiling() {
+        // Los dos pueden estar puestos a la vez. La evidencia tiene que nombrar
+        // el que de verdad acota la memoria residente, no el del espacio de
+        // direcciones virtual.
+        let limits = effective_limits(&policy_with_network("none"), true, true, true);
+        assert!(limits["memory"].contains("memory.max"), "{}", limits["memory"]);
+        assert!(!limits["memory"].contains("RLIMIT_AS"), "{}", limits["memory"]);
     }
 }

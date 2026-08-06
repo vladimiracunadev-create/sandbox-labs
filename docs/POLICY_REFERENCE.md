@@ -46,4 +46,29 @@ que decide si el control `network` puede declararse efectivo:
 
 `cpu`, `memoryMb`, `processes`, `timeoutSeconds`, `openFiles` y `outputBytes`.
 
-El timeout y el límite de salida son aplicados por el supervisor común. Bubblewrap puede usar `prlimit` para address space, procesos, archivos abiertos y tiempo CPU, pero esto no reemplaza cgroups v2.
+El timeout y el límite de salida los aplica el supervisor común.
+
+`memoryMb`, `processes` y `cpu` los aplica **cgroups v2**, y solo en bubblewrap.
+El mecanismo es `systemd-run --user --scope`, que envuelve el árbol entero
+—scope → `prlimit` → `bwrap` → carga— y traduce la política así:
+
+| Campo de la política | Propiedad del scope | Fichero del kernel |
+|---|---|---|
+| `memoryMb` | `MemoryMax=<n>M` | `memory.max` |
+| `processes` | `TasksMax=<n>` | `pids.max` |
+| `cpu` | `CPUQuota=<n×100>%` | `cpu.max` |
+
+Nada de eso se declara por estar escrito aquí. Antes de la primera ejecución el
+sistema **levanta un scope real** con los tres límites puestos y comprueba que
+el kernel los acepta; si falla, los controles `memory`, `processes` y `cpu` no
+aparecen en `effectiveControls` y una política estricta que los exija no
+ejecuta. `sandboxctl doctor` muestra el resultado de ese sondeo.
+
+Dónde suele fallar: hosts sin gestor de usuario de systemd (contenedores, CI,
+sesiones no interactivas). Ahí `systemd-run --user` no encuentra el bus.
+
+`prlimit` sigue puesto como defensa adicional —`RLIMIT_AS` y `RLIMIT_NOFILE`—
+pero **no** sustituye a cgroups: acota el espacio de direcciones virtual, no la
+memoria residente. Cuando los dos están, la evidencia nombra el cgroup, que es
+el que manda. `RLIMIT_NPROC` no se usa nunca: cuenta los procesos del UID real
+en todo el host, no los de la carga.

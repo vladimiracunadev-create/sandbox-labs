@@ -186,10 +186,24 @@ impl RuntimeKind {
         //
         // `processes` NO se añade aquí. RLIMIT_NPROC cuenta los procesos del
         // UID real en todo el host, no los de la carga, así que no es el
-        // control que la política pide. Un techo real de PIDs necesita el
-        // controlador `pids` de cgroups v2 — ver docs/IMPLEMENTATION_BACKLOG.md.
+        // control que la política pide. El techo real de PIDs lo pone el
+        // controlador `pids` de cgroups v2, unas líneas más abajo.
         if matches!(self, Self::Bwrap | Self::Unshare) && command_exists("prlimit") {
             values.insert("memory".into());
+        }
+        // cgroups v2 vía scope de systemd: los únicos `memory`, `processes` y
+        // `cpu` que este proyecto puede declarar de verdad. El sondeo levanta un
+        // scope real, así que aquí ya se sabe si el kernel los acepta.
+        //
+        // Solo bubblewrap. `unshare` queda fuera a propósito: `systemd-run`
+        // necesita `XDG_RUNTIME_DIR` y `DBUS_SESSION_BUS_ADDRESS` en el entorno,
+        // y unshare se los pasaría tal cual a la carga. Bubblewrap no, porque
+        // hace su propio `--clearenv` después de que systemd-run haya leído lo
+        // que necesitaba.
+        if self == Self::Bwrap {
+            for control in &crate::cgroup::support().controls {
+                values.insert(control.clone());
+            }
         }
         // El control `network` sobrevive solo si la política pide un namespace
         // de red propio. Con `allowlist` o `unrestricted` la carga conserva la
