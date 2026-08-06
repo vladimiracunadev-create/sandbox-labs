@@ -8,7 +8,7 @@ namespaces, bubblewrap, WASI, gVisor, Kata y Firecracker.
 [![Docs](https://github.com/vladimiracunadev-create/sandbox-labs/actions/workflows/docs.yml/badge.svg)](https://github.com/vladimiracunadev-create/sandbox-labs/actions/workflows/docs.yml)
 [![Security](https://github.com/vladimiracunadev-create/sandbox-labs/actions/workflows/security.yml/badge.svg)](https://github.com/vladimiracunadev-create/sandbox-labs/actions/workflows/security.yml)
 [![Pages](https://github.com/vladimiracunadev-create/sandbox-labs/actions/workflows/pages.yml/badge.svg)](https://vladimiracunadev-create.github.io/sandbox-labs/)
-![Version](https://img.shields.io/badge/version-0.7.0-blue)
+![Version](https://img.shields.io/badge/version-0.8.0-blue)
 ![Platform](https://img.shields.io/badge/Platform-Linux%20%7C%20WSL2-orange)
 ![Rust](https://img.shields.io/badge/Rust-1.78%2B-b7410e)
 ![Node](https://img.shields.io/badge/Node-22%2B-3c873a)
@@ -33,6 +33,7 @@ namespaces, bubblewrap, WASI, gVisor, Kata y Firecracker.
 | 🛡️ **7 políticas** (`policies/`) | Perfiles neutrales de aislamiento: `strict` o `best-effort` |
 | 📦 **14 cargas** (`workloads/`) | Lo único ejecutable — no hay comandos libres |
 | 🧪 **7 sondas de contención** (`escape-suite/`) | Intentan salirse del sandbox y reportan qué se contuvo |
+| ▶️ **3 servicios** (`services/`) | Sandboxes de larga duración que se levantan, se abren y se bajan |
 | 🧪 **18 laboratorios** (`labs/`) | Recorrido educativo del baseline a la plataforma multi-tenant |
 | 📇 **`sandbox.config.json`** | Fuente única de verdad: labs, runtimes, rutas y versión |
 
@@ -139,6 +140,41 @@ SANDBOX_LABS_ALLOW_NATIVE=1 cargo run -p sandboxctl -- run \
 
 Detalle control a control en
 [docs/CONTROL_ENFORCEMENT_MATRIX.md](docs/CONTROL_ENFORCEMENT_MATRIX.md).
+
+---
+
+## ▶️ Levantar un sandbox
+
+Igual que `docker-labs` levanta contenedores, esto levanta **sandboxes con un
+servicio dentro**. Se abren en el navegador y se bajan cuando terminas.
+
+```bash
+sandboxctl service up static-web     # levanta el sandbox y espera al puerto
+sandboxctl service list              # qué hay corriendo
+sandboxctl service down --all        # baja todo
+```
+
+```text
+▶ Levantando static-web con bwrap · política service-sandbox
+✅ static-web responde en http://127.0.0.1:8801
+   contención efectiva: capabilities, environment, filesystem, memory, output
+
+SERVICIO             ESTADO        PUERTO  URL                        RUNTIME
+🟢 static-web         corriendo       8801  http://127.0.0.1:8801      bwrap
+```
+
+Desde el panel es un botón: **▶ Levantar · ⏹ Bajar · 🌐 Abrir · 📋 Logs** por
+laboratorio, con el estado en vivo.
+
+| Servicio | Puerto | Qué demuestra |
+|---|:--:|---|
+| `static-web` | 8801 | Un servicio publica un puerto y sigue sin ver el filesystem, los procesos ni los secretos del equipo |
+| `containment-api` | 8802 | La contención se comprueba **mientras algo corre**, no solo al arrancar |
+| `code-runner` | 8803 | Ejecuta un fragmento de Python que nadie ha revisado, dentro de la jaula |
+
+Abre <http://127.0.0.1:8801> y la propia página te dice, desde dentro de la
+jaula, cuántos procesos ve, si alcanza tus credenciales y qué capabilities
+conserva.
 
 ---
 

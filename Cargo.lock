@@ -435,7 +435,7 @@ dependencies = [
 
 [[package]]
 name = "sandbox-core"
-version = "0.7.0"
+version = "0.8.0"
 dependencies = [
  "anyhow",
  "chrono",
@@ -449,7 +449,7 @@ dependencies = [
 
 [[package]]
 name = "sandbox-runtimes"
-version = "0.7.0"
+version = "0.8.0"
 dependencies = [
  "anyhow",
  "sandbox-core",
@@ -460,7 +460,7 @@ dependencies = [
 
 [[package]]
 name = "sandboxctl"
-version = "0.7.0"
+version = "0.8.0"
 dependencies = [
  "anyhow",
  "chrono",

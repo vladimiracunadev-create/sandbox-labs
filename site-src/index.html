@@ -1,0 +1,146 @@
+<section class="hero">
+  <span class="eyebrow">v<!--VERSION--> · Apache-2.0</span>
+  <h1>Levanta un sandbox.<br>Comprueba qué contiene.</h1>
+  <p class="lead">
+    <b>sandbox-labs</b> levanta servicios reales dentro de un sandbox y te los publica en
+    localhost. Los abres en el navegador y ves, <i>desde dentro de la jaula</i>, qué alcanza a
+    tocar del equipo: los procesos, el filesystem, la red, tus credenciales.
+  </p>
+  <div class="cta">
+    <a class="btn primary" href="https://github.com/vladimiracunadev-create/sandbox-labs">⭐ Ver el código</a>
+    <a class="btn" href="conceptos.html">🧠 Qué es un sandbox</a>
+    <a class="btn" href="labs/">🧪 <!--LABS_COUNT--> laboratorios</a>
+  </div>
+</section>
+
+<section>
+  <h2>El problema</h2>
+  <p class="sub">
+    Ejecutas código que no has escrito todo el día: un <code>npm install</code>, la dependencia de
+    la dependencia, el script que te pasó un compañero, el fragmento que generó un modelo. Ese
+    código corre <b>con tus permisos</b>. Puede leer tus claves SSH, tus credenciales de la nube,
+    y salir a internet con lo que encuentre.
+  </p>
+  <div class="split">
+    <div class="panelbox bad">
+      <h3>🖥️ Sin sandbox</h3>
+      <ul>
+        <li>Ve <b>todos</b> los procesos de tu equipo</li>
+        <li>Lee <code>~/.ssh/id_rsa</code> y <code>~/.aws/credentials</code></li>
+        <li>Sale a internet sin restricción</li>
+        <li>Hereda tus variables de entorno, tokens incluidos</li>
+        <li>Puede escribir donde tú puedas escribir</li>
+      </ul>
+    </div>
+    <div class="panelbox good">
+      <h3>🛡️ Dentro de un sandbox</h3>
+      <ul>
+        <li>Ve <b>1 o 2</b> procesos: los suyos</li>
+        <li>El árbol del host, sencillamente, no existe para él</li>
+        <li>La red está cortada, o solo el loopback si es un servicio</li>
+        <li>Entorno limpio: solo lo que la política declara</li>
+        <li>Escribe en un directorio efímero que desaparece al terminar</li>
+      </ul>
+    </div>
+  </div>
+  <p class="sub" style="margin-top:20px">
+    Un <b>sandbox</b> es esa segunda columna: una frontera que decide qué puede tocar un proceso.
+    Y la pregunta que este proyecto responde no es «¿tengo un sandbox?», sino
+    <b>«¿qué contiene de verdad el que tengo?»</b>
+  </p>
+</section>
+
+<section>
+  <h2>Qué hace este repositorio</h2>
+  <p class="sub">Tres cosas, y las tres se pueden ejecutar hoy.</p>
+  <div class="grid">
+    <div class="card">
+      <div class="card-top"><span class="num">1 · levantar</span><span class="chip starter">servicios</span></div>
+      <h3>Levanta sandboxes con algo dentro</h3>
+      <p><!--SERVICES_COUNT--> servicios reales que arrancan dentro de una jaula y publican un puerto.
+      Se levantan y se bajan desde el panel o desde el CLI, como un contenedor.</p>
+      <code class="cmd">sandboxctl service up static-web</code>
+    </div>
+    <div class="card">
+      <div class="card-top"><span class="num">2 · medir</span><span class="chip containment">contención</span></div>
+      <h3>Comprueba qué contiene de verdad</h3>
+      <p>7 sondas que <b>intentan escaparse</b> del sandbox y devuelven una matriz por runtime.
+      Ya encontró cuatro fallos reales en este mismo repositorio.</p>
+      <code class="cmd">sandboxctl escape</code>
+    </div>
+    <div class="card">
+      <div class="card-top"><span class="num">3 · comparar</span><span class="chip platform">coste</span></div>
+      <h3>Mide lo que cuesta cada frontera</h3>
+      <p>La misma carga en cada runtime, con mediana, p95 y sobrecoste. Aislar cuesta, y elegir
+      sin medir lleva a pagar de más o a quedarse corto.</p>
+      <code class="cmd">sandboxctl bench</code>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>Laboratorios ejecutables</h2>
+  <p class="sub">
+    Cada uno levanta un servicio dentro de un sandbox y publica un puerto en localhost.
+    Ábrelo y verás la contención desde dentro, no en un documento.
+  </p>
+  <div class="grid"><!--SERVICES--></div>
+</section>
+
+<section>
+  <h2>La matriz de contención</h2>
+  <p class="sub">
+    Esto no es un ejemplo: es lo que la integración continua mide en cada commit sobre un
+    runner con bubblewrap instalado.
+  </p>
+  <pre>DIMENSIÓN / SONDA             native         bwrap       unshare
+────────────────────────────────────────────────────────────────
+network-egress                     ❌             ✅             ✅
+filesystem-escape                  ❌             ✅             ❌
+process-visibility                 ❌             ✅             ✅
+environment-leak                   ✅             ✅             ✅
+privilege-check                    ✅             ✅             ✅
+memory-limit                       —              ✅             ✅
+process-limit                      —              ❌             ❌</pre>
+  <p class="sub">
+    El veredicto que más importa no es ❌ sino <b>❌ DECLARADO</b>: el runtime dice que aplica el
+    control y la sonda demuestra que no. Un control no declarado al menos es honesto; uno
+    declarado y no aplicado invita a confiar.
+  </p>
+  <p class="sub">
+    Y hay una contraprueba obligatoria: <b>sin aislamiento las sondas tienen que escaparse</b>.
+    Si <code>native</code> saliera todo contenido, no estarían midiendo nada — y CI falla si eso pasa.
+  </p>
+</section>
+
+<section>
+  <h2>Empezar</h2>
+  <div class="split">
+    <div>
+      <h3>Levantar el panel</h3>
+      <pre>git clone https://github.com/vladimiracunadev-create/sandbox-labs.git
+cd sandbox-labs
+
+cargo build -p sandboxctl --release
+pnpm dashboard:build &amp;&amp; pnpm dashboard:start</pre>
+      <p class="sub">Abre <code>http://127.0.0.1:9093</code> y levanta cualquier laboratorio con un clic.</p>
+    </div>
+    <div>
+      <h3>O desde la terminal</h3>
+      <pre>sandboxctl doctor              # qué runtimes hay aquí
+sandboxctl service up static-web
+sandboxctl service list
+sandboxctl escape              # ¿qué contiene de verdad?
+sandboxctl service down --all</pre>
+      <p class="sub">Necesita Linux o WSL2 para el aislamiento real. En Windows y macOS se planifica y se mide, pero no hay frontera.</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="callout important">
+    <b>experimental no significa «seguro para código hostil».</b> Este proyecto no te promete una
+    caja fuerte: te dice, con evidencia firmada, qué controles quedaron efectivos en tu host y
+    cuáles no. Antes de ejecutar una carga desconocida, valida el runtime en una VM que puedas destruir.
+  </div>
+</section>

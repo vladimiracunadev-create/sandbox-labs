@@ -229,6 +229,119 @@ byId("job-form").addEventListener("submit", async (event) => {
   }
 });
 
+// ── Laboratorios ejecutables: levantar, bajar, abrir ─────────────────────────
+
+/** Estado del sandbox → semántica visual del badge. */
+const SERVICE_TONE = { running: "healthy", starting: "degraded", crashed: "stopped", stopped: "na", unknown: "na" };
+const SERVICE_LABEL = {
+  running: "corriendo", starting: "arrancando", crashed: "caído",
+  stopped: "detenido", unknown: "sin CLI compilado"
+};
+
+function serviceCard(service, onAction) {
+  const node = byId("service-template").content.cloneNode(true);
+  const card = node.querySelector(".card");
+  const state = service.state ?? "unknown";
+
+  setText(node.querySelector(".card-id"), `:${service.port}`);
+  setText(node.querySelector(".card-title"), service.name);
+  setText(node.querySelector(".card-copy"), service.description);
+  setText(node.querySelector(".service-teaches"), `Enseña: ${service.teaches}`);
+
+  const running = state === "running";
+  // Cuando corre se muestra bajo qué contención, no solo que corre.
+  const controls = service.record?.effectiveControls?.join(" · ");
+  setText(
+    node.querySelector(".card-meta"),
+    running && controls ? `${service.record.runtime} · contiene: ${controls}` : `política ${service.policy} · ${service.runtimes.join(" o ")}`
+  );
+
+  setText(node.querySelector(".status-text"), SERVICE_LABEL[state] ?? state);
+  node.querySelector(".status-badge").classList.add(SERVICE_TONE[state] ?? "na");
+  if (!running) card.classList.add("na");
+
+  const up = node.querySelector(".act-up");
+  const down = node.querySelector(".act-down");
+  const open = node.querySelector(".act-open");
+  const logs = node.querySelector(".act-logs");
+
+  up.disabled = running || state === "unknown";
+  down.disabled = state === "stopped" || state === "unknown";
+  open.href = service.url ?? `http://127.0.0.1:${service.port}`;
+  if (!running) {
+    // Un enlace a un puerto muerto solo produce una pestaña con error.
+    open.removeAttribute("href");
+    open.classList.add("btn-ghost");
+  }
+
+  up.addEventListener("click", () => onAction(service, "up", up));
+  down.addEventListener("click", () => onAction(service, "down", down));
+  logs.addEventListener("click", () => void showServiceLogs(service));
+  return node;
+}
+
+async function showServiceLogs(service) {
+  setText(byId("logs-output"), `[${service.id}] pidiendo logs…`);
+  try {
+    const data = await api(`/api/services/${service.id}/logs`);
+    setText(byId("logs-output"), `[${service.id}]
+${data.logs || "(sin salida todavía)"}`);
+  } catch (error) {
+    setText(byId("logs-output"), `[${service.id}] no se pudieron leer los logs: ${error.message}`);
+  }
+}
+
+async function actOnService(service, action, button) {
+  const verb = action === "up" ? "Levantando" : "Bajando";
+  setText(byId("logs-output"), `[${service.id}] ${verb} el sandbox…`);
+  for (const control of button.closest(".card-actions").querySelectorAll("button")) control.disabled = true;
+  try {
+    const result = await api(`/api/services/${service.id}/${action}`, { method: "POST", headers: WRITE_HEADERS, body: "{}" });
+    setText(byId("logs-output"), `[${service.id}]
+${result.output || "(sin salida)"}`);
+  } catch (error) {
+    setText(byId("logs-output"), `[${service.id}] ${verb} falló: ${error.message}`);
+  } finally {
+    await refreshServices();
+  }
+}
+
+async function refreshServices() {
+  const container = byId("services");
+  let data;
+  try {
+    data = await api("/api/services");
+  } catch (error) {
+    container.replaceChildren();
+    const empty = document.createElement("p");
+    empty.className = "empty";
+    setText(empty, `No se pudieron leer los laboratorios: ${error.message}`);
+    container.append(empty);
+    return;
+  }
+
+  const running = data.services.filter((value) => value.state === "running").length;
+  setText(byId("services-count"), `${running}/${data.services.length} corriendo`);
+
+  container.replaceChildren();
+  if (data.services.length === 0) {
+    const empty = document.createElement("p");
+    empty.className = "empty";
+    setText(empty, "No hay laboratorios registrados en services/.");
+    container.append(empty);
+    return;
+  }
+  if (!data.available) {
+    // Sin CLI compilado se puede mirar el catálogo pero no operar. Decirlo es
+    // mejor que dejar botones que fallan sin explicación.
+    const notice = document.createElement("p");
+    notice.className = "empty";
+    setText(notice, "sandboxctl no está compilado: se puede ver el catálogo pero no levantar sandboxes. Ejecuta `cargo build -p sandboxctl --release`.");
+    container.append(notice);
+  }
+  for (const service of data.services) container.append(serviceCard(service, actOnService));
+}
+
 // ── Trabajos y flujo SSE ─────────────────────────────────────────────────────
 
 /** Un EventSource por trabajo activo; se cierra al llegar a un estado terminal. */
@@ -373,10 +486,15 @@ async function refreshJobs() {
 byId("close-dialog").addEventListener("click", () => byId("evidence-dialog").close());
 byId("refresh-jobs").addEventListener("click", () => void refreshJobs());
 
+byId("refresh-jobs").addEventListener("click", () => void refreshServices());
+
 renderMetrics();
 renderCatalog();
 renderForm();
 await refreshJobs();
+await refreshServices();
 
 // Red de seguridad: si un stream se corta, el sondeo lento reconcilia el estado.
 setInterval(() => void refreshJobs().catch(() => {}), POLL_MS);
+// Los sandboxes no emiten SSE: su estado se reconcilia sondeando el puerto.
+setInterval(() => void refreshServices().catch(() => {}), POLL_MS);

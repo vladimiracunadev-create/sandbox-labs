@@ -14,3 +14,7 @@
 # Informes de la suite de contención (generados)
 /evidence/escape/*.json
 !/evidence/escape/.gitkeep
+
+# Sitio generado por scripts/build-site.mjs (las fuentes viven en site-src/)
+/site/*.html
+/site/labs/

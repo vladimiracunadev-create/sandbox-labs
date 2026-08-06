@@ -1,0 +1,160 @@
+<section class="hero small">
+  <span class="eyebrow">Conceptos</span>
+  <h1>Qué es un sandbox y por qué importa</h1>
+  <p class="lead">
+    Sin jerga y sin dar nada por sabido. Si ya sabes qué es un namespace, salta a
+    <a href="#fronteras">las fronteras</a>.
+  </p>
+</section>
+
+<section>
+  <h2>1. El problema, con un ejemplo concreto</h2>
+  <p class="sub">
+    Instalas una biblioteca. Esa biblioteca depende de otras doce, que dependen de otras
+    ochenta. Durante la instalación, varias ejecutan scripts. Esos scripts corren
+    <b>con tu usuario</b>, así que pueden hacer exactamente lo mismo que tú:
+  </p>
+  <ul>
+    <li>leer <code>~/.ssh/id_rsa</code>, la clave con la que entras a tus servidores;</li>
+    <li>leer <code>~/.aws/credentials</code> o el token de tu cuenta de GitHub;</li>
+    <li>abrir una conexión a internet y mandar lo que hayan encontrado;</li>
+    <li>dejar algo escrito que se ejecute la próxima vez que abras una terminal.</li>
+  </ul>
+  <p class="sub">
+    No es hipotético: es el patrón de todos los incidentes de cadena de suministro de los
+    últimos años. Y el antivirus no ayuda, porque el script no hace nada «malicioso» a ojos del
+    sistema: hace cosas que tú tienes permiso para hacer.
+  </p>
+  <div class="callout note">
+    El primer laboratorio del repositorio mide exactamente esto en tu equipo. La respuesta
+    habitual —red abierta, credenciales legibles, todo el árbol de procesos visible— es lo que
+    justifica todo lo demás.
+  </div>
+</section>
+
+<section>
+  <h2>2. Qué es un sandbox</h2>
+  <p class="sub">
+    Una <b>frontera</b> alrededor de un proceso que decide qué puede tocar. No es un antivirus
+    (no busca amenazas conocidas) ni una máquina virtual completa (no emula un ordenador entero).
+    Es un conjunto de controles que se aplican al arrancar el proceso:
+  </p>
+  <div class="grid">
+    <div class="card">
+      <div class="card-top"><span class="num">filesystem</span></div>
+      <h3>Qué archivos ve</h3>
+      <p>En vez de todo tu disco, solo un directorio de entrada y otro de salida. El resto,
+      sencillamente, no existe para él: no es que no tenga permiso, es que no está.</p>
+    </div>
+    <div class="card">
+      <div class="card-top"><span class="num">red</span></div>
+      <h3>Con quién puede hablar</h3>
+      <p>Sin red no puede exfiltrar lo que lea ni descargar lo que ejecutará después. Es el
+      control con mejor relación entre esfuerzo y riesgo evitado.</p>
+    </div>
+    <div class="card">
+      <div class="card-top"><span class="num">procesos</span></div>
+      <h3>A quién puede ver</h3>
+      <p>Con su propio espacio de PIDs ve uno o dos procesos: los suyos. No puede inspeccionar
+      ni señalizar nada de lo que corre en tu equipo.</p>
+    </div>
+    <div class="card">
+      <div class="card-top"><span class="num">privilegios</span></div>
+      <h3>Qué puede pedirle al sistema</h3>
+      <p>Las <i>capabilities</i> trocean el poder de root. Un sandbox sano las quita todas: sin
+      montar, sin trazar procesos, sin tocar la red del host.</p>
+    </div>
+    <div class="card">
+      <div class="card-top"><span class="num">recursos</span></div>
+      <h3>Cuánto puede consumir</h3>
+      <p>Techos de memoria, de procesos y de tiempo. Sin ellos, una carga descontrolada tumba el
+      equipo aunque no esté haciendo nada malicioso.</p>
+    </div>
+    <div class="card">
+      <div class="card-top"><span class="num">entorno</span></div>
+      <h3>Qué secretos hereda</h3>
+      <p>Un proceso hereda tus variables de entorno por defecto. Si ahí vive un token, cualquier
+      ejecución de código ajeno es una filtración.</p>
+    </div>
+  </div>
+</section>
+
+<section id="fronteras">
+  <h2>3. No todas las fronteras son iguales</h2>
+  <p class="sub">
+    Aquí está el error que más caro sale: tratar «contenedor», «namespace», «sandbox de
+    WebAssembly» y «máquina virtual» como si fueran lo mismo. Comparten kernel de formas muy
+    distintas, y eso cambia qué pasa cuando alguien encuentra un fallo en ese kernel.
+  </p>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Frontera</th><th>Qué separa</th><th>Coste de arranque</th><th>Si el kernel tiene un fallo</th></tr></thead>
+      <tbody>
+        <tr><td><b>Namespaces</b><br><code>unshare</code></td><td>Vistas del kernel: PIDs, red, montajes</td><td>milisegundos</td><td>Se atraviesa: kernel compartido</td></tr>
+        <tr><td><b>Sandbox rootless</b><br><code>bubblewrap</code></td><td>Lo anterior + jaula de filesystem y capabilities</td><td>milisegundos</td><td>Se atraviesa: kernel compartido</td></tr>
+        <tr><td><b>WASI</b><br><code>wasmtime</code></td><td>Capacidades: solo se ve lo que se concede</td><td>microsegundos</td><td>Superficie mínima, pero hay que recompilar la carga</td></tr>
+        <tr><td><b>gVisor</b><br><code>runsc</code></td><td>Un kernel en espacio de usuario intercepta las syscalls</td><td>decenas de ms</td><td>Hace falta atravesar dos kernels</td></tr>
+        <tr><td><b>MicroVM</b><br>Kata · Firecracker</td><td>Hardware: kernel propio para el invitado</td><td>cientos de ms</td><td>No alcanza al host: hay que romper el hipervisor</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="callout important">
+    Un sandbox rootless <b>comparte kernel con tu equipo</b>. Contiene muy bien a un script
+    descuidado o a una dependencia curiosa. Frente a alguien con un exploit de kernel en la mano,
+    la frontera es de papel. Por eso el proyecto documenta el estado de cada runtime en vez de
+    llamarlos a todos «seguro».
+  </div>
+</section>
+
+<section>
+  <h2>4. Lo que casi nadie comprueba</h2>
+  <p class="sub">
+    Una política dice «corta la red». El runtime dice «yo aplico red». ¿Y si no la corta?
+    Pasa por cuatro motivos muy reales:
+  </p>
+  <ul>
+    <li>falta el binario y el sistema degradó en silencio;</li>
+    <li>el kernel no lo permite (los user namespaces están restringidos por política);</li>
+    <li>un refactor dejó de pasar un flag;</li>
+    <li>el control <b>no significa lo que parece</b> — por ejemplo <code>RLIMIT_NPROC</code>,
+    que no limita los procesos de tu carga sino los de tu usuario en toda la máquina.</li>
+  </ul>
+  <p class="sub">
+    Los cuatro producen el mismo síntoma: un ✅ en un documento y una fuga en la realidad.
+    Por eso este repositorio no se conforma con declarar controles: lanza sondas que
+    <b>intentan escaparse</b> y publica lo que consiguieron.
+  </p>
+  <pre>$ sandboxctl escape
+
+DIMENSIÓN / SONDA             native         bwrap       unshare
+────────────────────────────────────────────────────────────────
+network-egress                     ❌             ✅             ✅
+filesystem-escape                  ❌             ✅             ❌
+process-visibility                 ❌             ✅             ✅</pre>
+  <p class="sub">
+    Ese ❌ de <code>native</code> no es un fallo del proyecto: es la línea base sin aislamiento, y
+    <b>tiene</b> que estar en rojo. Si saliera verde, las sondas no estarían midiendo nada y los ✅
+    de al lado no valdrían nada.
+  </p>
+</section>
+
+<section>
+  <h2>5. Cuándo usar qué</h2>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Si quieres…</th><th>Empieza por</th></tr></thead>
+      <tbody>
+        <tr><td>Ver qué expone tu equipo hoy</td><td><a href="labs/01-baseline-unrestricted.html">Lab 01 · Línea base</a></td></tr>
+        <tr><td>Ejecutar un build de terceros sin darle tus claves</td><td><a href="labs/03-filesystem-jail.html">Lab 03 · Jaula de filesystem</a></td></tr>
+        <tr><td>Que una carga no pueda llamar a casa</td><td><a href="labs/09-network-egress.html">Lab 09 · Salida de red</a></td></tr>
+        <tr><td>Un sandbox completo sin privilegios</td><td><a href="labs/10-rootless-sandbox.html">Lab 10 · Rootless</a></td></tr>
+        <tr><td>Ejecutar código generado por un modelo</td><td><a href="labs/15-ai-code-runner.html">Lab 15 · Ejecutor de IA</a></td></tr>
+        <tr><td>Saber qué contiene de verdad lo que ya tienes</td><td><a href="labs/16-escape-test-suite.html">Lab 16 · Suite de contención</a></td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="cta">
+    <a class="btn primary" href="labs/">Ver los laboratorios</a>
+    <a class="btn" href="index.html">Volver al inicio</a>
+  </div>
+</section>

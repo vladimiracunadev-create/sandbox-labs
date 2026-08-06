@@ -595,3 +595,39 @@ dialog::backdrop {
     transition: none !important;
   }
 }
+
+/* ── Tarjetas de laboratorio ejecutable ──────────────────────────────────── */
+.card.service {
+  display: flex;
+  flex-direction: column;
+}
+
+.service-teaches {
+  margin: 10px 0 0;
+  padding: 10px 12px;
+  border-left: 3px solid var(--accent);
+  border-radius: 0 10px 10px 0;
+  background: var(--accent-soft);
+  color: var(--text);
+  font-size: 0.86rem;
+  line-height: 1.45;
+}
+
+.card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: auto;
+  padding-top: 16px;
+}
+
+.card-actions .btn {
+  padding: 9px 14px;
+  font-size: 0.86rem;
+}
+
+/* Un enlace sin href no es accionable: se atenúa para que se note. */
+.card-actions a.btn:not([href]) {
+  opacity: 0.45;
+  pointer-events: none;
+}

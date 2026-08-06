@@ -41,6 +41,22 @@
       </p>
     </section>
 
+    <!-- Sandboxes ────────────────────────────────────────────────────────── -->
+    <div class="section-head">
+      <div>
+        <h2>🧪 Laboratorios ejecutables</h2>
+        <p class="section-copy">
+          Cada uno levanta un <b>servicio real dentro de un sandbox</b> y publica un puerto en
+          localhost. Ábrelo en el navegador y verás, desde dentro de la jaula, qué alcanza a ver
+          del equipo. Bájalo cuando termines.
+        </p>
+      </div>
+      <span class="tag" id="services-count">…</span>
+    </div>
+    <div class="card-grid" id="services">
+      <p class="empty">Cargando laboratorios…</p>
+    </div>
+
     <!-- Crear trabajo ────────────────────────────────────────────────────── -->
     <section class="panel runner" aria-labelledby="runner-title">
       <div class="runner-copy">
@@ -132,6 +148,25 @@
     </div>
     <pre id="evidence"></pre>
   </dialog>
+
+  <template id="service-template">
+    <article class="card service">
+      <div class="card-head">
+        <span class="card-id"></span>
+        <span class="status-badge"><span class="status-dot"></span><span class="status-text"></span></span>
+      </div>
+      <h3 class="card-title"></h3>
+      <p class="card-copy"></p>
+      <p class="service-teaches"></p>
+      <p class="card-meta"></p>
+      <div class="card-actions">
+        <button class="btn btn-primary act-up" type="button">▶ Levantar</button>
+        <button class="btn btn-danger act-down" type="button">⏹ Bajar</button>
+        <a class="btn btn-secondary act-open" target="_blank" rel="noreferrer noopener">🌐 Abrir</a>
+        <button class="btn btn-ghost act-logs" type="button">📋 Logs</button>
+      </div>
+    </article>
+  </template>
 
   <template id="card-template">
     <article class="card">

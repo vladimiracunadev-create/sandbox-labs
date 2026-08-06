@@ -2,7 +2,7 @@
   "$schema": "./schemas/catalog.schema.json",
   "project": {
     "name": "Sandbox Labs",
-    "version": "0.7.0",
+    "version": "0.8.0",
     "controlCenterPort": 9093,
     "defaultRuntime": "dry-run",
     "evidenceDirectory": "evidence/runs",

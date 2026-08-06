@@ -6,6 +6,7 @@ pub mod evidence;
 pub mod hash;
 pub mod policy;
 pub mod runtime;
+pub mod service;
 pub mod workload;
 
 pub use bench::{BenchmarkReport, RuntimeBenchmark, Stats};
@@ -16,4 +17,5 @@ pub use evidence::{Evidence, EvidenceStatus, Violation};
 pub use hash::{finish_hex, sha256_hex, to_hex};
 pub use policy::{EnforcementMode, Policy, ResourcePolicy};
 pub use runtime::{command_exists, ControlAssessment, ExecutionOutcome, ExecutionPlan, RuntimeKind, RuntimeProbe};
+pub use service::{Service, ServiceRecord, ServiceState};
 pub use workload::{ExpectedOutcome, Workload};

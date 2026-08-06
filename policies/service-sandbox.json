@@ -1,0 +1,66 @@
+{
+  "$schema": "../schemas/policy.schema.json",
+  "id": "service-sandbox",
+  "description": "Servicios de larga duración: conserva el loopback para poder publicar un puerto y contiene todo lo demás. Un servicio sin red no puede servir nada, así que esa frontera se abre a propósito y queda escrita aquí.",
+  "enforcement": {
+    "mode": "best-effort",
+    "requiredControls": [
+      "filesystem",
+      "processes",
+      "memory",
+      "capabilities",
+      "devices",
+      "environment",
+      "output"
+    ]
+  },
+  "filesystem": {
+    "root": "ephemeral",
+    "readOnly": [],
+    "writable": [
+      "/workspace/output"
+    ],
+    "maxWorkspaceMb": 128,
+    "followSymlinks": false
+  },
+  "network": {
+    "mode": "loopback",
+    "hosts": [],
+    "dns": "disabled"
+  },
+  "resources": {
+    "cpu": 1.0,
+    "memoryMb": 512,
+    "processes": 32,
+    "timeoutSeconds": 86400,
+    "openFiles": 256,
+    "outputBytes": 1048576
+  },
+  "process": {
+    "capabilities": [],
+    "environment": {
+      "LANG": "C.UTF-8",
+      "NO_COLOR": "1",
+      "PATH": "/usr/local/bin:/usr/bin:/bin",
+      "HOME": "/workspace",
+      "PYTHONDONTWRITEBYTECODE": "1",
+      "PYTHONUNBUFFERED": "1"
+    },
+    "allowedEnvironment": [],
+    "user": 65534,
+    "group": 65534
+  },
+  "syscalls": {
+    "profile": "default",
+    "allow": [],
+    "deny": []
+  },
+  "devices": {
+    "allow": [
+      "null",
+      "zero",
+      "random",
+      "urandom"
+    ]
+  }
+}

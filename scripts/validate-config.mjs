@@ -88,6 +88,27 @@ for (const file of manifestPaths) {
 }
 assert(workloadIds.size > 0, "No hay workloads");
 
+// Servicios: puertos únicos, política y runtimes existentes, entrypoint real.
+// Dos servicios con el mismo puerto se pisarían al levantarse, y el segundo
+// fallaría con un error de socket en vez de decir qué pasa.
+const serviceRoot = resolve(root, "services");
+const servicePorts = new Map();
+const serviceIds = new Set();
+for (const entry of await readdir(serviceRoot, { withFileTypes: true })) {
+  if (!entry.isDirectory()) continue;
+  const file = resolve(serviceRoot, entry.name, "service.json");
+  const service = await validate("service.schema.json", file);
+  await ensureSchemaReference(file, service);
+  assert(!serviceIds.has(service.id), `Servicio duplicado: ${service.id}`);
+  serviceIds.add(service.id);
+  assert(!servicePorts.has(service.port), `Puerto ${service.port} repetido: ${servicePorts.get(service.port)} y ${service.id}`);
+  servicePorts.set(service.port, service.id);
+  assert(policyIds.has(service.policy), `${service.id}: política no registrada (${service.policy})`);
+  for (const runtime of service.runtimes) assert(runtimeIds.has(runtime), `${service.id}: runtime desconocido (${runtime})`);
+  await access(resolve(serviceRoot, entry.name, service.entrypoint));
+}
+assert(serviceIds.size > 0, "No hay servicios registrados");
+
 // Suite de contención: cada sonda debe apuntar a una carga registrada y a una
 // dimensión declarada. Una sonda huérfana no mediría nada y pasaría por buena.
 const suitePath = resolve(root, "escape-suite", "suite.json");
@@ -106,4 +127,4 @@ for (const dimension of dimensionIds) {
   assert(suite.probes.some((probe) => probe.dimension === dimension), `La dimensión ${dimension} no tiene ninguna sonda`);
 }
 
-console.log(`✅ Configuración válida: ${catalog.labs.length} labs, ${catalog.runtimes.length} runtimes, ${policyIds.size} policies, ${workloadIds.size} workloads, ${probeIds.size} sondas de contención · v${catalog.project.version}`);
+console.log(`✅ Configuración válida: ${catalog.labs.length} labs, ${catalog.runtimes.length} runtimes, ${policyIds.size} policies, ${workloadIds.size} workloads, ${serviceIds.size} servicios, ${probeIds.size} sondas · v${catalog.project.version}`);

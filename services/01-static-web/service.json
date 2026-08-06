@@ -1,0 +1,19 @@
+{
+  "$schema": "../../schemas/service.schema.json",
+  "id": "static-web",
+  "name": "Web estática en sandbox",
+  "category": "starter",
+  "description": "Un servidor HTTP corriente servido desde dentro de una jaula. La página muestra en vivo qué alcanza a ver del host el proceso que la sirve.",
+  "teaches": "Que un servicio puede publicar un puerto y seguir sin ver el filesystem, los procesos ni los secretos del equipo.",
+  "port": 8801,
+  "kind": "python",
+  "entrypoint": "app.py",
+  "command": "python3",
+  "args": [],
+  "policy": "service-sandbox",
+  "runtimes": [
+    "bwrap",
+    "unshare"
+  ],
+  "healthPath": "/health"
+}

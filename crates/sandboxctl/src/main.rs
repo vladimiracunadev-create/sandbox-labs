@@ -1,5 +1,6 @@
 mod bench;
 mod escape;
+mod service;
 
 use anyhow::{Context, Result};
 use clap::{Parser, Subcommand};
@@ -73,6 +74,14 @@ enum Command {
         #[arg(long)]
         report: Option<PathBuf>,
     },
+    /// Levanta, lista y baja sandboxes de larga duración.
+    ///
+    /// A diferencia de `run`, que ejecuta y termina, esto mantiene un servicio
+    /// dentro de la jaula publicando un puerto que se puede abrir y bajar.
+    Service {
+        #[command(subcommand)]
+        action: ServiceAction,
+    },
     /// Compara el coste de arranque de cada frontera con la misma carga.
     Bench {
         #[arg(long, default_value = "workloads/benign/hello")]
@@ -90,6 +99,35 @@ enum Command {
         json: bool,
         #[arg(long)]
         report: Option<PathBuf>,
+    },
+}
+
+#[derive(Debug, Subcommand)]
+enum ServiceAction {
+    /// Levanta un sandbox con el servicio dentro.
+    Up {
+        id: String,
+        /// No esperar a que el puerto responda.
+        #[arg(long)]
+        detach: bool,
+    },
+    /// Baja el sandbox de un servicio.
+    Down {
+        /// Id del servicio; con `--all` se bajan todos.
+        id: Option<String>,
+        #[arg(long)]
+        all: bool,
+    },
+    /// Estado de todos los servicios registrados.
+    List {
+        #[arg(long)]
+        json: bool,
+    },
+    /// Últimas líneas del log de un servicio.
+    Logs {
+        id: String,
+        #[arg(long, default_value_t = 40)]
+        lines: usize,
     },
 }
 
@@ -117,6 +155,21 @@ fn main() -> Result<()> {
                 report_path: report,
             },
         ),
+        Command::Service { action } => {
+            let ctx = service::ServiceContext::new(&root)?;
+            match action {
+                ServiceAction::Up { id, detach } => service::up(&ctx, &id, !detach),
+                ServiceAction::Down { id, all } => match (id, all) {
+                    (_, true) => service::down_all(&ctx),
+                    (Some(id), false) => service::down(&ctx, &id),
+                    (None, false) => {
+                        anyhow::bail!("Indica el id del servicio o usa --all")
+                    }
+                },
+                ServiceAction::List { json } => service::list(&ctx, json),
+                ServiceAction::Logs { id, lines } => service::logs(&ctx, &id, lines),
+            }
+        }
         Command::Bench { workload, policy, runtime, repeat, json, report } => bench::run(
             &root,
             &bench::BenchOptions {

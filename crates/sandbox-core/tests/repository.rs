@@ -354,3 +354,75 @@ fn lab_readmes_agree_with_the_catalog() {
         assert!(content.lines().count() >= 60, "{} es demasiado corto para ser útil", path.display());
     }
 }
+
+// ── Servicios sandboxeados ───────────────────────────────────────────────────
+
+fn services() -> Vec<sandbox_core::Service> {
+    let mut found = Vec::new();
+    for entry in fs::read_dir(repo_root().join("services")).expect("directorio services").filter_map(Result::ok) {
+        let manifest = entry.path().join("service.json");
+        if manifest.is_file() {
+            found
+                .push(sandbox_core::Service::load(&manifest).unwrap_or_else(|e| panic!("{}: {e}", manifest.display())));
+        }
+    }
+    found.sort_by(|a, b| a.id.cmp(&b.id));
+    found
+}
+
+#[test]
+fn every_service_loads_and_validates() {
+    let all = services();
+    assert!(!all.is_empty(), "no hay servicios registrados");
+    let mut ids = BTreeSet::new();
+    for service in &all {
+        assert!(ids.insert(service.id.clone()), "servicio duplicado: {}", service.id);
+        service.validate().unwrap_or_else(|e| panic!("{}: {e}", service.id));
+    }
+}
+
+#[test]
+fn services_never_share_a_port() {
+    // Dos servicios en el mismo puerto se pisan al levantarse y el segundo
+    // falla con un error de socket que no dice qué pasó.
+    let mut ports = BTreeSet::new();
+    for service in services() {
+        assert!(ports.insert(service.port), "puerto {} repetido en {}", service.port, service.id);
+    }
+}
+
+#[test]
+fn service_policies_and_runtimes_are_registered() {
+    let policies: BTreeSet<String> =
+        policy_files().iter().map(|p| p.file_stem().unwrap().to_string_lossy().to_string()).collect();
+    for service in services() {
+        assert!(policies.contains(&service.policy), "{}: política no registrada ({})", service.id, service.policy);
+        for runtime in &service.runtimes {
+            RuntimeKind::from_str(runtime).unwrap_or_else(|_| panic!("{}: runtime desconocido {runtime}", service.id));
+        }
+    }
+}
+
+#[test]
+fn the_service_policy_keeps_loopback_open_on_purpose() {
+    // Un servicio sin red no puede publicar nada. La política de servicios abre
+    // esa frontera a propósito y lo dice; si alguien la cambiara a `none`, los
+    // servicios arrancarían y nadie podría hablar con ellos.
+    let policy = load_policy("service-sandbox");
+    assert_eq!(policy.network.mode, "loopback", "los servicios necesitan loopback para publicar un puerto");
+    assert!(policy.description.to_lowercase().contains("loopback"), "la política debe explicar por qué abre la red");
+    // Y el resto de la contención sigue exigida.
+    for control in ["filesystem", "capabilities", "environment"] {
+        assert!(
+            policy.enforcement.required_controls.iter().any(|value| value == control),
+            "la política de servicios debe seguir exigiendo {control}"
+        );
+    }
+}
+
+#[test]
+fn service_ports_are_unprivileged() {
+    for service in services() {
+        assert!(service.port >= 1024, "{} usa un puerto privilegiado: {}", service.id, service.port);
+    }
+}

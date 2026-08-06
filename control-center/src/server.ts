@@ -6,6 +6,7 @@ import { repoPaths, defaultRepoRoot } from "./paths.ts";
 import { isTrustedHostHeader, isTrustedWriteRequest, readJsonBody, safePublicPath, validIdentifier } from "./security.ts";
 import { loadRegistry } from "./registry.ts";
 import { JobStore, listEvidence } from "./jobs.ts";
+import { actOnService, listServices, serviceLogs } from "./services.ts";
 
 function sendJson(response, status, payload) {
   response.writeHead(status, { "content-type": "application/json; charset=utf-8", "x-content-type-options": "nosniff", "cache-control": "no-store" });
@@ -17,7 +18,7 @@ function contentType(path) {
 }
 
 function errorStatus(error) {
-  return ({ body_too_large: 413, invalid_json: 400, invalid_job: 400, unknown_workload: 400, unknown_policy: 400, unknown_runtime: 400, invalid_arguments: 400, native_not_allowed_for_workload: 400 })[String(error?.message ?? error)] ?? 500;
+  return ({ body_too_large: 413, invalid_json: 400, invalid_job: 400, unknown_workload: 400, unknown_policy: 400, unknown_runtime: 400, unknown_service: 400, unknown_action: 400, sandboxctl_unavailable: 503, invalid_arguments: 400, native_not_allowed_for_workload: 400 })[String(error?.message ?? error)] ?? 500;
 }
 
 export async function createSandboxServer(options = {}) {
@@ -76,6 +77,18 @@ async function api(request, response, url, ctx) {
   if (request.method === "GET" && url.pathname === "/api/catalog") { sendJson(response, 200, ctx.registry.catalog); return; }
   if (request.method === "GET" && url.pathname === "/api/policies") { sendJson(response, 200, ctx.registry.policies.map(({ path, file, ...policy }) => policy)); return; }
   if (request.method === "GET" && url.pathname === "/api/workloads") { sendJson(response, 200, ctx.registry.workloads.map(({ directory, manifestPath, ...workload }) => workload)); return; }
+  if (request.method === "GET" && url.pathname === "/api/services") { sendJson(response, 200, await listServices(ctx.paths)); return; }
+  const serviceAction = url.pathname.match(/^\/api\/services\/([a-z0-9-]+)\/(up|down)$/);
+  if (request.method === "POST" && serviceAction) {
+    // Levantar o bajar un sandbox es una escritura: exige la misma cabecera de
+    // confianza que crear un trabajo.
+    if (!isTrustedWriteRequest(request, ctx.host, ctx.port)) { sendJson(response, 403, { error: "untrusted_request" }); return; }
+    const result = await actOnService(ctx.paths, serviceAction[1], serviceAction[2]);
+    sendJson(response, result.ok ? 200 : 500, result);
+    return;
+  }
+  const serviceLog = url.pathname.match(/^\/api\/services\/([a-z0-9-]+)\/logs$/);
+  if (request.method === "GET" && serviceLog) { sendJson(response, 200, await serviceLogs(ctx.paths, serviceLog[1])); return; }
   if (request.method === "GET" && url.pathname === "/api/jobs") { sendJson(response, 200, ctx.jobs.list()); return; }
   if (request.method === "POST" && url.pathname === "/api/jobs") {
     if (!isTrustedWriteRequest(request, ctx.host, ctx.port)) { sendJson(response, 403, { error: "untrusted_request" }); return; }

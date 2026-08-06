@@ -248,7 +248,7 @@ export function validateJobRequest(request, registryOrWorkloads, policies, runti
 // de ejecución de la carga, así que no debe consumir el watchdog de la política.
 const CARGO_STARTUP_GRACE_MS = 600_000;
 
-async function cliInvocation(root) {
+export async function cliInvocation(root) {
   // Permite forzar la evidencia de reserva (pruebas y entornos sin toolchain).
   if (process.env.SANDBOX_LABS_CLI_FALLBACK === "off") return null;
   const explicit = process.env.SANDBOXCTL_BIN;

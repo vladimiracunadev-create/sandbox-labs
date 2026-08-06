@@ -22,10 +22,19 @@ impl RuntimeAdapter for BwrapAdapter {
         let temp = tempdir()?;
         let output = temp.path().join("output");
         std::fs::create_dir_all(&output)?;
+        // `--unshare-all` incluye la red. Un servicio con `network.mode` distinto
+        // de `none` necesita conservar el loopback del host para poder publicar
+        // un puerto; si no, el sandbox arranca y nadie puede hablar con él.
+        // Antes se cortaba siempre, así que la política se ignoraba en silencio.
+        let network_isolated = policy.network.mode == "none";
         let mut args = vec![
             "--die-with-parent",
             "--new-session",
-            "--unshare-all",
+            "--unshare-user",
+            "--unshare-ipc",
+            "--unshare-pid",
+            "--unshare-uts",
+            "--unshare-cgroup-try",
             "--proc",
             "/proc",
             "--dev",
@@ -34,11 +43,16 @@ impl RuntimeAdapter for BwrapAdapter {
             "/tmp",
             "--dir",
             "/workspace",
-            "--ro-bind",
         ]
         .into_iter()
         .map(String::from)
         .collect::<Vec<_>>();
+        // El flag va antes de `--ro-bind`: intercalarlo entre esa opción y sus
+        // dos rutas rompería el parseo de argumentos de bwrap.
+        if network_isolated {
+            args.push("--unshare-net".into());
+        }
+        args.push("--ro-bind".into());
         args.push(workload.directory.display().to_string());
         args.push("/workspace/input".into());
         args.push("--bind".into());
