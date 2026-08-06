@@ -11,7 +11,7 @@ tareas reales, y que se apaga dejando constancia de qué pudo tocar y qué no.
 ![Platform](https://img.shields.io/badge/Platform-Linux%20%7C%20WSL2-orange)
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 
-🌐 **[Sitio del proyecto](https://vladimiracunadev-create.github.io/sandbox-labs/)**
+🌐 **[Sitio del proyecto](https://vladimiracunadev-create.github.io/sandbox-labs/)** · 📚 **[Documentación](docs/)** · 🧠 **[Qué es un sandbox](docs/QUE-ES-UN-SANDBOX.md)**
 
 ---
 
@@ -37,6 +37,8 @@ pide tu clave SSH no recibe «acceso denegado», recibe «ese archivo no está»
 Por eso conviven: metes tu app en Docker para desplegarla, y metes en un sandbox
 el código de terceros que esa app tiene que ejecutar.
 
+Comparación completa en [docs/COMPARATIVA.md](docs/COMPARATIVA.md).
+
 ---
 
 ## Los cinco casos
@@ -51,15 +53,24 @@ Cada uno enseña una idea que ningún otro enseña.
 | 04 | Plugins de terceros | Conceder capacidades una a una, no restar permisos | 8804 | 🔴 pendiente |
 | 05 | Contratos inteligentes | Sin entrada ni salida, con el trabajo medido en vez del tiempo | 8805 | 🟡 en obra |
 
-Y por encima, el **entorno raíz** en `127.0.0.1:9093`, que los levanta, los apaga
-y muestra bajo qué política corre cada uno.
+```mermaid
+flowchart TB
+  R["🧭 Entorno raíz · :9093<br/>levanta, apaga y vigila"] --> C1["🌐 :8801"] & C2["🤖 :8802"] & C3["🔬 :8803"] & C4["🧩 :8804"] & C5["⛓️ :8805"]
+  C1 & C2 & C3 & C4 & C5 --> E["🧾 Evidencia por ejecución"]
+```
+
+Por encima, el **entorno raíz** en `127.0.0.1:9093` los levanta, los apaga y
+muestra bajo qué política corre cada uno.
+
+Ficha de cada caso en [docs/CASOS.md](docs/CASOS.md).
 
 ---
 
 ## Empezar
 
 Necesitas **Linux o WSL2**: los sandboxes son primitivas del kernel de Linux
-—namespaces, cgroups, capabilities— y en Windows no existen.
+—namespaces, cgroups, capabilities— y en Windows no existen. Guía completa en
+[docs/INSTALACION.md](docs/INSTALACION.md).
 
 ```bash
 sudo apt install bubblewrap util-linux
@@ -121,6 +132,22 @@ nada. Detalle en [docs/CONTAINMENT_SUITE.md](docs/CONTAINMENT_SUITE.md).
 > te promete una caja fuerte: te dice, con evidencia, qué controles quedaron
 > efectivos en tu host. Antes de ejecutar una carga desconocida, valida el
 > runtime en una VM que puedas destruir.
+
+## Documentación
+
+| Si quieres… | Ve a |
+|---|---|
+| Entender el concepto desde cero | [Qué es un sandbox](docs/QUE-ES-UN-SANDBOX.md) |
+| Saber en qué se diferencia de Docker | [Comparativa](docs/COMPARATIVA.md) |
+| Ver qué hace cada caso | [Los cinco casos](docs/CASOS.md) |
+| Instalarlo | [Instalación](docs/INSTALACION.md) |
+| Escribir una política | [Referencia de políticas](docs/POLICY_REFERENCE.md) |
+| Entender el vocabulario | [Glosario](docs/GLOSARIO.md) |
+| Saber qué protege y qué no | [Modelo de amenazas](docs/THREAT_MODEL.md) |
+
+Índice completo en **[docs/](docs/)**.
+
+---
 
 ## Licencia
 

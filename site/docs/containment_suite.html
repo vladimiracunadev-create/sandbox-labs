@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="color-scheme" content="light dark">
+<meta name="description" content="🛡️ Suite de contención">
+<title>🛡️ Suite de contención — sandbox-labs</title>
+<style>/* Sitio de sandbox-labs. Misma paleta que el Control Center: el repo y su web
+   se leen como el mismo producto. */
+
+:root {
+  color-scheme: light dark;
+  --panel: #fff;
+  --panel-soft: rgba(255, 255, 255, 0.66);
+  --bg: #f5f7fc;
+  --text: #16202b;
+  --muted: #5b6879;
+  --line: rgba(22, 32, 43, 0.13);
+  --accent: #3b62d9;
+  --accent-dark: #27428f;
+  --accent-soft: rgba(59, 98, 217, 0.12);
+  --ok: #1f7a4f;
+  --warn: #b06a12;
+  --danger: #b23131;
+  --code-bg: #1b2330;
+  --code-fg: #e8eef7;
+  --shadow: 0 16px 40px rgba(22, 32, 43, 0.1);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --panel: #131b2b;
+    --panel-soft: rgba(19, 27, 43, 0.6);
+    --bg: #080d18;
+    --text: #eef2fa;
+    --muted: #9fadc4;
+    --line: rgba(158, 176, 205, 0.2);
+    --accent: #7d9bff;
+    --accent-dark: #a8bcff;
+    --accent-soft: rgba(125, 155, 255, 0.16);
+    --ok: #4fd39b;
+    --warn: #e0b055;
+    --danger: #f08a8a;
+    --code-bg: #060b16;
+    --code-fg: #d5e0f5;
+    --shadow: 0 16px 40px rgba(0, 0, 0, 0.4);
+  }
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: "Segoe UI", Inter, ui-sans-serif, system-ui, sans-serif;
+  color: var(--text);
+  background: var(--bg);
+  line-height: 1.6;
+}
+
+.shell { max-width: 1100px; margin: 0 auto; padding: 0 20px; }
+
+/* ── Barra superior ─────────────────────────────────────────────────────── */
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  backdrop-filter: blur(10px);
+  background: color-mix(in srgb, var(--bg) 86%, transparent);
+  border-bottom: 1px solid var(--line);
+}
+
+.topbar-in {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 12px 20px;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  flex-wrap: wrap;
+}
+
+.brand { font-weight: 800; text-decoration: none; color: var(--text); font-size: 1.02rem; }
+.topbar nav { display: flex; gap: 6px; flex-wrap: wrap; }
+.topbar nav a {
+  padding: 7px 12px;
+  border-radius: 999px;
+  text-decoration: none;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+.topbar nav a:hover { background: var(--accent-soft); color: var(--accent-dark); }
+.topbar nav a.on { background: var(--accent-soft); color: var(--accent-dark); font-weight: 700; }
+.gh { margin-left: auto; color: var(--accent-dark); text-decoration: none; font-size: 0.9rem; font-weight: 600; }
+
+/* ── Hero ───────────────────────────────────────────────────────────────── */
+.hero { padding: 56px 0 12px; }
+.hero.small { padding: 40px 0 8px; }
+.hero h1 { margin: 10px 0 14px; font-size: clamp(2rem, 5vw, 3.3rem); line-height: 1.06; letter-spacing: -0.02em; }
+.hero p { margin: 0; max-width: 68ch; color: var(--muted); font-size: 1.08rem; }
+.hero .lead { color: var(--text); font-size: 1.16rem; }
+
+.eyebrow {
+  display: inline-flex;
+  padding: 6px 13px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent-dark);
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.cta { display: flex; flex-wrap: wrap; gap: 12px; margin: 28px 0 8px; }
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 13px 22px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  color: var(--text);
+  text-decoration: none;
+  font-weight: 600;
+}
+.btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 700; }
+
+/* ── Bloques ────────────────────────────────────────────────────────────── */
+section { margin: 48px 0; }
+h2 { font-size: 1.6rem; margin: 44px 0 6px; letter-spacing: -0.01em; }
+h3 { font-size: 1.14rem; margin: 0 0 8px; }
+.sub { color: var(--muted); margin: 0 0 20px; max-width: 70ch; }
+
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; }
+
+.card {
+  display: block;
+  padding: 20px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: var(--panel);
+  box-shadow: var(--shadow);
+  text-decoration: none;
+  color: inherit;
+}
+.card p { margin: 0; color: var(--muted); font-size: 0.94rem; }
+.card-top { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 10px; }
+.num { font-size: 0.78rem; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; color: var(--accent-dark); }
+a.card:hover { border-color: var(--accent); transform: translateY(-2px); transition: .15s; }
+
+.chip {
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  font-size: 0.74rem;
+  font-weight: 700;
+  color: var(--muted);
+}
+.chip.ready, .chip.starter { color: var(--ok); border-color: rgba(31,122,79,.35); background: rgba(31,122,79,.1); }
+.chip.documented, .chip.containment { color: var(--warn); border-color: rgba(176,106,18,.35); background: rgba(176,106,18,.1); }
+.chip.manual, .chip.platform { color: var(--accent-dark); border-color: var(--line); background: var(--accent-soft); }
+
+.teaches {
+  margin-top: 12px !important;
+  padding: 10px 12px;
+  border-left: 3px solid var(--accent);
+  border-radius: 0 10px 10px 0;
+  background: var(--accent-soft);
+  color: var(--text) !important;
+  font-size: 0.88rem;
+}
+
+.cmd {
+  display: block;
+  margin-top: 12px;
+  padding: 9px 12px;
+  border-radius: 10px;
+  background: var(--code-bg);
+  color: var(--code-fg);
+  font-family: Consolas, Monaco, monospace;
+  font-size: 0.82rem;
+  overflow-x: auto;
+}
+
+/* ── Comparativa ────────────────────────────────────────────────────────── */
+.split { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+@media (max-width: 820px) { .split { grid-template-columns: 1fr; } }
+
+.panelbox { padding: 22px; border: 1px solid var(--line); border-radius: 18px; background: var(--panel); box-shadow: var(--shadow); }
+.panelbox.bad { border-color: rgba(178,49,49,.4); }
+.panelbox.good { border-color: rgba(31,122,79,.4); }
+.panelbox h3 { display: flex; align-items: center; gap: 8px; }
+.panelbox ul { margin: 10px 0 0; padding-left: 20px; color: var(--muted); }
+.panelbox li { margin: 6px 0; }
+
+/* ── Documento (labs) ───────────────────────────────────────────────────── */
+.doc { padding: 36px 0 20px; max-width: 78ch; }
+.doc h1 { font-size: clamp(1.8rem, 4vw, 2.6rem); margin: 0 0 8px; letter-spacing: -0.02em; }
+.doc h2 { font-size: 1.42rem; margin-top: 38px; padding-top: 6px; }
+.doc h3 { font-size: 1.1rem; margin-top: 26px; }
+.doc p, .doc li { color: var(--text); }
+.doc ul, .doc ol { padding-left: 22px; }
+.doc li { margin: 7px 0; }
+.doc hr { border: none; border-top: 1px solid var(--line); margin: 34px 0; }
+.doc blockquote { margin: 18px 0; padding: 12px 18px; border-left: 3px solid var(--line); color: var(--muted); }
+
+pre {
+  padding: 16px 18px;
+  border-radius: 14px;
+  background: var(--code-bg);
+  color: var(--code-fg);
+  overflow-x: auto;
+  font-family: Consolas, Monaco, monospace;
+  font-size: 0.87rem;
+  line-height: 1.55;
+}
+pre code { background: none; color: inherit; padding: 0; }
+code { background: var(--accent-soft); color: var(--accent-dark); padding: 2px 6px; border-radius: 6px; font-family: Consolas, Monaco, monospace; font-size: 0.9em; }
+pre.mermaid { background: var(--panel); border: 1px solid var(--line); text-align: center; color: var(--text); }
+
+.table-wrap { overflow-x: auto; margin: 16px 0; }
+table { border-collapse: collapse; width: 100%; font-size: 0.93rem; }
+th, td { padding: 10px 12px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+th { font-weight: 700; background: var(--accent-soft); }
+
+.callout { margin: 18px 0; padding: 14px 18px; border-radius: 14px; border: 1px solid var(--line); background: var(--panel-soft); }
+.callout.important, .callout.warning, .callout.caution { border-color: rgba(176,106,18,.42); background: rgba(176,106,18,.1); }
+.callout.note, .callout.tip { border-color: rgba(59,98,217,.35); background: var(--accent-soft); }
+
+.pager { display: flex; justify-content: space-between; gap: 14px; margin-top: 44px; padding-top: 22px; border-top: 1px solid var(--line); }
+.pager a { color: var(--accent-dark); text-decoration: none; font-weight: 600; }
+
+a { color: var(--accent-dark); }
+
+.foot { margin-top: 64px; padding: 26px 0; border-top: 1px solid var(--line); color: var(--muted); font-size: 0.9rem; }
+.foot a { color: var(--muted); }
+
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+
+/* Diagrama que no pudo renderizarse: se muestra el código con un aviso, en vez
+   de dejar un hueco silencioso donde debería haber un gráfico. */
+pre.mermaid-fallback {
+  text-align: left;
+  background: var(--code-bg);
+  color: var(--code-fg);
+  position: relative;
+  padding-top: 34px;
+}
+
+pre.mermaid-fallback::before {
+  content: attr(data-note);
+  position: absolute;
+  top: 8px;
+  left: 18px;
+  font-size: 0.74rem;
+  color: var(--warn);
+  font-weight: 700;
+}
+
+/* Mientras mermaid no ha corrido, el bloque no debe verse como código roto. */
+pre.mermaid:not(.mermaid-fallback) {
+  min-height: 60px;
+}
+
+pre.mermaid svg { max-width: 100%; height: auto; }
+</style>
+</head>
+<body>
+<header class="topbar"><div class="topbar-in">
+  <a class="brand" href="../index.html">🛡️ sandbox-labs</a>
+  <nav><a href="../index.html">Inicio</a><a href="../conceptos.html">Qué es un sandbox</a><a class="on" href="../docs/index.html">Documentación</a></nav>
+  <a class="gh" href="https://github.com/vladimiracunadev-create/sandbox-labs" target="_blank" rel="noreferrer noopener">GitHub ↗</a>
+</div></header>
+<main class="shell">
+<article class="doc"><h1>🛡️ Suite de contención</h1>
+<p>La diferencia entre este repositorio y un documento sobre aislamiento.</p>
+<p><strong>hace</strong> en tu host, ahora, con tu kernel y tus binarios.</p>
+<hr>
+<h2>🤔 El problema que resuelve</h2>
+<p>Un runtime puede declarar que aísla la red y no cortarla. Motivos reales:</p>
+<ul><li>falta el binario (<code>bwrap</code> no instalado y el plan degrada en silencio);</li><li>el kernel no lo permite (user namespaces deshabilitados por política);</li><li>la política se compiló mal (un flag que se dejó de pasar en un refactor);</li><li>el control <strong>no significa lo que parece</strong> (<code>RLIMIT_NPROC</code> no limita los</li></ul>
+<p>  procesos de la carga, sino los del UID en todo el host).</p>
+<p>Los cuatro producen el mismo síntoma: un ✅ en un documento y una fuga en producción. La distancia entre <strong>declarado</strong> y <strong>efectivo</strong> es donde viven los incidentes.</p>
+<hr>
+<h2>⚙️ Cómo funciona</h2>
+<pre class="mermaid">flowchart TB
+    S[&quot;🧪 Sondas registradas&lt;br/&gt;escape-suite/suite.json&quot;] --&gt; P[&quot;🛡️ Política de auditoría&lt;br/&gt;best-effort&quot;]
+    P --&gt; R{{&quot;por cada runtime&quot;}}
+    R --&gt; N[&quot;native&quot;] &amp; B[&quot;bwrap&quot;] &amp; U[&quot;unshare&quot;] &amp; W[&quot;wasi&quot;]
+    N &amp; B &amp; U &amp; W --&gt; O[&quot;📤 stdout con contrato&lt;br/&gt;probe= dimension= result= detail=&quot;]
+    O --&gt; V[&quot;⚖️ Veredicto por sonda&quot;]
+    V --&gt; M[&quot;📊 Matriz de contención&quot;]
+    style M fill:#e5f6ec,stroke:#1f7a4f</pre>
+<p>Cada sonda es una <strong>carga registrada</strong> como cualquier otra: tiene manifiesto, hash y se ejecuta por el mismo camino que el resto. No hay una vía especial para las sondas — si la hubiera, no estarían midiendo el sistema real.</p>
+<h3>Contrato de salida</h3>
+<p>Las sondas imprimen una línea por dimensión medida:</p>
+<pre><code>probe=&lt;id&gt; dimension=&lt;dim&gt; result=&lt;contained|escaped|error&gt; detail=&lt;texto&gt;</code></pre>
+<p>Se parsea la salida en lugar de mirar el código de salida porque una sonda puede reportar varias dimensiones, y porque el runtime puede matar el proceso (OOM killer, timeout) dejando un código que no dice nada útil.</p>
+<hr>
+<h2>🧪 Las siete dimensiones</h2>
+<div class="table-wrap"><table><thead><tr><th>Dimensión</th><th>Qué intenta la sonda</th><th>Por qué importa</th></tr></thead><tbody><tr><td><code>network</code></td><td>Conectar por TCP y resolver DNS</td><td>Una carga con red exfiltra lo que lea y descarga lo que ejecutará después</td></tr><tr><td><code>filesystem</code></td><td>Leer secretos, escribir fuera, ver el árbol real</td><td>Leer claves o escribir en el sistema convierte una ejecución en persistencia</td></tr><tr><td><code>process</code></td><td>Contar PIDs visibles, inspeccionar el PID 1</td><td>Ver el árbol del host permite inspeccionar y señalizar procesos ajenos</td></tr><tr><td><code>environment</code></td><td>Buscar credenciales heredadas</td><td>Un token en el entorno convierte cualquier ejecución en una filtración</td></tr><tr><td><code>privilege</code></td><td>Leer <code>CapEff</code> y <code>uid_map</code></td><td>Las capabilities que sobreviven permiten montar, trazar o tocar la red</td></tr><tr><td><code>memory</code></td><td>Pedir el doble del presupuesto</td><td>Sin techo, una carga tumba el host y todo lo que corra en él</td></tr><tr><td><code>processes</code></td><td>Crear procesos hasta pasarse</td><td>Sin techo de PIDs, una carga agota la tabla de procesos</td></tr></tbody></table></div>
+<div class="callout note">Las sondas de red, filesystem, proceso, entorno y privilegios son de riesgo <code>controlled</code>: <strong>solo observan y reportan</strong>, no dañan nada, y por eso pueden ejecutarse también en <code>native</code> para obtener la línea base. Las de memoria y procesos son <code>resource-abuse</code> y nunca corren sin aislamiento.</div>
+<hr>
+<h2>📊 Los cuatro veredictos</h2>
+<div class="table-wrap"><table><thead><tr><th>Veredicto</th><th>Significado</th></tr></thead><tbody><tr><td>✅ <strong>contenido</strong></td><td>La sonda intentó salirse y no pudo</td></tr><tr><td>❌ <strong>escapó</strong></td><td>La sonda se salió: el control no se aplica en este host</td></tr><tr><td>❌ <strong>DECLARADO</strong></td><td>El runtime <strong>dice</strong> que aplica el control y la sonda demostró que no</td></tr><tr><td>⚠️ <strong>no concluyente</strong></td><td>No se pudo medir (error de la sonda, salida vacía)</td></tr><tr><td>— <strong>no aplica</strong></td><td>El runtime no ejecuta cargas, o la política bloqueó el plan</td></tr></tbody></table></div>
+<p><strong><code>❌ DECLARADO</code> es el hallazgo que más importa.</strong> Es peor que un ❌ normal, porque un control no declarado es honesto: te dice que no cuentes con él. Uno declarado y no aplicado invita a confiar.</p>
+<hr>
+<h2>▶️ Uso</h2>
+<pre><code># Matriz completa de este host
+cargo run -p sandboxctl -- escape
+
+# Un runtime concreto, como puerta de CI (código 1 si algo escapa)
+cargo run -p sandboxctl -- escape --runtime bwrap --strict
+
+# Informe verificable
+cargo run -p sandboxctl -- escape --json --report evidence/escape/matriz.json
+
+# Línea base obligatoria: sin aislamiento TIENE que escapar
+SANDBOX_LABS_ALLOW_NATIVE=1 cargo run -p sandboxctl -- escape --runtime native</code></pre>
+<h3>Por qué la política por defecto es <code>best-effort</code></h3>
+<p>modo <code>best-effort</code>. Con una política <code>strict</code>, el plan <strong>fallaría cerrado antes de ejecutar</strong> y la matriz saldría entera en «no aplica»: correcto como comportamiento, inútil como medición.</p>
+<p>Auditar exige ejecutar. Por eso la política de auditoría es distinta de la política de producción, y por eso está separada y documentada.</p>
+<hr>
+<h2>🔍 Hallazgos reales de esta suite</h2>
+<p>Los dos primeros los encontró la suite en su primera ejecución, sobre este mismo repositorio:</p>
+<h3>1. PID namespace sin <code>/proc</code> remontado</h3>
+<p>El adaptador <code>unshare</code> pasaba <code>--pid --fork</code> y creaba el namespace… pero sin</p>
+<p>PIDs. El namespace existía y no se notaba.</p>
+<p><strong>Corregido</strong> en <code>crates/sandbox-runtimes/src/adapters/unshare.rs</code>.</p>
+<h3>2. <code>RLIMIT_NPROC</code> no es un límite de procesos de contenedor</h3>
+<p>Los adaptadores declaraban el control <code>processes</code> porque envolvían la carga con</p>
+<p>host**: fijarlo al presupuesto de la política mataba la ejecución nada más arrancar (<code>unshare: fork failed: Resource temporarily unavailable</code>) y, peor, hacía pasar por control de contención algo que no lo era.</p>
+<p><strong>Corregido</strong>: se retiró <code>--nproc</code> y el control <code>processes</code> <strong>ya no se declara</strong>. Un techo real de PIDs necesita el controlador <code>pids</code> de cgroups v2 — necesita el controlador <code>pids</code> de cgroups v2.</p>
+<h3>3. <code>--strict</code> aprobaba sin haber medido nada</h3>
+<p>En el primer run de CI, bubblewrap no llegó a ejecutar ninguna sonda (AppArmor restringía los user namespaces en el runner) y las siete quedaron «no concluyente». <code>--strict</code> pasó igual, porque solo miraba si algo había escapado. Cero fugas de cero mediciones no es contención: es no haber mirado.</p>
+<p><strong>Corregido</strong>: <code>--strict</code> falla si un runtime está disponible y ninguna sonda llegó a un veredicto. Y el detalle de una sonda sin salida arrastra ahora la última línea de stderr — fue lo que permitió diagnosticar la causa exacta (<code>bwrap: loopback: Failed RTM_NEWADDR: Operation not permitted</code>) en un solo intento.</p>
+<h3>4. La sonda de filesystem sobre-reportaba</h3>
+<p>Contaba como fuga poder escribir en <code>/</code> y <code>/etc</code> dentro del sandbox. Pero la raíz que monta bubblewrap es un tmpfs efímero: escribir ahí no toca al host.</p>
+<p><strong>Corregido</strong>: la sonda resuelve el tipo de filesystem en <code>/proc/mounts</code> y solo cuenta como fuga la escritura en un sistema persistente.</p>
+<div class="callout important">Que la suite encontrara fallos en el propio repositorio es la mejor prueba de que mide algo. Una suite que siempre sale verde no está midiendo: está decorando.</div>
+<hr>
+<h2>🤖 En integración continua</h2>
+<p>El trabajo <code>isolation</code> de <a href="https://github.com/vladimiracunadev-create/sandbox-labs/blob/main/.github/workflows/ci.yml" target="_blank" rel="noreferrer noopener">CI</a> instala bubblewrap y ejecuta tres comprobaciones que se sostienen entre sí:</p>
+<ol><li><strong>bubblewrap debe contenerlo todo</strong> — <code>escape --runtime bwrap --strict</code>.</li></ol>
+<p>   Si deja de contener una dimensión, el build se cae.</p>
+<ol><li><strong>unshare debe cortar red y PIDs</strong> — no ofrece jaula de filesystem y se</li></ol>
+<p>   documenta así, pero esas dos dimensiones son obligatorias.</p>
+<ol><li><strong>native debe ESCAPAR</strong> — contraprueba deliberada. Si sin aislamiento</li></ol>
+<p>   saliera todo contenido, las sondas no estarían midiendo nada y los ✅ de    bubblewrap no valdrían nada.</p>
+<p>La tercera es la que impide que la suite se degrade en silencio.</p>
+<h3>Lo que mide hoy el runner</h3>
+<pre><code>✅ bwrap contiene network: sin salida TCP ni resolución DNS
+✅ bwrap contiene filesystem: ninguna ruta sensible del host es legible
+✅ bwrap contiene process: solo 2 PIDs visibles, propio PID 2
+✅ bwrap contiene environment: 4 variables, ninguna sensible
+✅ bwrap contiene privilege: sin capabilities peligrosas (CapEff=0x0000000000000000)
+✅ bwrap contiene memory: MemoryError tras 96 MB con presupuesto de 128 MB
+✅ unshare contiene network: sin salida TCP ni resolución DNS
+✅ unshare contiene process: solo 1 PIDs visibles, propio PID 1
+✅ native escapa por 3 dimensiones (esperado): network, filesystem, process</code></pre>
+<h3>Qué hace fallar el build</h3>
+<div class="table-wrap"><table><thead><tr><th>Situación</th><th>¿Falla?</th><th>Por qué</th></tr></thead><tbody><tr><td>Falsa garantía (declara y no aplica)</td><td>✅ sí</td><td>Es la clase de fallo que el proyecto persigue</td></tr><tr><td>Ninguna sonda pudo medirse</td><td>✅ sí</td><td>Un informe sin mediciones no prueba contención</td></tr><tr><td>Fuga en un control <strong>no</strong> declarado</td><td>❌ no</td><td>Es un hueco honesto y documentado (<code>processes</code>)</td></tr><tr><td>Runtime ausente en el host</td><td>❌ no</td><td>No hay nada que medir</td></tr></tbody></table></div>
+<p>Hacer fallar el build por un hueco documentado dejaría dos salidas —silenciar la sonda o declarar un control inexistente— y las dos empeoran el sistema.</p>
+<hr>
+<h2>➕ Añadir una sonda</h2>
+<ol><li>Crea la carga en <code>workloads/escape/&lt;id&gt;/</code> con su <code>probe.py</code> y su</li></ol>
+<p>   <code>manifest.json</code>.</p>
+<ol><li>Imprime al menos una línea con el contrato</li></ol>
+<p>   <code>probe= dimension= result= detail=</code>.</p>
+<ol><li>Regístrala en <code>escape-suite/suite.json</code> con su dimensión y el control del</li></ol>
+<p>   modelo que mide.</p>
+<ol><li><code>node scripts/validate-config.mjs</code> comprueba que la sonda apunta a una carga</li></ol>
+<p>   registrada, a una dimensión declarada y a un control conocido.</p>
+<p>Las pruebas de contrato en <code>crates/sandbox-core/tests/repository.rs</code> verifican además que ninguna dimensión se quede sin sonda.</p>
+<hr>
+<h2>🔗 Ver también</h2>
+<ul><li><a href="https://github.com/vladimiracunadev-create/sandbox-labs/blob/main/THREAT_MODEL.md" target="_blank" rel="noreferrer noopener">Modelo de amenazas</a> — qué protege el sistema y qué no</li><li><a href="https://github.com/vladimiracunadev-create/sandbox-labs/blob/main/EVIDENCE_FORMAT.md" target="_blank" rel="noreferrer noopener">Formato de evidencia</a></li></ul></article>
+</main>
+<footer class="foot"><div class="shell">
+  sandbox-labs · Apache-2.0 ·
+  <a href="https://github.com/vladimiracunadev-create/sandbox-labs">código</a> ·
+  <a href="https://github.com/vladimiracunadev-create/sandbox-labs/blob/main/SECURITY.md">seguridad</a>
+</div></footer>
+<script type="module">
+  // startOnLoad solo actúa si mermaid se carga antes de que el DOM esté listo.
+  // Con un import dinámico posterior no hace nada: hay que llamar a run() a
+  // mano. Ese era el motivo por el que los diagramas no aparecían.
+  const blocks = document.querySelectorAll("pre.mermaid");
+  if (blocks.length) {
+    try {
+      const { default: mermaid } = await import("https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs");
+      const dark = matchMedia("(prefers-color-scheme: dark)").matches;
+      mermaid.initialize({ startOnLoad: false, theme: dark ? "dark" : "default", securityLevel: "strict" });
+      await mermaid.run({ nodes: blocks });
+    } catch (error) {
+      // Sin red, con el CDN caído o con un bloqueador de por medio, el
+      // diagrama se queda como código legible en vez de desaparecer sin más.
+      for (const block of blocks) {
+        block.classList.add("mermaid-fallback");
+        block.dataset.note = "diagrama sin renderizar · " + error.message;
+      }
+    }
+  }
+</script>
+</body>
+</html>

@@ -26,9 +26,9 @@
     sistema: hace cosas que tú tienes permiso para hacer.
   </p>
   <div class="callout note">
-    El primer laboratorio del repositorio mide exactamente esto en tu equipo. La respuesta
-    habitual —red abierta, credenciales legibles, todo el árbol de procesos visible— es lo que
-    justifica todo lo demás.
+    <code>sandboxctl escape</code> mide exactamente esto en tu equipo. La respuesta habitual
+    —red abierta, credenciales legibles, todo el árbol de procesos visible— es lo que justifica
+    todo lo demás.
   </div>
 </section>
 
@@ -139,22 +139,23 @@ process-visibility                 ❌             ✅             ✅</pre>
 </section>
 
 <section>
-  <h2>5. Cuándo usar qué</h2>
+  <h2>5. Los cinco casos</h2>
+  <p class="sub">Cada uno es un producto que se levanta en su propio localhost, donde haces
+  tareas reales. Y cada uno enseña una idea que ningún otro enseña.</p>
   <div class="table-wrap">
     <table>
-      <thead><tr><th>Si quieres…</th><th>Empieza por</th></tr></thead>
+      <thead><tr><th>#</th><th>Caso</th><th>La idea propia</th><th>Puerto</th></tr></thead>
       <tbody>
-        <tr><td>Ver qué expone tu equipo hoy</td><td><a href="labs/01-baseline-unrestricted.html">Lab 01 · Línea base</a></td></tr>
-        <tr><td>Ejecutar un build de terceros sin darle tus claves</td><td><a href="labs/03-filesystem-jail.html">Lab 03 · Jaula de filesystem</a></td></tr>
-        <tr><td>Que una carga no pueda llamar a casa</td><td><a href="labs/09-network-egress.html">Lab 09 · Salida de red</a></td></tr>
-        <tr><td>Un sandbox completo sin privilegios</td><td><a href="labs/10-rootless-sandbox.html">Lab 10 · Rootless</a></td></tr>
-        <tr><td>Ejecutar código generado por un modelo</td><td><a href="labs/15-ai-code-runner.html">Lab 15 · Ejecutor de IA</a></td></tr>
-        <tr><td>Saber qué contiene de verdad lo que ya tienes</td><td><a href="labs/16-escape-test-suite.html">Lab 16 · Suite de contención</a></td></tr>
+        <tr><td>01</td><td>Contenido web no confiable</td><td>Quien interpreta contenido ajeno no toca el disco</td><td><code>8801</code></td></tr>
+        <tr><td>02</td><td>Código generado por IA</td><td>Efímero y sin red: se crea, corre y se destruye</td><td><code>8802</code></td></tr>
+        <tr><td>03</td><td>Detonación de archivo</td><td>El sandbox como microscopio: el informe vale más que el bloqueo</td><td><code>8803</code></td></tr>
+        <tr><td>04</td><td>Plugins de terceros</td><td>Conceder capacidades una a una, no restar permisos</td><td><code>8804</code></td></tr>
+        <tr><td>05</td><td>Contratos inteligentes</td><td>Medir el trabajo, no el tiempo. Determinismo</td><td><code>8805</code></td></tr>
       </tbody>
     </table>
   </div>
   <div class="cta">
-    <a class="btn primary" href="labs/">Ver los laboratorios</a>
-    <a class="btn" href="index.html">Volver al inicio</a>
+    <a class="btn primary" href="docs/casos.html">Ficha de cada caso</a>
+    <a class="btn" href="docs/">Toda la documentación</a>
   </div>
-</section>
+  </section>

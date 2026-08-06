@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="color-scheme" content="light dark">
+<meta name="description" content="Modelo de amenazas">
+<title>Modelo de amenazas — sandbox-labs</title>
+<style>/* Sitio de sandbox-labs. Misma paleta que el Control Center: el repo y su web
+   se leen como el mismo producto. */
+
+:root {
+  color-scheme: light dark;
+  --panel: #fff;
+  --panel-soft: rgba(255, 255, 255, 0.66);
+  --bg: #f5f7fc;
+  --text: #16202b;
+  --muted: #5b6879;
+  --line: rgba(22, 32, 43, 0.13);
+  --accent: #3b62d9;
+  --accent-dark: #27428f;
+  --accent-soft: rgba(59, 98, 217, 0.12);
+  --ok: #1f7a4f;
+  --warn: #b06a12;
+  --danger: #b23131;
+  --code-bg: #1b2330;
+  --code-fg: #e8eef7;
+  --shadow: 0 16px 40px rgba(22, 32, 43, 0.1);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --panel: #131b2b;
+    --panel-soft: rgba(19, 27, 43, 0.6);
+    --bg: #080d18;
+    --text: #eef2fa;
+    --muted: #9fadc4;
+    --line: rgba(158, 176, 205, 0.2);
+    --accent: #7d9bff;
+    --accent-dark: #a8bcff;
+    --accent-soft: rgba(125, 155, 255, 0.16);
+    --ok: #4fd39b;
+    --warn: #e0b055;
+    --danger: #f08a8a;
+    --code-bg: #060b16;
+    --code-fg: #d5e0f5;
+    --shadow: 0 16px 40px rgba(0, 0, 0, 0.4);
+  }
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: "Segoe UI", Inter, ui-sans-serif, system-ui, sans-serif;
+  color: var(--text);
+  background: var(--bg);
+  line-height: 1.6;
+}
+
+.shell { max-width: 1100px; margin: 0 auto; padding: 0 20px; }
+
+/* ── Barra superior ─────────────────────────────────────────────────────── */
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  backdrop-filter: blur(10px);
+  background: color-mix(in srgb, var(--bg) 86%, transparent);
+  border-bottom: 1px solid var(--line);
+}
+
+.topbar-in {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 12px 20px;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  flex-wrap: wrap;
+}
+
+.brand { font-weight: 800; text-decoration: none; color: var(--text); font-size: 1.02rem; }
+.topbar nav { display: flex; gap: 6px; flex-wrap: wrap; }
+.topbar nav a {
+  padding: 7px 12px;
+  border-radius: 999px;
+  text-decoration: none;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+.topbar nav a:hover { background: var(--accent-soft); color: var(--accent-dark); }
+.topbar nav a.on { background: var(--accent-soft); color: var(--accent-dark); font-weight: 700; }
+.gh { margin-left: auto; color: var(--accent-dark); text-decoration: none; font-size: 0.9rem; font-weight: 600; }
+
+/* ── Hero ───────────────────────────────────────────────────────────────── */
+.hero { padding: 56px 0 12px; }
+.hero.small { padding: 40px 0 8px; }
+.hero h1 { margin: 10px 0 14px; font-size: clamp(2rem, 5vw, 3.3rem); line-height: 1.06; letter-spacing: -0.02em; }
+.hero p { margin: 0; max-width: 68ch; color: var(--muted); font-size: 1.08rem; }
+.hero .lead { color: var(--text); font-size: 1.16rem; }
+
+.eyebrow {
+  display: inline-flex;
+  padding: 6px 13px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent-dark);
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.cta { display: flex; flex-wrap: wrap; gap: 12px; margin: 28px 0 8px; }
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 13px 22px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  color: var(--text);
+  text-decoration: none;
+  font-weight: 600;
+}
+.btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 700; }
+
+/* ── Bloques ────────────────────────────────────────────────────────────── */
+section { margin: 48px 0; }
+h2 { font-size: 1.6rem; margin: 44px 0 6px; letter-spacing: -0.01em; }
+h3 { font-size: 1.14rem; margin: 0 0 8px; }
+.sub { color: var(--muted); margin: 0 0 20px; max-width: 70ch; }
+
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; }
+
+.card {
+  display: block;
+  padding: 20px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: var(--panel);
+  box-shadow: var(--shadow);
+  text-decoration: none;
+  color: inherit;
+}
+.card p { margin: 0; color: var(--muted); font-size: 0.94rem; }
+.card-top { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 10px; }
+.num { font-size: 0.78rem; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; color: var(--accent-dark); }
+a.card:hover { border-color: var(--accent); transform: translateY(-2px); transition: .15s; }
+
+.chip {
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  font-size: 0.74rem;
+  font-weight: 700;
+  color: var(--muted);
+}
+.chip.ready, .chip.starter { color: var(--ok); border-color: rgba(31,122,79,.35); background: rgba(31,122,79,.1); }
+.chip.documented, .chip.containment { color: var(--warn); border-color: rgba(176,106,18,.35); background: rgba(176,106,18,.1); }
+.chip.manual, .chip.platform { color: var(--accent-dark); border-color: var(--line); background: var(--accent-soft); }
+
+.teaches {
+  margin-top: 12px !important;
+  padding: 10px 12px;
+  border-left: 3px solid var(--accent);
+  border-radius: 0 10px 10px 0;
+  background: var(--accent-soft);
+  color: var(--text) !important;
+  font-size: 0.88rem;
+}
+
+.cmd {
+  display: block;
+  margin-top: 12px;
+  padding: 9px 12px;
+  border-radius: 10px;
+  background: var(--code-bg);
+  color: var(--code-fg);
+  font-family: Consolas, Monaco, monospace;
+  font-size: 0.82rem;
+  overflow-x: auto;
+}
+
+/* ── Comparativa ────────────────────────────────────────────────────────── */
+.split { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+@media (max-width: 820px) { .split { grid-template-columns: 1fr; } }
+
+.panelbox { padding: 22px; border: 1px solid var(--line); border-radius: 18px; background: var(--panel); box-shadow: var(--shadow); }
+.panelbox.bad { border-color: rgba(178,49,49,.4); }
+.panelbox.good { border-color: rgba(31,122,79,.4); }
+.panelbox h3 { display: flex; align-items: center; gap: 8px; }
+.panelbox ul { margin: 10px 0 0; padding-left: 20px; color: var(--muted); }
+.panelbox li { margin: 6px 0; }
+
+/* ── Documento (labs) ───────────────────────────────────────────────────── */
+.doc { padding: 36px 0 20px; max-width: 78ch; }
+.doc h1 { font-size: clamp(1.8rem, 4vw, 2.6rem); margin: 0 0 8px; letter-spacing: -0.02em; }
+.doc h2 { font-size: 1.42rem; margin-top: 38px; padding-top: 6px; }
+.doc h3 { font-size: 1.1rem; margin-top: 26px; }
+.doc p, .doc li { color: var(--text); }
+.doc ul, .doc ol { padding-left: 22px; }
+.doc li { margin: 7px 0; }
+.doc hr { border: none; border-top: 1px solid var(--line); margin: 34px 0; }
+.doc blockquote { margin: 18px 0; padding: 12px 18px; border-left: 3px solid var(--line); color: var(--muted); }
+
+pre {
+  padding: 16px 18px;
+  border-radius: 14px;
+  background: var(--code-bg);
+  color: var(--code-fg);
+  overflow-x: auto;
+  font-family: Consolas, Monaco, monospace;
+  font-size: 0.87rem;
+  line-height: 1.55;
+}
+pre code { background: none; color: inherit; padding: 0; }
+code { background: var(--accent-soft); color: var(--accent-dark); padding: 2px 6px; border-radius: 6px; font-family: Consolas, Monaco, monospace; font-size: 0.9em; }
+pre.mermaid { background: var(--panel); border: 1px solid var(--line); text-align: center; color: var(--text); }
+
+.table-wrap { overflow-x: auto; margin: 16px 0; }
+table { border-collapse: collapse; width: 100%; font-size: 0.93rem; }
+th, td { padding: 10px 12px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+th { font-weight: 700; background: var(--accent-soft); }
+
+.callout { margin: 18px 0; padding: 14px 18px; border-radius: 14px; border: 1px solid var(--line); background: var(--panel-soft); }
+.callout.important, .callout.warning, .callout.caution { border-color: rgba(176,106,18,.42); background: rgba(176,106,18,.1); }
+.callout.note, .callout.tip { border-color: rgba(59,98,217,.35); background: var(--accent-soft); }
+
+.pager { display: flex; justify-content: space-between; gap: 14px; margin-top: 44px; padding-top: 22px; border-top: 1px solid var(--line); }
+.pager a { color: var(--accent-dark); text-decoration: none; font-weight: 600; }
+
+a { color: var(--accent-dark); }
+
+.foot { margin-top: 64px; padding: 26px 0; border-top: 1px solid var(--line); color: var(--muted); font-size: 0.9rem; }
+.foot a { color: var(--muted); }
+
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+
+/* Diagrama que no pudo renderizarse: se muestra el código con un aviso, en vez
+   de dejar un hueco silencioso donde debería haber un gráfico. */
+pre.mermaid-fallback {
+  text-align: left;
+  background: var(--code-bg);
+  color: var(--code-fg);
+  position: relative;
+  padding-top: 34px;
+}
+
+pre.mermaid-fallback::before {
+  content: attr(data-note);
+  position: absolute;
+  top: 8px;
+  left: 18px;
+  font-size: 0.74rem;
+  color: var(--warn);
+  font-weight: 700;
+}
+
+/* Mientras mermaid no ha corrido, el bloque no debe verse como código roto. */
+pre.mermaid:not(.mermaid-fallback) {
+  min-height: 60px;
+}
+
+pre.mermaid svg { max-width: 100%; height: auto; }
+</style>
+</head>
+<body>
+<header class="topbar"><div class="topbar-in">
+  <a class="brand" href="../index.html">🛡️ sandbox-labs</a>
+  <nav><a href="../index.html">Inicio</a><a href="../conceptos.html">Qué es un sandbox</a><a class="on" href="../docs/index.html">Documentación</a></nav>
+  <a class="gh" href="https://github.com/vladimiracunadev-create/sandbox-labs" target="_blank" rel="noreferrer noopener">GitHub ↗</a>
+</div></header>
+<main class="shell">
+<article class="doc"><h1>Modelo de amenazas</h1>
+<h2>Activos</h2>
+<ul><li>Host, kernel y credenciales.</li><li>Archivos fuera del workspace.</li><li>Red local y servicios cloud.</li><li>Disponibilidad de CPU, RAM, procesos y disco.</li><li>Integridad de evidencias.</li></ul>
+<h2>Adversario</h2>
+<p>Código registrado que puede contener errores, comportamiento generado por IA o intentos controlados de salir del workspace. El proyecto no autoriza análisis de malware real en el host.</p>
+<h2>Riesgos principales</h2>
+<ul><li>Escape del runtime.</li><li>Acceso a archivos o secretos heredados.</li><li>Egress de red.</li><li>Agotamiento de recursos.</li><li>Confusión entre control solicitado y control efectivo.</li><li>Manipulación del panel local mediante CSRF, path traversal o symlinks.</li></ul>
+<h2>Mitigaciones actuales</h2>
+<ul><li>Bind en <code>127.0.0.1</code>.</li><li>Header de escritura y validación de Origin.</li><li>Workloads, policies y runtimes registrados.</li><li>Rechazo de comandos libres.</li><li>Resolución segura de archivos estáticos, incluida salida por symlink.</li><li>Entorno limpio al ejecutar procesos.</li><li>Timeout y límite de stdout/stderr.</li><li>Hash SHA-256 de policy, workload y runner.</li><li>Fail-closed para policies strict.</li></ul>
+<h2>Fuera de alcance actual</h2>
+<ul><li>Garantía formal contra escapes de kernel.</li><li>Egress allowlist robusto.</li><li>Multi-tenancy hostil.</li><li>Firma de artefactos y evidencias.</li><li>Captura completa de syscalls y eventos eBPF.</li></ul></article>
+</main>
+<footer class="foot"><div class="shell">
+  sandbox-labs · Apache-2.0 ·
+  <a href="https://github.com/vladimiracunadev-create/sandbox-labs">código</a> ·
+  <a href="https://github.com/vladimiracunadev-create/sandbox-labs/blob/main/SECURITY.md">seguridad</a>
+</div></footer>
+<script type="module">
+  // startOnLoad solo actúa si mermaid se carga antes de que el DOM esté listo.
+  // Con un import dinámico posterior no hace nada: hay que llamar a run() a
+  // mano. Ese era el motivo por el que los diagramas no aparecían.
+  const blocks = document.querySelectorAll("pre.mermaid");
+  if (blocks.length) {
+    try {
+      const { default: mermaid } = await import("https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs");
+      const dark = matchMedia("(prefers-color-scheme: dark)").matches;
+      mermaid.initialize({ startOnLoad: false, theme: dark ? "dark" : "default", securityLevel: "strict" });
+      await mermaid.run({ nodes: blocks });
+    } catch (error) {
+      // Sin red, con el CDN caído o con un bloqueador de por medio, el
+      // diagrama se queda como código legible en vez de desaparecer sin más.
+      for (const block of blocks) {
+        block.classList.add("mermaid-fallback");
+        block.dataset.note = "diagrama sin renderizar · " + error.message;
+      }
+    }
+  }
+</script>
+</body>
+</html>

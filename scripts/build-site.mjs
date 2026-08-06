@@ -15,6 +15,10 @@ import { fileURLToPath } from "node:url";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const out = join(root, "site");
+// Los .md del repositorio se escriben con LF, pero un clon en Windows puede
+// traerlos con CRLF: el separador tiene que aceptar los dos.
+const NEWLINES = /\r?\n/;
+const MD_EXT = /\.md$/;
 
 const escape = (value) =>
   String(value).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
@@ -30,8 +34,10 @@ function inline(text) {
       // Los enlaces relativos a otros .md apuntan al HTML generado; el resto
       // se manda a GitHub, que es donde vive el archivo.
       let target = href;
-      if (/^labs\/(\d\d)-([a-z0-9-]+)\/?$/.test(href)) target = `labs/${href.split("/")[1]}.html`;
-      else if (/^\.\.\/\.\.\/(.+)$/.test(href) || href.endsWith(".md") || href.startsWith("../")) {
+      if (/^[A-Z0-9-]+\.md$/i.test(href)) {
+        // Un documento hermano de docs/ tiene su propia página generada.
+        target = href === "README.md" ? "index.html" : href.replace(/\.md$/, ".html").toLowerCase();
+      } else if (href.startsWith("../") || href.endsWith(".md")) {
         target = `https://github.com/vladimiracunadev-create/sandbox-labs/blob/main/${href.replace(/^(\.\.\/)+/, "")}`;
       }
       const external = /^https?:/.test(target);
@@ -146,11 +152,14 @@ function page({ title, description, body, active = "", depth = 0 }) {
   const base = depth ? "../" : "";
   const nav = [
     ["", "Inicio"],
-    ["labs/", "Laboratorios"],
     ["conceptos.html", "Qué es un sandbox"],
+    ["docs/", "Documentación"],
   ]
     .map(([href, label]) => {
-      const target = href === "" ? `${base}index.html` : `${base}${href}`;
+      // Una barra final no resuelve en un sitio estático servido por Pages
+      // desde subdirectorios: se apunta al index explícito.
+      const resolved = href.endsWith("/") ? `${href}index.html` : href;
+      const target = href === "" ? `${base}index.html` : `${base}${resolved}`;
       const cls = active === href ? ' class="on"' : "";
       return `<a${cls} href="${target}">${label}</a>`;
     })
@@ -240,6 +249,33 @@ const caseCards = cases
   })
   .join("");
 
+// ── Documentación ────────────────────────────────────────────────────────────
+
+const docFiles = (await readdir(join(root, "docs"))).filter((name) => name.endsWith(".md")).sort();
+await mkdir(join(out, "docs"), { recursive: true });
+
+/** Título de un documento: su primer encabezado de nivel 1. */
+function docTitle(markdown, fallback) {
+  const heading = markdown.split(NEWLINES).find((line) => line.startsWith("# "));
+  return heading ? heading.slice(2).trim() : fallback;
+}
+
+for (const name of docFiles) {
+  const markdown = await readFile(join(root, "docs", name), "utf8");
+  const slug = name === "README.md" ? "index" : name.replace(MD_EXT, "").toLowerCase();
+  const title = docTitle(markdown, slug);
+  await writeFile(
+    join(out, "docs", slug + ".html"),
+    page({
+      title: title + " — sandbox-labs",
+      description: title,
+      active: "docs/",
+      depth: 1,
+      body: `<article class="doc">${renderMarkdown(markdown)}</article>`
+    })
+  );
+}
+
 await writeFile(
   join(out, "conceptos.html"),
   page({
@@ -265,5 +301,5 @@ await writeFile(
 );
 
 console.log(
-  `✅ Sitio generado: portada y conceptos · ${cases.length} casos (${cases.filter((c) => c.built).length} construidos)`
+  `✅ Sitio generado: portada, conceptos y ${docFiles.length} documentos · ${cases.length} casos (${cases.filter((c) => c.built).length} construidos)`
 );
