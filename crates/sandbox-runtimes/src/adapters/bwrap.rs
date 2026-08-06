@@ -7,6 +7,29 @@ use sandbox_core::{command_exists, ExecutionOutcome, ExecutionPlan, Policy, Runt
 use std::{collections::BTreeMap, path::Path};
 use tempfile::tempdir;
 
+/// Lo que este runtime aplicó **de verdad** en esta ejecución.
+///
+/// Va tal cual a `limits.effective` de la evidencia, así que solo puede
+/// contener controles cuyo argumento se añadió a la línea de comandos. La
+/// entrada `network` es el ejemplo que motiva esta función: antes se escribía
+/// siempre «isolated network namespace», también cuando la política pedía
+/// `loopback` o `allowlist` y por tanto **no** se añadió `--unshare-net`. La
+/// evidencia declaraba un aislamiento de red que no existía.
+fn effective_limits(policy: &Policy, network_isolated: bool, wrapped_in_prlimit: bool) -> BTreeMap<String, String> {
+    let mut limits = BTreeMap::new();
+    limits.insert("filesystem".into(), "bubblewrap mount namespace".into());
+    if network_isolated {
+        limits.insert("network".into(), "isolated network namespace (--unshare-net)".into());
+    }
+    limits.insert("timeout".into(), format!("{}s", policy.resources.timeout_seconds));
+    limits.insert("output".into(), format!("{} bytes", policy.resources.output_bytes));
+    if wrapped_in_prlimit {
+        limits.insert("memory".into(), format!("{}MB RLIMIT_AS", policy.resources.memory_mb));
+        limits.insert("openFiles".into(), format!("{} RLIMIT_NOFILE", policy.resources.open_files));
+    }
+    limits
+}
+
 pub struct BwrapAdapter;
 impl RuntimeAdapter for BwrapAdapter {
     fn kind(&self) -> RuntimeKind {
@@ -98,15 +121,7 @@ impl RuntimeAdapter for BwrapAdapter {
             args = wrapped;
             program = "prlimit".into();
         }
-        let mut limits = BTreeMap::new();
-        limits.insert("filesystem".into(), "bubblewrap mount namespace".into());
-        limits.insert("network".into(), "isolated network namespace".into());
-        limits.insert("timeout".into(), format!("{}s", policy.resources.timeout_seconds));
-        limits.insert("output".into(), format!("{} bytes", policy.resources.output_bytes));
-        if program == "prlimit" {
-            limits.insert("memory".into(), format!("{}MB RLIMIT_AS", policy.resources.memory_mb));
-            limits.insert("openFiles".into(), format!("{} RLIMIT_NOFILE", policy.resources.open_files));
-        }
+        let limits = effective_limits(policy, network_isolated, program == "prlimit");
         run(
             CommandSpec {
                 program,
@@ -118,5 +133,51 @@ impl RuntimeAdapter for BwrapAdapter {
             },
             policy,
         )
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn policy_with_network(mode: &str) -> Policy {
+        let json = serde_json::json!({
+            "id": "test",
+            "enforcement": { "mode": "best-effort", "requiredControls": [] },
+            "filesystem": { "root": "ephemeral", "readOnly": [], "writable": [], "maxWorkspaceMb": 64, "followSymlinks": false },
+            "network": { "mode": mode, "hosts": [], "dns": "disabled" },
+            "resources": { "cpu": 1.0, "memoryMb": 128, "processes": 8, "timeoutSeconds": 10, "openFiles": 32, "outputBytes": 4096 },
+            "process": { "capabilities": [], "environment": {}, "allowedEnvironment": [], "user": 65534, "group": 65534 }
+        });
+        serde_json::from_value(json).expect("política de prueba válida")
+    }
+
+    #[test]
+    fn declares_network_isolation_when_the_namespace_exists() {
+        let contained = effective_limits(&policy_with_network("none"), true, false);
+        assert!(contained.contains_key("network"), "con --unshare-net la red sí queda aislada");
+    }
+
+    /// La regresión que motiva `effective_limits`.
+    ///
+    /// `service-sandbox` —la política de todos los servicios del catálogo— pide
+    /// `loopback`, y con ella bubblewrap **no** añade `--unshare-net`: la carga
+    /// se queda en la red del host. La evidencia lo declaraba aislado igual.
+    #[test]
+    fn never_declares_isolation_while_keeping_the_host_network() {
+        for mode in ["loopback", "allowlist", "unrestricted"] {
+            let limits = effective_limits(&policy_with_network(mode), false, false);
+            assert!(
+                !limits.contains_key("network"),
+                "con network={mode} no se creó namespace de red: declararlo sería mentir en la evidencia"
+            );
+        }
+    }
+
+    #[test]
+    fn declares_memory_only_when_prlimit_wraps_the_execution() {
+        let policy = policy_with_network("none");
+        assert!(!effective_limits(&policy, true, false).contains_key("memory"));
+        assert!(effective_limits(&policy, true, true).contains_key("memory"));
     }
 }

@@ -61,6 +61,7 @@ flowchart LR
 | [Referencia de políticas](POLICY_REFERENCE.md) | Cada campo de una política |
 | [Formato de evidencia](EVIDENCE_FORMAT.md) | El JSON que queda de cada ejecución |
 | [Suite de contención](CONTAINMENT_SUITE.md) | Las sondas que intentan escaparse |
+| [Backlog técnico](IMPLEMENTATION_BACKLOG.md) | Cada hueco del núcleo, por qué está y qué haría falta |
 
 ### Seguridad y proceso
 
