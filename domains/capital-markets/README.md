@@ -1,9 +1,11 @@
 # 🏛️ Mercado de capitales
 
-> **Estado: 1 de 21 casos.** Existen el dinero exacto, el libro mayor y
-> **[CM-03 · Custodia y segregación](cases/03-asset-custody/README.md)**, que se
-> ejecuta con `sandboxctl markets reconcile`. Los otros veinte **no existen**:
-> están listados abajo como lo que son, un plan.
+> **Estado: 2 de 21 casos.** Existen el dinero exacto, el libro mayor,
+> **[CM-03 · Custodia](cases/03-asset-custody/README.md)** —que se ejecuta con
+> `sandboxctl markets reconcile`— y el motor de
+> **[CM-02 · Libro de órdenes](cases/02-alternative-trading-system/README.md)**,
+> todavía sin escenarios. Los otros diecinueve **no existen**: están listados
+> abajo como lo que son, un plan.
 
 ---
 
@@ -49,6 +51,17 @@ La moneda va pegada al importe: sumar 100 CLP y 100 USD **falla**, no sale mal.
 Y el peso chileno tiene **cero decimales**, que es justo el caso que rompe todo
 el código escrito asumiendo «dos decimales siempre».
 
+### Libro de órdenes — [CM-02](cases/02-alternative-trading-system/README.md)
+
+Prioridad precio-tiempo, con once invariantes probadas. La que resume el caso:
+**el tamaño no adelanta la cola**. Un libro que atiende primero al grande deja de
+ser un mercado y pasa a ser un reparto.
+
+El precio de una ejecución lo pone la orden **que ya estaba**: si mandara la
+entrante, llegar tarde sería una ventaja.
+
+`prototype` hasta que tenga escenarios ejecutables como los de CM-03.
+
 ### Custodia y segregación — [CM-03](cases/03-asset-custody/README.md)
 
 El primer caso del dominio, y se ejecuta:
@@ -82,14 +95,14 @@ desviado y, en un incidente, levantar el estado desde los hechos.
 
 ## ⛔ Qué NO existe todavía
 
-Veinte de los veintiún casos. Están planificados y **no construidos** — el
-único que existe es CM-03, marcado abajo:
+Diecinueve de los veintiún casos. Están planificados y **no construidos** — los
+dos que existen van marcados abajo:
 
 | | Caso | De qué trata |
 |---|---|---|
 | CM-00 | Entrada al sandbox regulatorio | Postulación, clasificación de servicios, límites y salida ordenada |
 | CM-01 | Financiamiento colectivo | Campañas, divulgaciones, sobredemanda, devolución |
-| CM-02 | Sistema alternativo de transacción | Libro de órdenes, prioridad precio-tiempo, suspensión |
+| **CM-02** | **[Sistema alternativo de transacción](cases/02-alternative-trading-system/README.md)** | 🟡 **Motor construido**, sin escenarios. Prioridad precio-tiempo |
 | **CM-03** | **[Custodia y segregación](cases/03-asset-custody/README.md)** | ✅ **Construido.** Activos de clientes ≠ activos propios |
 | CM-04 | Enrutamiento de órdenes | Precio, liquidez, latencia, y por qué se eligió |
 | CM-05 | Intermediación | Agente contra principal, y el conflicto de interés |
@@ -112,8 +125,8 @@ Veinte de los veintiún casos. Están planificados y **no construidos** — el
 También faltan el motor de escenarios con semilla, el reloj simulado, los
 participantes, los instrumentos y la política regulatoria como código.
 
-**Ninguno de los veinte pendientes aparece como disponible en el panel ni en el
-sitio.**
+**Ninguno de los diecinueve pendientes aparece como disponible en el panel ni en
+el sitio.**
 Un catálogo que promete lo que no tiene es exactamente lo que este repositorio
 existe para no hacer.
 

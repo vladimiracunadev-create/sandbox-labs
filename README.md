@@ -30,7 +30,7 @@ cargo run -p sandboxctl -- markets reconcile  # custodia de activos: 6 escenario
 | Familia | Qué contiene | Estado |
 |---|---|---|
 | **Sandboxes técnicos** | Código, archivos, plugins, agentes y secretos que no controlas | 3 de 5 casos construidos |
-| **Mercado de capitales** | Custodia, negociación, operación y cumplimiento con dinero **simulado** | 1 de 21 casos: [CM-03 custodia](domains/capital-markets/cases/03-asset-custody/README.md) |
+| **Mercado de capitales** | Custodia, negociación, operación y cumplimiento con dinero **simulado** | 2 de 21: [CM-03 custodia](domains/capital-markets/cases/03-asset-custody/README.md) · [CM-02 libro de órdenes](domains/capital-markets/cases/02-alternative-trading-system/README.md) |
 
 Están separadas porque tienen modelos de amenazas distintos, y «esto está
 contenido» significa cosas muy diferentes en cada lado.
@@ -41,7 +41,7 @@ contenido» significa cosas muy diferentes en cada lado.
 > autorización de la CMF ni de ninguna autoridad**, y nada de lo que salga de él
 > es una recomendación de inversión.
 
-Detalle y los 20 casos que faltan en
+Detalle y los 19 casos que faltan en
 **[domains/capital-markets/](domains/capital-markets/README.md)**.
 
 ---

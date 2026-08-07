@@ -37,6 +37,26 @@ Versionado semántico.
   inyecta `INVOCATION_ID` por su cuenta; la cadena intercala ahora un `env -i` y
   el runtime arranca con el entorno vacío. El contrato es vaciar, no enumerar.
 
+### Added — CM-02, motor de libro de órdenes con prioridad precio-tiempo
+
+- **Un mercado justo se reduce a una regla**: mejor precio primero, y a igual
+  precio quien llegó antes. Once invariantes con una prueba cada una.
+- **El tamaño no adelanta la cola.** Es el abuso clásico —servir primero al
+  grande— y tiene prueba propia: un vendedor diez veces mayor sigue esperando su
+  turno detrás de uno pequeño que llegó antes.
+- **El precio lo pone la orden que ya estaba.** Quien puso precio y esperó tiene
+  derecho a él; si mandara la orden entrante, llegar tarde sería una ventaja.
+- **El libro nunca queda cruzado**: una compra que paga igual o más que la mejor
+  venta significa una ejecución que no ocurrió.
+- **Una orden de mercado sin contrapartida se rechaza**, no reposa: no tiene
+  precio con el que esperar, y dejarla en el libro sería inventarle uno.
+- El número de secuencia lo pone **el libro**, no quien manda la orden. Si lo
+  pusiera el cliente, podría colarse delante diciendo que llegó antes. Y es un
+  contador, no un reloj: dos órdenes en el mismo milisegundo desempatarían por el
+  orden interno de un mapa, que es el azar.
+- Queda como `prototype` y no `functional` mientras le falten escenarios
+  ejecutables como los de CM-03.
+
 ### Added — CM-03, el primer caso de mercado de capitales que se ejecuta
 
 - **Custodia y segregación de activos**, sobre la invariante

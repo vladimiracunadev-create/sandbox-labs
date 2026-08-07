@@ -20,9 +20,11 @@
 pub mod custody;
 pub mod ledger;
 pub mod money;
+pub mod orderbook;
 pub mod scenario;
 
 pub use custody::{CustodyBook, Finding, Owner, PendingMovement, Position, Reconciliation};
 pub use ledger::{Entry, Ledger, LedgerError, Transaction};
 pub use money::{Currency, Money, MoneyError};
+pub use orderbook::{Order, OrderBook, OrderError, Side, Trade};
 pub use scenario::{Scenario, ScenarioOutcome};
