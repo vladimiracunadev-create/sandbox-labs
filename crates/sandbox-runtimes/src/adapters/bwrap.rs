@@ -4,7 +4,7 @@ use crate::{
 };
 use anyhow::Result;
 use sandbox_core::{command_exists, ExecutionOutcome, ExecutionPlan, Policy, RuntimeKind, Workload};
-use std::{collections::BTreeMap, path::Path};
+use std::collections::BTreeMap;
 use tempfile::tempdir;
 
 /// Lo que este runtime aplicó **de verdad** en esta ejecución.
@@ -71,86 +71,37 @@ impl RuntimeAdapter for BwrapAdapter {
         // publicar un puerto tiene que pedir uno de los dos últimos y decirlo
         // en su política, no colarse por un modo que suena contenido.
         let network_isolated = policy.network.isolates_host_network();
-        let mut args = vec![
-            "--die-with-parent",
-            "--new-session",
-            "--unshare-user",
-            "--unshare-ipc",
-            "--unshare-pid",
-            "--unshare-uts",
-            "--unshare-cgroup-try",
-            "--proc",
-            "/proc",
-            "--dev",
-            "/dev",
-            "--tmpfs",
-            "/tmp",
-            "--dir",
-            "/workspace",
-        ]
-        .into_iter()
-        .map(String::from)
-        .collect::<Vec<_>>();
-        // El flag va antes de `--ro-bind`: intercalarlo entre esa opción y sus
-        // dos rutas rompería el parseo de argumentos de bwrap.
-        if network_isolated {
-            args.push("--unshare-net".into());
-        }
-        args.push("--ro-bind".into());
-        args.push(workload.directory.display().to_string());
-        args.push("/workspace/input".into());
-        args.push("--bind".into());
-        args.push(output.display().to_string());
-        args.push("/workspace/output".into());
-        for system in ["/usr", "/bin", "/lib", "/lib64"] {
-            if Path::new(system).exists() {
-                args.extend(["--ro-bind".into(), system.into(), system.into()]);
-            }
-        }
-        for system in ["/etc/passwd", "/etc/group"] {
-            if Path::new(system).exists() {
-                args.extend(["--ro-bind".into(), system.into(), system.into()]);
-            }
-        }
-        args.extend([
-            "--chdir".into(),
-            "/workspace/input".into(),
-            "--clearenv".into(),
-            "--cap-drop".into(),
-            "ALL".into(),
-            // Identidad propia dentro del sandbox. Sin esto la carga corría con
-            // el uid REAL de quien la lanzó —medido: `uid=1000(vbav)`— y
-            // heredaba sus grupos suplementarios, mientras todas las políticas
-            // del catálogo pedían 65534. La política decía una cosa y la
-            // ejecución hacía otra.
-            //
-            // Va después de `--unshare-user`, que es su requisito: el mapeo
-            // que hace bubblewrap es «uid de dentro → uid real», así que los
-            // ficheros del bind de escritura siguen siendo accesibles.
-            "--uid".into(),
-            policy.process.user.to_string(),
-            "--gid".into(),
-            policy.process.group.to_string(),
-        ]);
-        for (name, value) in &policy.process.environment {
-            args.extend(["--setenv".into(), name.clone(), value.clone()]);
-        }
-        // El filtro seccomp, si la política deniega algo que este kernel
-        // conoce. Va antes del `--` porque es una opción de bubblewrap, no de la
-        // carga.
+
+        // El filtro seccomp se escribe antes de compilar los argumentos, porque
+        // el descriptor va dentro de ellos.
         let seccomp = match sandbox_core::seccomp::compile(policy)? {
             None => None,
             Some(filter) => {
                 let path = temp.path().join("seccomp.bpf");
                 std::fs::write(&path, sandbox_core::seccomp::to_bytes(&filter))?;
-                args.extend(["--seccomp".into(), sandbox_core::seccomp::FILTER_FD.to_string()]);
                 Some(std::fs::File::open(&path)?)
             }
         };
         let filtered = seccomp.is_some();
-        args.push("--".into());
-        args.push(workload.command.clone());
-        args.extend(workload.command_args(extra_args)?);
+
+        // Un único compilador para cargas y servicios: ver `sandbox_core::compiler`.
+        let mut args = sandbox_core::bubblewrap(
+            policy,
+            &sandbox_core::SandboxRequest {
+                mounts: vec![
+                    sandbox_core::Mount::read_only(workload.directory.display().to_string(), "/workspace/input"),
+                    sandbox_core::Mount::writable(output.display().to_string(), "/workspace/output"),
+                ],
+                workdir: "/workspace/input".into(),
+                environment: BTreeMap::new(),
+                command: workload.command.clone(),
+                args: workload.command_args(extra_args)?,
+                // El supervisor espera a esta carga: si él cae, la jaula no
+                // puede quedarse viva con algo dentro.
+                die_with_parent: true,
+            },
+            filtered.then_some(sandbox_core::seccomp::FILTER_FD),
+        );
         let mut program = "bwrap".to_string();
         // Sin `--nproc`: RLIMIT_NPROC cuenta los procesos del UID real en todo
         // el host, no los de esta carga. Aplicarlo aquí mata la ejecución nada

@@ -181,9 +181,33 @@ fn build_chain(program: &str, args: &[String], limits: &ResourcePolicy) -> (Stri
     wrapped.push("--".into());
     wrapped.push(EMPTY_ENVIRONMENT.0.into());
     wrapped.push(EMPTY_ENVIRONMENT.1.into());
-    wrapped.push(program.to_string());
+    wrapped.push(resolve(program));
     wrapped.extend_from_slice(args);
     ("systemd-run".into(), wrapped)
+}
+
+/// Ruta absoluta del programa, buscada en el `PATH` **de quien lanza**.
+///
+/// Detrás del `env -i` no hay `PATH`, así que `execvp` recurre a la ruta por
+/// defecto del sistema —`/bin:/usr/bin`— y ahí no está todo. Un `bwrap`
+/// instalado en `/usr/local/bin`, o en el directorio del usuario, no se
+/// encontraría, y el fallo llega como un `No such file or directory` del
+/// eslabón intermedio que no dice cuál es el programa que falta.
+///
+/// Si no se encuentra se devuelve el nombre tal cual: quien ejecute dará un
+/// error normal, que es mejor que una ruta inventada.
+fn resolve(program: &str) -> String {
+    if program.contains('/') {
+        return program.to_string();
+    }
+    let Some(path) = std::env::var_os("PATH") else {
+        return program.to_string();
+    };
+    std::env::split_paths(&path)
+        .map(|directory| directory.join(program))
+        .find(|candidate| candidate.is_file())
+        .map(|candidate| candidate.display().to_string())
+        .unwrap_or_else(|| program.to_string())
 }
 
 /// `env -i`: el runtime arranca con el entorno **vacío**, que es exactamente lo
@@ -394,10 +418,26 @@ mod tests {
     #[test]
     fn wrapping_preserves_the_inner_command() {
         let inner = vec!["--unshare-net".to_string(), "--".to_string(), "python3".to_string()];
-        let (program, args) = build_chain("bwrap", &inner, &limits());
+        let (program, args) = build_chain("/usr/bin/env", &inner, &limits());
         assert_eq!(program, "systemd-run");
-        let target = args.iter().position(|value| value == "bwrap").expect("el programa envuelto");
+        let target = args.iter().position(|value| value == "/usr/bin/env").expect("el programa envuelto");
         assert_eq!(&args[target + 1..], &inner[..], "los argumentos internos no se tocan");
+    }
+
+    #[test]
+    fn the_wrapped_program_is_resolved_to_an_absolute_path() {
+        // Detrás del `env -i` no hay PATH, así que un nombre suelto solo se
+        // encontraría si está en la ruta por defecto del sistema.
+        let (_, args) = build_chain("sh", &[], &limits());
+        let resolved = args.last().expect("programa");
+        assert!(resolved.starts_with('/'), "se esperaba ruta absoluta y llegó {resolved}");
+        assert!(resolved.ends_with("/sh"));
+    }
+
+    #[test]
+    fn an_absolute_program_is_left_alone() {
+        let (_, args) = build_chain("/opt/lo/que/sea", &[], &limits());
+        assert_eq!(args.last().expect("programa"), "/opt/lo/que/sea");
     }
 
     /// La regresión que encontró la suite de contención en CI, dos veces.
@@ -412,8 +452,8 @@ mod tests {
     /// contrato es vaciar, no enumerar.
     #[test]
     fn the_runtime_starts_with_an_empty_environment() {
-        let (_, args) = build_chain("bwrap", &[], &limits());
-        let target = args.iter().position(|value| value == "bwrap").expect("el programa envuelto");
+        let (_, args) = build_chain("/usr/bin/env", &[], &limits());
+        let target = args.iter().position(|value| value == "/usr/bin/env").expect("el programa envuelto");
         assert_eq!(
             &args[target - 2..target],
             &["env".to_string(), "-i".to_string()],
@@ -430,9 +470,13 @@ mod tests {
         // Sondear una forma más simple que la real dejaría pasar un
         // «disponible» que después falla al ejecutar.
         let (_, probed) = build_chain("true", &[], &probe_limits());
-        let (_, real) = build_chain("bwrap", &[], &probe_limits());
-        let cut = |args: &[String], program: &str| args[..args.iter().position(|v| v == program).unwrap()].to_vec();
-        assert_eq!(cut(&probed, "true"), cut(&real, "bwrap"), "el prefijo de la cadena tiene que ser idéntico");
+        let (_, real) = build_chain("/opt/runtime", &[], &probe_limits());
+        // Todo menos el último elemento, que es el programa.
+        assert_eq!(
+            probed[..probed.len() - 1],
+            real[..real.len() - 1],
+            "el prefijo de la cadena tiene que ser idéntico"
+        );
     }
 
     #[test]
@@ -440,7 +484,7 @@ mod tests {
         // El camino correcto en un host sin gestor de usuario: no envolver, y
         // que quien llama no declare los controles.
         if !support().available {
-            assert!(wrap("bwrap", &[], &limits()).is_none());
+            assert!(wrap("/usr/bin/env", &[], &limits()).is_none());
         }
     }
 

@@ -134,6 +134,11 @@ primera ejecución se levanta un scope de prueba** para comprobar que el kernel
 los acepta. Donde falle, los controles no aparecen en la evidencia y una
 política estricta que los exija no ejecuta. `sandboxctl doctor` lo enseña.
 
+Los aplica **un solo compilador**, el mismo para una carga que termina y para un
+servicio que se queda levantado. Tenerlos separados fue exactamente cómo el
+camino de los servicios acabó sin `--cap-drop ALL`, sin identidad propia y sin
+filtro de llamadas, mientras su tarjeta prometía los tres.
+
 Los huecos conocidos, uno por uno y con lo que haría falta para cerrarlos, en
 **[docs/IMPLEMENTATION_BACKLOG.md](docs/IMPLEMENTATION_BACKLOG.md)**.
 

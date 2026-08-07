@@ -174,6 +174,29 @@ fn syscall_number(name: &str) -> Option<i64> {
     Some(number)
 }
 
+/// Hace que el hijo vea el filtro en `FILTER_FD`.
+///
+/// Rust marca `CLOEXEC` en todo lo que abre, así que un fichero abierto por el
+/// padre no sobrevive al `exec`. `dup2` dentro del hijo —después del `fork` y
+/// antes del `exec`— crea una copia sin esa marca en el número que bubblewrap
+/// espera. No hay API segura en `std` para esto.
+///
+/// `dup2` es async-signal-safe, que es el requisito de lo que corre en ese
+/// punto. El fichero tiene que seguir vivo hasta después de `spawn`.
+#[cfg(unix)]
+pub fn inherit(command: &mut std::process::Command, filter: &std::fs::File) {
+    use std::os::unix::{io::AsRawFd, process::CommandExt};
+    let source = filter.as_raw_fd();
+    unsafe {
+        command.pre_exec(move || {
+            if libc::dup2(source, FILTER_FD) < 0 {
+                return Err(std::io::Error::last_os_error());
+            }
+            Ok(())
+        });
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

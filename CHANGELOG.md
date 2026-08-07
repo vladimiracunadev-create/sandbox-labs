@@ -37,6 +37,30 @@ Versionado semántico.
   inyecta `INVOCATION_ID` por su cuenta; la cadena intercala ahora un `env -i` y
   el runtime arranca con el entorno vacío. El contrato es vaciar, no enumerar.
 
+### Fixed — un solo compilador de política, y tres controles que se perdían
+
+- **`sandbox_core::compiler`** produce los argumentos de bubblewrap para las
+  cargas que terminan y para los servicios. Antes cada camino tenía su lista
+  escrita a mano, y al de los servicios le faltaban `--cap-drop ALL` —aunque su
+  política exige el control `capabilities`—, `--uid`/`--gid`, `--new-session`
+  (lo que impide inyectar en el terminal con `TIOCSTI`), `--unshare-cgroup-try`,
+  el filtro seccomp y los límites de cgroups.
+- **El registro del servicio declaraba controles que nadie aplicaba.** Copiaba
+  `runtime.supported_controls()`, que describe lo que bubblewrap puede aplicar a
+  una carga, así que la tarjeta del panel prometía `memory`, `processes` y `cpu`
+  sin que existieran. Ahora los servicios reciben el mismo scope de cgroups y se
+  registra lo que ese camino aplicó.
+- **Un servicio con bubblewrap moría al terminar `service up`.** Llevaba
+  `--die-with-parent`, correcto para una carga supervisada y letal para un
+  proceso que debe sobrevivir al CLI. No se había visto porque los servicios se
+  probaban con `unshare`, que no tiene esa opción. Ahora es un campo explícito
+  de la petición.
+- **`service-isolated` deniega llamadas al sistema**, así que los casos `02` y
+  `03` corren también con filtro seccomp.
+- El programa envuelto en el scope de systemd se resuelve a **ruta absoluta**:
+  detrás del `env -i` no hay `PATH`, y `execvp` solo miraba la ruta por defecto
+  del sistema. Un runtime instalado en `/usr/local/bin` no se encontraba.
+
 ### Added — los perfiles seccomp pasan de fichero a filtro real
 
 - **`policy.syscalls.deny` se compila a un programa BPF** con `seccompiler`

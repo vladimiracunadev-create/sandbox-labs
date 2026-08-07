@@ -45,24 +45,11 @@ pub fn run(spec: CommandSpec, policy: &Policy) -> Result<ExecutionOutcome> {
         command.env_clear();
     }
     command.envs(&spec.environment);
-    // El filtro tiene que llegar al hijo por un descriptor concreto, y Rust
-    // marca CLOEXEC en todo lo que abre. `dup2` en el hijo —después de fork y
-    // antes de exec— crea una copia sin CLOEXEC en el número que bubblewrap
-    // espera. No hay API segura en std para esto.
-    //
-    // `dup2` es async-signal-safe, que es el requisito de lo que corre aquí.
+    // El filtro tiene que llegar al hijo por un descriptor concreto. El cómo
+    // vive junto al resto de seccomp, no aquí.
     #[cfg(unix)]
     if let Some(filter) = spec.seccomp.as_ref() {
-        use std::os::unix::{io::AsRawFd, process::CommandExt};
-        let source = filter.as_raw_fd();
-        unsafe {
-            command.pre_exec(move || {
-                if libc::dup2(source, sandbox_core::seccomp::FILTER_FD) < 0 {
-                    return Err(std::io::Error::last_os_error());
-                }
-                Ok(())
-            });
-        }
+        sandbox_core::seccomp::inherit(&mut command, filter);
     }
     let started = Instant::now();
     let mut child = command.spawn().with_context(|| format!("No se pudo iniciar {}", spec.program))?;

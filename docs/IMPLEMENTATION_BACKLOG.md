@@ -264,16 +264,55 @@ como runtime parcial.
 
 | | |
 |---|---|
-| **Estado** | Abierto |
+| **Estado** | ✅ Cerrado |
 
-Las cargas que terminan se planifican en `ExecutionPlan::build`
-(`sandbox-core`). Los servicios de larga duración reconstruyen a mano una
-versión propia de los argumentos del runtime en `sandboxctl/src/service.rs`. Dos
-caminos hacia el mismo kernel significa dos sitios donde un control puede
-perderse, y solo uno de ellos está cubierto por la suite de contención.
+Las cargas que terminan se compilaban en el adaptador de bubblewrap y los
+servicios de larga duración en el lanzador del CLI, cada uno con su lista de
+argumentos escrita a mano. Dos caminos hacia el mismo kernel son dos sitios
+donde un control puede perderse, y solo uno estaba cubierto por la suite de
+contención.
 
-**Para cerrarlo:** un único compilador que produzca el plan, y dos supervisores
-—uno que espera al proceso y otro que lo deja corriendo— sobre el mismo plan.
+**Cómo se cerró:** `sandbox_core::compiler` produce los argumentos de
+bubblewrap para los dos. Fuera queda solo lo que de verdad distingue una
+ejecución de otra —qué se monta, dónde se trabaja, qué variables extra y qué se
+ejecuta—; todo lo que viene de la política se decide en un único sitio.
+
+**Lo que estaba perdido.** No era teórico. Al camino de los servicios le
+faltaban `--cap-drop ALL` —aunque su política exige el control `capabilities`—,
+`--uid`/`--gid`, `--new-session` (lo que impide inyectar en el terminal con
+`TIOCSTI`), `--unshare-cgroup-try`, el filtro seccomp y los límites de cgroups.
+
+**Y una falsa garantía.** El registro del servicio copiaba
+`runtime.supported_controls()`, que describe lo que bubblewrap puede aplicar a
+una carga. Así llegó a declarar `memory`, `processes` y `cpu` sin que nadie los
+aplicara: la tarjeta del panel prometía tres controles inexistentes. Ahora los
+servicios reciben el mismo scope de cgroups, y lo que se registra es lo que ese
+camino aplicó.
+
+**Un bug que solo se veía con bubblewrap.** Los servicios llevaban
+`--die-with-parent`, que mata el sandbox cuando muere quien lo lanzó — y
+`sandboxctl service up` termina en cuanto informa. El servicio arrancaba, decía
+que estaba listo y desaparecía. No se había visto porque los servicios se
+probaban con `unshare`, que no tiene esa opción. Ahora es un campo explícito de
+la petición: sí para una carga supervisada, no para un servicio.
+
+Medido levantando el caso `03` con bubblewrap, mirando el proceso de la carga y
+no el envoltorio:
+
+```text
+netns   : net:[4026532380]   (host: net:[4026531833])
+userns  : user:[4026532439]  (host: user:[4026531837])
+Seccomp : 2                  (filtro cargado)
+CapEff  : 0000000000000000
+memory.max=536870912  pids.max=32  cpu.max=100000 100000
+curl http://127.0.0.1:8803/health → 200
+tras `service down` → sin respuesta
+```
+
+**Lo que queda:** `unshare` conserva su rama propia. No recibe cgroups —
+`systemd-run` necesita las variables del bus en el entorno y `unshare` se las
+pasaría tal cual a la carga— ni filtro seccomp, y su lista de controles
+efectivos lo dice.
 
 ### B-08 · Evidencia sin cadena de integridad
 

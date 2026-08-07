@@ -21,12 +21,12 @@
 - ✅ **seccomp**: `policy.syscalls.deny` compilado a BPF y aplicado por
   bubblewrap, con sonda que lo mide comparando errno.
 - ⛔ **Egress con allowlist**: pendiente, sin enforcement — ver B-04.
-- ⛔ **Un solo compilador de política** para cargas y servicios — ver B-07.
+- ✅ **Un solo compilador de política** para cargas y servicios, con lo que los
+  servicios ganan identidad, capabilities, cgroups y seccomp.
 
-Quedan dos huecos, y hasta cerrarlos el runtime sigue siendo `experimental`: el
-egress con allowlist no tiene enforcement, y los servicios se compilan por un
-camino distinto al de las cargas, que es un sitio de más donde un control puede
-perderse.
+Queda un hueco, y hasta cerrarlo el runtime sigue siendo `experimental`: el
+egress con `allowlist` no tiene enforcement, así que ese control no se declara
+nunca y una política estricta que lo exija no ejecuta.
 
 ## v0.8.0 — WASI Portable Runner
 

@@ -179,10 +179,37 @@ fn pick_runtime(service: &Service) -> Result<RuntimeKind> {
     )
 }
 
-/// Construye la línea de comandos del sandbox para un servicio.
+/// Los controles que ESTE camino aplicó al servicio.
 ///
-/// No se reutiliza el adaptador de cargas porque ahí el proceso es hijo y se
-/// espera a que termine. Un servicio tiene que sobrevivir al CLI que lo levanta.
+/// No se copia lo que el plan declara para el runtime. El plan describe lo que
+/// bubblewrap puede aplicar a una carga que termina; un servicio pasa por un
+/// camino propio, y copiar la lista del plan es cómo el registro acabó
+/// declarando `memory`, `processes` y `cpu` antes de que nadie los aplicara.
+///
+/// Con `unshare` la lista es corta a propósito: no recibe ni cgroups ni filtro.
+fn effective_controls(runtime: RuntimeKind, policy: &Policy, filtered: bool) -> Vec<String> {
+    let mut controls: Vec<String> = ["filesystem", "capabilities", "devices", "environment", "output", "timeout"]
+        .iter()
+        .map(|value| (*value).to_string())
+        .collect();
+    if policy.network.isolates_host_network() {
+        controls.push("network".into());
+    }
+    if runtime == RuntimeKind::Bwrap {
+        controls.extend(sandbox_core::cgroup::support().controls.iter().cloned());
+        if filtered {
+            controls.push("syscalls".into());
+        }
+    } else {
+        // `unshare` no monta una raíz propia ni recibe identidad: solo lo que de
+        // verdad hace.
+        controls.retain(|value| value != "filesystem" && value != "capabilities" && value != "devices");
+    }
+    controls.sort();
+    controls.dedup();
+    controls
+}
+
 /// Secretos que de verdad entran al sandbox.
 ///
 /// Intersección de tres conjuntos: lo que el servicio pide, lo que la política
@@ -209,90 +236,59 @@ fn resolved_secrets(service: &Service, policy: &Policy) -> (Vec<(String, String)
 /// necesita saber dónde vive en el host.
 const SANDBOX_SOCKET_DIR: &str = "/workspace/socket";
 
+/// Construye la línea de comandos del sandbox para un servicio.
+///
+/// Los argumentos de bubblewrap salen del compilador compartido; lo que queda
+/// aquí es la diferencia real entre un servicio y una carga que termina: qué se
+/// monta, qué variables necesita para orientarse y qué se ejecuta.
 fn sandbox_command(
     runtime: RuntimeKind,
     service: &Service,
     policy: &Policy,
     secrets: &[(String, String)],
     socket_dir: &Path,
+    seccomp: Option<&std::fs::File>,
 ) -> (String, Vec<String>) {
     let workdir = service.directory.display().to_string();
     let mut args: Vec<String> = Vec::new();
 
     match runtime {
         RuntimeKind::Bwrap => {
-            args.extend(
-                [
-                    "--die-with-parent",
-                    "--unshare-user",
-                    "--unshare-ipc",
-                    "--unshare-pid",
-                    "--unshare-uts",
-                    "--proc",
-                    "/proc",
-                    "--dev",
-                    "/dev",
-                    "--tmpfs",
-                    "/tmp",
-                    "--dir",
-                    "/workspace",
-                ]
-                .iter()
-                .map(|value| value.to_string()),
-            );
-            // La red se conserva a propósito cuando la política lo dice con
-            // todas sus letras (`unrestricted`): un servicio que publica un
-            // puerto TCP no puede estar en un namespace de red propio. La
-            // contención sigue viva en filesystem, PIDs, capabilities y
-            // entorno — y la tarjeta del panel lo dice.
-            if policy.network.isolates_host_network() {
-                args.push("--unshare-net".into());
+            // El MISMO compilador que usan las cargas que terminan. Antes esta
+            // rama tenía su propia lista de argumentos escrita a mano, y por eso
+            // le faltaban `--cap-drop ALL`, `--uid`/`--gid`, `--new-session` y
+            // el filtro seccomp: nadie tenía que acordarse de añadirlos dos
+            // veces. Ver `sandbox_core::compiler`.
+            let mut environment: std::collections::BTreeMap<String, String> = std::collections::BTreeMap::new();
+            environment.insert("SANDBOX_RUNTIME".into(), "bwrap".into());
+            environment.insert("SANDBOX_PORT".into(), service.port.to_string());
+            for (name, value) in secrets {
+                environment.insert(name.clone(), value.clone());
             }
-            args.extend(["--ro-bind".into(), workdir.clone(), "/workspace/app".into()]);
+            let mut mounts = vec![sandbox_core::Mount::read_only(workdir.clone(), "/workspace/app")];
             if service.is_socket() {
                 // El socket entra por el filesystem, que es la única puerta que
                 // le queda a un sandbox sin red. Montaje de escritura: el
                 // servicio tiene que poder crear el fichero del socket.
-                args.extend(["--bind".into(), socket_dir.display().to_string(), SANDBOX_SOCKET_DIR.into()]);
+                mounts.push(sandbox_core::Mount::writable(socket_dir.display().to_string(), SANDBOX_SOCKET_DIR));
+                environment.insert("SANDBOX_SOCKET".into(), format!("{SANDBOX_SOCKET_DIR}/{}.sock", service.id));
             }
-            for system in ["/usr", "/bin", "/lib", "/lib64", "/etc/passwd", "/etc/group", "/etc/resolv.conf"] {
-                if Path::new(system).exists() {
-                    args.extend(["--ro-bind".into(), system.into(), system.into()]);
-                }
-            }
-            args.extend([
-                "--chdir".into(),
-                "/workspace/app".into(),
-                "--clearenv".into(),
-                "--cap-drop".into(),
-                "ALL".into(),
-                // La misma identidad no privilegiada que reciben las cargas
-                // breves. Sin esto el servicio corría con el uid real de quien
-                // lo levantó, que además es quien tiene acceso al repositorio.
-                "--uid".into(),
-                policy.process.user.to_string(),
-                "--gid".into(),
-                policy.process.group.to_string(),
-            ]);
-            for (name, value) in &policy.process.environment {
-                args.extend(["--setenv".into(), name.clone(), value.clone()]);
-            }
-            args.extend(["--setenv".into(), "SANDBOX_RUNTIME".into(), "bwrap".into()]);
-            args.extend(["--setenv".into(), "SANDBOX_PORT".into(), service.port.to_string()]);
-            for (name, value) in secrets {
-                args.extend(["--setenv".into(), name.clone(), value.clone()]);
-            }
-            if service.is_socket() {
-                args.extend([
-                    "--setenv".into(),
-                    "SANDBOX_SOCKET".into(),
-                    format!("{SANDBOX_SOCKET_DIR}/{}.sock", service.id),
-                ]);
-            }
-            args.push("--".into());
-            args.push(service.command.clone());
-            args.push(service.entrypoint.clone());
-            args.extend(service.args.clone());
+            let mut command_args = vec![service.entrypoint.clone()];
+            command_args.extend(service.args.clone());
+            let args = sandbox_core::bubblewrap(
+                policy,
+                &sandbox_core::SandboxRequest {
+                    mounts,
+                    workdir: "/workspace/app".into(),
+                    environment,
+                    command: service.command.clone(),
+                    args: command_args,
+                    // Un servicio tiene que sobrevivir a `service up`, que
+                    // termina en cuanto informa de que está listo.
+                    die_with_parent: false,
+                },
+                seccomp.map(|_| sandbox_core::seccomp::FILTER_FD),
+            );
             ("bwrap".to_string(), args)
         }
         RuntimeKind::Unshare => {
@@ -413,7 +409,36 @@ pub fn up(ctx: &ServiceContext, id: &str, wait: bool) -> Result<i32> {
     let runtime = pick_runtime(&service)?;
     let (secrets, refused) = resolved_secrets(&service, &policy);
     let socket_dir = ctx.socket_dir();
-    let (program, args) = sandbox_command(runtime, &service, &policy, &secrets, &socket_dir);
+    // El filtro seccomp vive en el directorio de datos y no en un temporal: el
+    // proceso lo hereda por descriptor, pero tener el fichero permite auditar
+    // qué se aplicó a un servicio que lleva días levantado.
+    let seccomp = match sandbox_core::seccomp::compile(&policy)? {
+        None => None,
+        Some(filter) => {
+            let path = ctx.data_root.join("services").join(format!("{}.bpf", service.id));
+            ensure_dir(path.parent().expect("directorio de servicios"))?;
+            fs::write(&path, sandbox_core::seccomp::to_bytes(&filter))?;
+            Some(fs::File::open(&path)?)
+        }
+    };
+    let (program, mut args) = sandbox_command(runtime, &service, &policy, &secrets, &socket_dir, seccomp.as_ref());
+
+    // Los mismos límites de recursos que reciben las cargas que terminan. Sin
+    // esto, el registro del servicio declaraba `memory`, `processes` y `cpu`
+    // —porque el plan los declara para bubblewrap— y nadie los aplicaba: una
+    // falsa garantía en la tarjeta del panel.
+    //
+    // Solo con bubblewrap, por la misma razón que en las cargas: `systemd-run`
+    // necesita las variables del bus en el entorno, y `unshare` se las pasaría
+    // tal cual al servicio.
+    let mut program = program;
+    let cgrouped = runtime == RuntimeKind::Bwrap;
+    if cgrouped {
+        if let Some((outer, outer_args)) = sandbox_core::cgroup::wrap(&program, &args, &policy.resources) {
+            program = outer;
+            args = outer_args;
+        }
+    }
 
     let log_path = ctx.log_path(&service.id);
     ensure_dir(log_path.parent().expect("directorio de servicios"))?;
@@ -449,6 +474,12 @@ pub fn up(ctx: &ServiceContext, id: &str, wait: bool) -> Result<i32> {
     {
         use std::os::unix::process::CommandExt;
         command.process_group(0);
+        // El filtro seccomp llega a bubblewrap por descriptor, igual que en las
+        // cargas que terminan. El reenviador del puerto NO lo lleva: corre fuera
+        // del sandbox, y filtrarlo no protegería de nada.
+        if let Some(filter) = seccomp.as_ref() {
+            sandbox_core::seccomp::inherit(&mut command, filter);
+        }
     }
     if runtime == RuntimeKind::Unshare {
         // bwrap limpia el entorno con `--clearenv`; unshare no tiene equivalente,
@@ -489,7 +520,7 @@ pub fn up(ctx: &ServiceContext, id: &str, wait: bool) -> Result<i32> {
         started_at: chrono::Utc::now().to_rfc3339(),
         start_ticks: process_start_ticks(child.id()),
         log_path: log_path.display().to_string(),
-        effective_controls: runtime.supported_controls(&policy).into_iter().collect(),
+        effective_controls: effective_controls(runtime, &policy, seccomp.is_some()),
     };
     record.write(&ctx.data_root)?;
 
