@@ -37,6 +37,24 @@ Versionado semántico.
   inyecta `INVOCATION_ID` por su cuenta; la cadena intercala ahora un `env -i` y
   el runtime arranca con el entorno vacío. El contrato es vaciar, no enumerar.
 
+### Added — cimientos de mercado de capitales
+
+- **Catálogo con dos familias**, `technical` y `capital-markets`, que **no se
+  mezclan**: tienen modelos de amenazas distintos, y mezclarlas haría que una
+  advertencia de una se leyera como si valiera para la otra. Nada de lo
+  existente cambia de sitio.
+- **Dinero exacto** (`crates/sandbox-markets`): enteros en la unidad mínima,
+  nunca coma flotante. La moneda va pegada al importe, así que sumar CLP y USD
+  **falla** en vez de salir mal. El peso chileno tiene cero decimales, que es el
+  caso que rompe el código escrito asumiendo «dos decimales siempre».
+- **Libro mayor de doble entrada**, solo-añadir, con una prueba por invariante:
+  cada transacción cuadra a cero, nada se borra —un error se corrige con una
+  reversa y las dos quedan—, una transacción se aplica una vez, y los saldos se
+  pueden reconstruir desde el diario.
+- **`domains/capital-markets/`** con su estructura y un README que lista los 21
+  casos **como plan y no como catálogo**. Ninguno existe todavía, y ninguno
+  aparece como disponible en el panel ni en el sitio.
+
 ### Added — la evidencia se firma, se encadena y dice qué significó
 
 - **Firma Ed25519** sobre la huella, con clave local generada la primera vez y

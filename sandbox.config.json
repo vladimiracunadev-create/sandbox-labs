@@ -198,5 +198,19 @@
       "port": 8805,
       "status": "building"
     }
+  ],
+  "families": [
+    {
+      "id": "technical",
+      "label": "Sandboxes técnicos",
+      "path": "cases",
+      "description": "Ejecutar código, archivos, plugins, agentes y secretos que no controlas, bajo políticas verificables."
+    },
+    {
+      "id": "capital-markets",
+      "label": "Mercado de capitales",
+      "path": "domains/capital-markets/cases",
+      "description": "Probar modelos Fintech con dinero, instrumentos y participantes SIMULADOS. Sin dinero real, sin credenciales reales y sin autorización de ninguna autoridad."
+    }
   ]
 }

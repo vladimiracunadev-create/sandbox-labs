@@ -33,6 +33,19 @@ Los límites que se mantienen: no es seguro para malware real, ni para
 multi-tenancy hostil, ni para producción. Para carga desconocida, VM
 desechable.
 
+## Mercado de capitales — cimientos
+
+- ✅ Catálogo con dos familias que no se mezclan.
+- ✅ Dinero exacto en unidades mínimas, con la moneda pegada al importe.
+- ✅ Libro mayor de doble entrada, solo-añadir, con sus invariantes probadas.
+- ⛔ Motor de escenarios con semilla, reloj simulado, participantes,
+  instrumentos y política regulatoria como código.
+- ⛔ Los 21 casos CM-00 a CM-20. Ninguno construido — ver
+  [domains/capital-markets/](domains/capital-markets/README.md).
+
+Dinero simulado, sin autorización de ninguna autoridad y sin recomendaciones de
+inversión. Eso no cambia con el avance del roadmap.
+
 ## v0.8.0 — WASI Portable Runner
 
 - Módulos reproducibles.

@@ -112,6 +112,26 @@ Referencia completa en [docs/POLICY_REFERENCE.md](docs/POLICY_REFERENCE.md).
 
 ---
 
+## Dos familias que no se mezclan
+
+| Familia | Qué contiene | Estado |
+|---|---|---|
+| **Sandboxes técnicos** | Código, archivos, plugins, agentes y secretos que no controlas | 3 de 5 casos construidos |
+| **Mercado de capitales** | Operación, custodia, negociación y cumplimiento con dinero **simulado** | 🧱 Cimientos: dinero exacto y libro mayor. **Ningún caso construido** |
+
+Están separadas porque tienen modelos de amenazas distintos, y «esto está
+contenido» significa cosas muy diferentes en cada lado.
+
+> [!WARNING]
+> El simulador de mercado de capitales usa **dinero, instrumentos y
+> participantes simulados**. Sin conexión a ningún banco ni medio de pago, **sin
+> autorización de la CMF ni de ninguna autoridad**, y nada de lo que salga de él
+> es una recomendación de inversión.
+
+Detalle y lo que falta en **[domains/capital-markets/](domains/capital-markets/README.md)**.
+
+---
+
 ## Qué aplica de verdad, y con qué
 
 Cada control de la política se traduce a un mecanismo concreto del kernel. Lo

@@ -1,5 +1,5 @@
 [workspace]
-members = ["crates/sandboxctl", "crates/sandbox-core", "crates/sandbox-runtimes"]
+members = ["crates/sandboxctl", "crates/sandbox-core", "crates/sandbox-runtimes", "crates/sandbox-markets"]
 resolver = "2"
 
 [workspace.package]

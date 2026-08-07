@@ -157,6 +157,37 @@
           }
         }
       }
+    },
+    "families": {
+      "description": "Familias del catálogo. Los sandboxes técnicos y los de dominio regulado NO se mezclan: tienen modelos de amenazas distintos y mezclarlos haría que una advertencia de uno se leyera como si valiera para el otro.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "label",
+          "path",
+          "description"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "enum": [
+              "technical",
+              "capital-markets"
+            ]
+          },
+          "label": {
+            "type": "string"
+          },
+          "path": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          }
+        }
+      }
     }
   }
 }
