@@ -138,17 +138,36 @@ en las competiciones de seguridad. Si fuera fácil, no valdría tanto.
 
 ## En qué se parece a una API o a un MCP, y en qué no
 
-Es la comparación más útil que se puede hacer, porque los tres responden a la
-misma idea: **dar acceso a una parte del sistema y no al resto**. Pero el
-mecanismo es distinto, y la diferencia decide cuándo sirve cada uno.
+Es la comparación más útil que se puede hacer, porque los tres controlan **qué
+parte del sistema alcanza un programa**. Pero el mecanismo es distinto, y esa
+diferencia decide cuál sirve en cada caso.
 
-| | Qué es la frontera | Quién la hace cumplir | Qué pasa si el programa no colabora |
-|---|---|---|---|
-| **API** | Un conjunto de operaciones ofrecidas. El programa solo puede pedir lo que la API expone | El servicio que la publica | Nada: el programa **sigue teniendo todo lo demás del sistema**. La API solo limita lo que pide *a ese servicio* |
-| **MCP** | Un conjunto de herramientas declaradas para un modelo | El servidor de herramientas | Igual: el modelo no puede usar otras herramientas, pero el proceso que lo ejecuta conserva sus permisos |
-| **Sandbox** | Una porción del sistema operativo: ficheros, red, procesos, memoria | **El kernel** | El programa puede intentar cualquier cosa, y **el kernel se la niega**. No depende de su colaboración |
+### El malentendido más común, primero
 
-### La diferencia que importa
+> «Un sandbox recibe instrucciones como `GET` y `POST`, entonces es una API.»
+
+No, y aclarar esto ordena todo lo demás. `GET` y `POST` son **verbos de HTTP**:
+el vocabulario con el que se habla con una API por la red. Un programa dentro de
+un sandbox **no habla HTTP con el sandbox**. Lo que hace son **llamadas al
+sistema** —`open`, `read`, `write`, `connect`, `execve`—, que son las
+instrucciones que cualquier programa le da al sistema operativo, esté o no
+enjaulado.
+
+Y el sandbox **no las recibe**: no hay nadie escuchando. Lo que hay es un kernel
+que, para ese proceso, responde que el fichero no está y que no hay red.
+
+La imagen que lo resuelve: **con una API tú estás fuera y pides. Con un sandbox
+tú estás dentro y el suelo decide.**
+
+### La tabla
+
+| | Qué es | Dónde estás tú | Su vocabulario | Quién decide | Si el programa NO colabora |
+|---|---|---|---|---|---|
+| **API** | Un **catálogo de operaciones** que un servicio ofrece. Pides una y te responde | **Fuera**, llamando a la puerta | `GET`, `POST`, `DELETE`… o funciones de una biblioteca | El servicio que la publica | Nada la detiene: el programa **conserva todo lo demás del sistema**. La API solo acota lo que le pide *a ese servicio* |
+| **MCP** | Un **protocolo** que le declara a un modelo de IA qué herramientas tiene | **Fuera**, pidiendo herramientas | `tools/list`, `tools/call` | El servidor de herramientas | Igual: el modelo no usa otras herramientas, pero el proceso que lo ejecuta mantiene sus permisos intactos |
+| **Sandbox** | Un **entorno de ejecución** con una porción declarada del sistema dentro | **Dentro**. Es el suelo que pisas | `open`, `read`, `connect`, `execve`… (llamadas al sistema) | **El kernel** | Puede intentar lo que quiera y **el kernel se lo niega**. No depende de su buena voluntad |
+
+### La diferencia que decide cuál usar
 
 Una API y un MCP son fronteras con las que el programa **colabora**. Funcionan
 porque el programa decide pedir las cosas por ahí.
@@ -166,7 +185,13 @@ De ahí la regla práctica:
 
 ### Y se combinan, que es lo habitual
 
-No compiten. Un agente de IA real usa los tres a la vez:
+No compiten, y hay un detalle que explica por qué se confunden tanto: **un
+sandbox casi siempre se maneja con una API**. En este repositorio, `sandboxctl`
+y el panel en `127.0.0.1:9093` levantan jaulas, las apagan y consultan su
+estado. Esa API gobierna el sandbox **desde fuera**; no es el sandbox, igual que
+el mando de una grúa no es la grúa.
+
+Un agente de IA real usa los tres a la vez:
 
 ```mermaid
 flowchart LR

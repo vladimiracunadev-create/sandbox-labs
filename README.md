@@ -68,20 +68,76 @@ node scripts/verify-cases.mjs                # comportamiento de los casos técn
 
 Cuando ejecutas un programa, **corre con tus permisos**. Puede leer cualquier
 archivo que tú puedas leer, conectarse a donde quiera y ver todo lo que tienes
-abierto. No hay término medio.
+abierto. No hay término medio: o lo ejecutas con todo tu poder, o no lo ejecutas.
 
-Un sandbox es decidir **de antemano** qué puede tocar. Y no como un aviso que el
-programa pueda esquivar: desde dentro, lo que no le concediste **no existe**. Si
-pide tu clave SSH no recibe «acceso denegado», recibe «ese archivo no está».
+Un sandbox es la habitación donde lo ejecutas.
 
-### En qué se diferencia de lo que ya conoces
+> Un **sandbox** es un **entorno de ejecución** al que le entregas una porción
+> declarada del sistema —unas carpetas, quizá algo de red, un techo de memoria y
+> de CPU— para que el programa haga trabajo real dentro, y donde **todo lo demás
+> no existe**.
 
-| | La pregunta que responde | Qué te da |
-|---|---|---|
-| **Docker** | ¿Cómo llevo mi aplicación a producción? | Empaquetado, distribución, orquestación. El aislamiento le sale de rebote |
-| **WSL** | ¿Cómo hago convivir Windows y Linux? | Integración — `/mnt/c` está montado **a propósito**, que es lo contrario de aislar |
-| **Unikernel** | ¿Cómo reduzco al mínimo lo que puede fallar? | Elimina el sistema operativo: solo queda tu app |
-| **Sandbox** | **¿Cómo ejecuto esto sin fiarme de ello?** | **Contención, y nada más** |
+Las dos mitades cuentan, y la primera se olvida siempre:
+
+- **Se concede.** Un sandbox no es una pared: es un espacio de trabajo. Se le da
+  al programa lo que necesita para hacer su tarea de verdad, y con eso funciona
+  igual que fuera. **Un sandbox donde no se puede hacer nada no sirve para nada.**
+- **Lo demás no existe.** Si pide tu clave SSH no recibe «acceso denegado»,
+  recibe **«ese archivo no está»**. Si intenta conectarse no hay una red
+  bloqueada: no hay pila de red.
+
+### Sandbox, API y MCP: en qué se parecen y en qué NO
+
+Es la comparación más útil que se puede hacer, porque los tres controlan **qué
+parte del sistema alcanza un programa**. Lo que cambia es *dónde estás tú* y
+*quién manda*:
+
+| | Qué es | Dónde estás tú | Su vocabulario | Quién decide | Si el programa NO colabora |
+|---|---|---|---|---|---|
+| **API** | Un **catálogo de operaciones** que un servicio ofrece. Pides una y te responde | **Fuera**, llamando a la puerta | `GET`, `POST`, `DELETE`… (HTTP) o funciones | El servicio que la publica | Nada la detiene: el programa **conserva todo lo demás del sistema**. La API solo acota lo que le pide *a ese servicio* |
+| **MCP** | Un **protocolo** que le declara a un modelo de IA qué herramientas puede usar | **Fuera**, pidiendo herramientas | `tools/list`, `tools/call` | El servidor de herramientas | Igual: el modelo no usa otras herramientas, pero el proceso que lo ejecuta mantiene sus permisos intactos |
+| **Sandbox** | Un **entorno de ejecución** con una porción del sistema dentro | **Dentro**. Es el suelo que pisas | `open`, `read`, `connect`, `execve`… (llamadas al sistema) | **El kernel** | Puede intentar lo que quiera y **el kernel se lo niega**. No depende de su buena voluntad |
+
+**La diferencia que decide cuál usar.** Una API y un MCP son fronteras con las
+que el programa **colabora**: funcionan porque el programa decide pedir las cosas
+por ahí. Un sandbox funciona sobre uno que **no colabora** — uno que llama
+directo a `open("/home/tú/.ssh/id_rsa")` sin pasar por ninguna API. No hay nada
+que le impida hacer esa llamada; lo que hay es un kernel que responde que ese
+fichero no existe.
+
+> Si puedes confiar en que el código use solo tu API, **no necesitas un
+> sandbox**. Si no puedes —porque es ajeno, generado o simplemente
+> desconocido—, **la API no te protege de nada**.
+
+**Y se combinan, que es lo normal.** Un sandbox casi siempre se *maneja* con una
+API: en este repositorio, `sandboxctl` y el panel en `:9093` levantan y apagan
+jaulas. Esa API gobierna el sandbox desde fuera; **no es el sandbox**. Un agente
+de IA real usa los tres a la vez, y cada uno responde a una pregunta distinta:
+
+```mermaid
+flowchart LR
+  M["🤖 Modelo"] -->|"¿qué herramientas tengo?"| MCP["🔌 Servidor MCP"]
+  MCP -->|"¿qué operaciones ofreces?"| API["🌐 API del servicio"]
+  MCP --> S
+  subgraph S["🔒 Sandbox"]
+    T["⚙️ La herramienta que<br/>ejecuta código de verdad"]
+  end
+  S -.->|"no existe"| H["🔑 El resto de tu equipo"]
+```
+
+El MCP decide **qué herramientas** hay. La API decide **qué operaciones** ofrece
+cada servicio. El sandbox decide **qué parte del sistema** alcanza la herramienta
+que de verdad ejecuta algo — y es el único de los tres que sigue en pie si esa
+herramienta hace algo que nadie previó.
+
+### Y en qué se diferencia de Docker, WSL y unikernel
+
+| | Qué es | La pregunta que responde | Qué te da |
+|---|---|---|---|
+| **Docker** | Un formato de empaquetado y un motor que lo ejecuta | ¿Cómo llevo mi aplicación a producción? | Empaquetado, distribución, orquestación. El aislamiento le sale de rebote y no es su objetivo |
+| **WSL** | Un Linux completo integrado con Windows | ¿Cómo hago convivir Windows y Linux? | Integración — `/mnt/c` está montado **a propósito**, que es justo lo contrario de aislar |
+| **Unikernel** | Tu aplicación compilada junto con el mínimo de sistema operativo que necesita | ¿Cómo reduzco al mínimo lo que puede fallar? | Elimina el sistema operativo de propósito general: solo queda tu app |
+| **Sandbox** | **Un entorno de ejecución con una porción declarada del sistema** | **¿Cómo ejecuto esto sin fiarme de ello?** | **Contención, y nada más** |
 
 Por eso conviven: metes tu app en Docker para desplegarla, y metes en un sandbox
 el código de terceros que esa app tiene que ejecutar.
