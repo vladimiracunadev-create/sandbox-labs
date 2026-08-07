@@ -1,0 +1,30 @@
+{
+  "id": "CM-03-EXCUSA-004",
+  "title": "Un pendiente sin motivo no explica nada",
+  "teaches": "La diferencia entre una explicación y una excusa. Sin motivo el pendiente no tapa el hueco Y además se denuncia por sí mismo.",
+  "seed": 20260806,
+  "positions": [
+    {
+      "owner": "ana",
+      "instrument": "CL:ACC:LAN",
+      "units": 500
+    }
+  ],
+  "pending": [
+    {
+      "instrument": "CL:ACC:LAN",
+      "units": 200,
+      "reason": ""
+    }
+  ],
+  "custodianStatement": {
+    "CL:ACC:LAN": 300
+  },
+  "expected": {
+    "reconciled": false,
+    "findings": [
+      "unexplained-pending",
+      "shortfall"
+    ]
+  }
+}

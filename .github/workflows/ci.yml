@@ -80,6 +80,12 @@ jobs:
       - name: Humo — la evidencia se verifica contra sí misma y contra el repositorio
         run: cargo run --locked -q -p sandboxctl -- evidence verify
 
+      # Los escenarios de custodia declaran qué hallazgo tienen que provocar.
+      # Uno adverso que deje de provocarlo pasaría por bueno para siempre si
+      # nadie lo comprobara, así que se comprueba aquí.
+      - name: Humo — los escenarios de custodia detectan lo que declaran
+        run: cargo run --locked -q -p sandboxctl -- markets reconcile
+
       - name: Resumen
         if: always()
         run: |

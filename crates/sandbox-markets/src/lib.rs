@@ -17,8 +17,12 @@
 //! - **No es asesoría financiera.** Nada de lo que salga de aquí es una
 //!   recomendación de inversión.
 
+pub mod custody;
 pub mod ledger;
 pub mod money;
+pub mod scenario;
 
+pub use custody::{CustodyBook, Finding, Owner, PendingMovement, Position, Reconciliation};
 pub use ledger::{Entry, Ledger, LedgerError, Transaction};
 pub use money::{Currency, Money, MoneyError};
+pub use scenario::{Scenario, ScenarioOutcome};

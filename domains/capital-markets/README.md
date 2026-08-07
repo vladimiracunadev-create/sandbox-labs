@@ -1,8 +1,9 @@
 # 🏛️ Mercado de capitales
 
-> **Estado: cimientos.** Existen el dinero exacto y el libro mayor, con sus
-> invariantes probadas. Los casos CM-00 a CM-20 todavía **no existen**: están
-> listados abajo como lo que son, un plan.
+> **Estado: 1 de 21 casos.** Existen el dinero exacto, el libro mayor y
+> **[CM-03 · Custodia y segregación](cases/03-asset-custody/README.md)**, que se
+> ejecuta con `sandboxctl markets reconcile`. Los otros veinte **no existen**:
+> están listados abajo como lo que son, un plan.
 
 ---
 
@@ -48,6 +49,20 @@ La moneda va pegada al importe: sumar 100 CLP y 100 USD **falla**, no sale mal.
 Y el peso chileno tiene **cero decimales**, que es justo el caso que rompe todo
 el código escrito asumiendo «dos decimales siempre».
 
+### Custodia y segregación — [CM-03](cases/03-asset-custody/README.md)
+
+El primer caso del dominio, y se ejecuta:
+
+```bash
+cargo run -p sandboxctl -- markets reconcile
+```
+
+Seis escenarios —uno normal, uno de liquidación en curso y cuatro adversos—
+sobre la invariante `registrado = custodiado + pendiente explicado`. Cada uno
+**declara lo que espera detectar**, así que uno adverso que deje de provocar su
+hallazgo se marca como roto y devuelve código 1. Un escenario que aprueba pase
+lo que pase es decoración.
+
 ### Libro mayor de doble entrada — `crates/sandbox-markets/src/ledger.rs`
 
 Tres reglas, con una prueba cada una:
@@ -67,14 +82,15 @@ desviado y, en un incidente, levantar el estado desde los hechos.
 
 ## ⛔ Qué NO existe todavía
 
-Los casos. Están planificados y **ninguno está construido**:
+Veinte de los veintiún casos. Están planificados y **no construidos** — el
+único que existe es CM-03, marcado abajo:
 
 | | Caso | De qué trata |
 |---|---|---|
 | CM-00 | Entrada al sandbox regulatorio | Postulación, clasificación de servicios, límites y salida ordenada |
 | CM-01 | Financiamiento colectivo | Campañas, divulgaciones, sobredemanda, devolución |
 | CM-02 | Sistema alternativo de transacción | Libro de órdenes, prioridad precio-tiempo, suspensión |
-| CM-03 | Custodia y segregación | Activos de clientes ≠ activos propios |
+| **CM-03** | **[Custodia y segregación](cases/03-asset-custody/README.md)** | ✅ **Construido.** Activos de clientes ≠ activos propios |
 | CM-04 | Enrutamiento de órdenes | Precio, liquidez, latencia, y por qué se eligió |
 | CM-05 | Intermediación | Agente contra principal, y el conflicto de interés |
 | CM-06 | Asesoría crediticia | Capacidad de pago, costo total, conflictos comerciales |
@@ -96,7 +112,8 @@ Los casos. Están planificados y **ninguno está construido**:
 También faltan el motor de escenarios con semilla, el reloj simulado, los
 participantes, los instrumentos y la política regulatoria como código.
 
-**Ninguno de esos nombres aparece como disponible en el panel ni en el sitio.**
+**Ninguno de los veinte pendientes aparece como disponible en el panel ni en el
+sitio.**
 Un catálogo que promete lo que no tiene es exactamente lo que este repositorio
 existe para no hacer.
 

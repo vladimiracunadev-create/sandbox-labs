@@ -620,6 +620,10 @@ dependencies = [
 [[package]]
 name = "sandbox-markets"
 version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+]
 
 [[package]]
 name = "sandbox-runtimes"
@@ -641,6 +645,7 @@ dependencies = [
  "chrono",
  "clap",
  "sandbox-core",
+ "sandbox-markets",
  "sandbox-runtimes",
  "serde_json",
 ]

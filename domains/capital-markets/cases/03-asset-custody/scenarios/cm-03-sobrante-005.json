@@ -1,0 +1,23 @@
+{
+  "id": "CM-03-SOBRANTE-005",
+  "title": "Un instrumento que solo conoce el custodio",
+  "teaches": "Sobrar no tranquiliza: significa que el registro no describe la realidad, y mañana puede ser al revés. Además es el caso que un recorrido sobre el registro NO vería.",
+  "seed": 20260806,
+  "positions": [
+    {
+      "owner": "ana",
+      "instrument": "CL:ACC:LAN",
+      "units": 500
+    }
+  ],
+  "custodianStatement": {
+    "CL:ACC:LAN": 500,
+    "CL:ACC:SQM": 80
+  },
+  "expected": {
+    "reconciled": false,
+    "findings": [
+      "surplus"
+    ]
+  }
+}

@@ -1,0 +1,32 @@
+{
+  "id": "CM-03-FALTANTE-003",
+  "title": "Faltante tapado con activos propios",
+  "teaches": "El fallo que la segregación existe para impedir. En total hay 1.300 títulos y parece que sobran, pero a los clientes les faltan 200: los 1.000 propios no son de ellos.",
+  "seed": 20260806,
+  "positions": [
+    {
+      "owner": "ana",
+      "instrument": "CL:ACC:LAN",
+      "units": 300
+    },
+    {
+      "owner": "beto",
+      "instrument": "CL:ACC:LAN",
+      "units": 200
+    },
+    {
+      "owner": "house",
+      "instrument": "CL:ACC:LAN",
+      "units": 1000
+    }
+  ],
+  "custodianStatement": {
+    "CL:ACC:LAN": 300
+  },
+  "expected": {
+    "reconciled": false,
+    "findings": [
+      "shortfall"
+    ]
+  }
+}

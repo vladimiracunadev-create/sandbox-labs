@@ -1,0 +1,32 @@
+{
+  "id": "CM-03-LIQUIDACION-002",
+  "title": "Venta liquidando a T+2",
+  "teaches": "La diferencia entre un descuadre y una operación en curso. Un pendiente CON motivo explica el hueco; el mismo pendiente sin motivo, no.",
+  "seed": 20260806,
+  "positions": [
+    {
+      "owner": "ana",
+      "instrument": "CL:ACC:LAN",
+      "units": 300
+    },
+    {
+      "owner": "beto",
+      "instrument": "CL:ACC:LAN",
+      "units": 200
+    }
+  ],
+  "pending": [
+    {
+      "instrument": "CL:ACC:LAN",
+      "units": 200,
+      "reason": "venta de beto liquidando el 2026-08-08 (T+2)"
+    }
+  ],
+  "custodianStatement": {
+    "CL:ACC:LAN": 300
+  },
+  "expected": {
+    "reconciled": true,
+    "findings": []
+  }
+}

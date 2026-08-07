@@ -15,6 +15,43 @@ tareas reales, y que se apaga dejando constancia de qué pudo tocar y qué no.
 
 ---
 
+## Qué hay hoy
+
+Tres comprobaciones que corren **en cada commit**, no en un documento:
+
+```bash
+cargo run -p sandboxctl -- escape             # 8 sondas intentan escaparse del sandbox
+cargo run -p sandboxctl -- evidence verify    # huella, firma, cadena y hashes de la evidencia
+cargo run -p sandboxctl -- markets reconcile  # custodia de activos: 6 escenarios
+```
+
+## Dos familias que no se mezclan
+
+| Familia | Qué contiene | Estado |
+|---|---|---|
+| **Sandboxes técnicos** | Código, archivos, plugins, agentes y secretos que no controlas | 3 de 5 casos construidos |
+| **Mercado de capitales** | Custodia, negociación, operación y cumplimiento con dinero **simulado** | 1 de 21 casos: [CM-03 custodia](domains/capital-markets/cases/03-asset-custody/README.md) |
+
+Están separadas porque tienen modelos de amenazas distintos, y «esto está
+contenido» significa cosas muy diferentes en cada lado.
+
+> [!WARNING]
+> El simulador de mercado de capitales usa **dinero, instrumentos y
+> participantes simulados**. Sin conexión a ningún banco ni medio de pago, **sin
+> autorización de la CMF ni de ninguna autoridad**, y nada de lo que salga de él
+> es una recomendación de inversión.
+
+Detalle y los 20 casos que faltan en
+**[domains/capital-markets/](domains/capital-markets/README.md)**.
+
+---
+
+Y la tabla de qué control se traduce a qué mecanismo del kernel —con los huecos
+marcados como tales— está en [Qué aplica de verdad](#qué-aplica-de-verdad-y-con-qué),
+más abajo.
+
+---
+
 ## Qué es un sandbox
 
 Cuando ejecutas un programa, **corre con tus permisos**. Puede leer cualquier
@@ -109,26 +146,6 @@ permisos ni quien lo escribió decide sus límites.
 Lo que no aparece ahí no se monta. Y lo que no se monta, dentro no existe.
 
 Referencia completa en [docs/POLICY_REFERENCE.md](docs/POLICY_REFERENCE.md).
-
----
-
-## Dos familias que no se mezclan
-
-| Familia | Qué contiene | Estado |
-|---|---|---|
-| **Sandboxes técnicos** | Código, archivos, plugins, agentes y secretos que no controlas | 3 de 5 casos construidos |
-| **Mercado de capitales** | Operación, custodia, negociación y cumplimiento con dinero **simulado** | 🧱 Cimientos: dinero exacto y libro mayor. **Ningún caso construido** |
-
-Están separadas porque tienen modelos de amenazas distintos, y «esto está
-contenido» significa cosas muy diferentes en cada lado.
-
-> [!WARNING]
-> El simulador de mercado de capitales usa **dinero, instrumentos y
-> participantes simulados**. Sin conexión a ningún banco ni medio de pago, **sin
-> autorización de la CMF ni de ninguna autoridad**, y nada de lo que salga de él
-> es una recomendación de inversión.
-
-Detalle y lo que falta en **[domains/capital-markets/](domains/capital-markets/README.md)**.
 
 ---
 

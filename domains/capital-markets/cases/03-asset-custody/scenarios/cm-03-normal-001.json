@@ -1,0 +1,30 @@
+{
+  "id": "CM-03-NORMAL-001",
+  "title": "Día normal: todo cuadra",
+  "teaches": "La invariante en su forma sana. Los 1.000 títulos propios del custodio NO entran en la comparación — sumarlos taparía cualquier faltante de clientes.",
+  "seed": 20260806,
+  "positions": [
+    {
+      "owner": "ana",
+      "instrument": "CL:ACC:LAN",
+      "units": 300
+    },
+    {
+      "owner": "beto",
+      "instrument": "CL:ACC:LAN",
+      "units": 200
+    },
+    {
+      "owner": "house",
+      "instrument": "CL:ACC:LAN",
+      "units": 1000
+    }
+  ],
+  "custodianStatement": {
+    "CL:ACC:LAN": 500
+  },
+  "expected": {
+    "reconciled": true,
+    "findings": []
+  }
+}

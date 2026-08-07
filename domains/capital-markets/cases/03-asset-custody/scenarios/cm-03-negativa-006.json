@@ -1,0 +1,27 @@
+{
+  "id": "CM-03-NEGATIVA-006",
+  "title": "Un cliente en negativo",
+  "teaches": "Un cliente no puede deber unidades que nunca tuvo. Una posición negativa suele ser un error de asiento, y hasta encontrarlo el registro no es fiable.",
+  "seed": 20260806,
+  "positions": [
+    {
+      "owner": "ana",
+      "instrument": "CL:ACC:LAN",
+      "units": 500
+    },
+    {
+      "owner": "beto",
+      "instrument": "CL:ACC:LAN",
+      "units": -50
+    }
+  ],
+  "custodianStatement": {
+    "CL:ACC:LAN": 450
+  },
+  "expected": {
+    "reconciled": false,
+    "findings": [
+      "negative-client-position"
+    ]
+  }
+}

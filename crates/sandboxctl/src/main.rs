@@ -91,6 +91,14 @@ enum Command {
         #[command(subcommand)]
         action: EvidenceAction,
     },
+    /// Ejecuta escenarios de mercado de capitales.
+    ///
+    /// Dinero, instrumentos y participantes SIMULADOS. Sin autorización de
+    /// ninguna autoridad y sin recomendaciones de inversión.
+    Markets {
+        #[command(subcommand)]
+        action: MarketsAction,
+    },
     /// Compara el coste de arranque de cada frontera con la misma carga.
     Bench {
         #[arg(long, default_value = "workloads/benign/hello")]
@@ -108,6 +116,17 @@ enum Command {
         json: bool,
         #[arg(long)]
         report: Option<PathBuf>,
+    },
+}
+
+#[derive(Debug, Subcommand)]
+enum MarketsAction {
+    /// Concilia la custodia de un escenario, o de todos los de un caso.
+    Reconcile {
+        /// Escenario concreto; sin él se ejecutan todos los del caso CM-03.
+        path: Option<PathBuf>,
+        #[arg(long)]
+        json: bool,
     },
 }
 
@@ -213,6 +232,9 @@ fn main() -> Result<()> {
                 ServiceAction::Forward { id } => service::forward(&ctx, &id),
             }
         }
+        Command::Markets { action } => match action {
+            MarketsAction::Reconcile { path, json } => markets_reconcile(&root, path.as_deref(), json),
+        },
         Command::Evidence { action } => match action {
             EvidenceAction::Verify { path, json } => evidence_verify(&root, path.as_deref(), json),
         },
@@ -439,4 +461,66 @@ fn evidence_verify(root: &Path, path: Option<&Path>, json: bool) -> Result<i32> 
 
     let broken = reports.iter().any(|report| !report.passed()) || chain.iter().any(|check| check.passed == Some(false));
     Ok(i32::from(broken))
+}
+
+/// `markets reconcile`: ejecuta escenarios de custodia y compara con lo que
+/// cada uno declara esperar.
+///
+/// Devuelve 1 si algún escenario se desvía de su expectativa. Un escenario
+/// adverso que deja de detectar lo que venía a detectar es un escenario roto, y
+/// dejarlo pasar lo convertiría en decoración.
+fn markets_reconcile(root: &Path, path: Option<&Path>, json: bool) -> Result<i32> {
+    let files = match path {
+        Some(single) => vec![resolve_inside(root, single)?],
+        None => {
+            let directory = root.join("domains/capital-markets/cases/03-asset-custody/scenarios");
+            let mut found: Vec<PathBuf> = std::fs::read_dir(&directory)
+                .with_context(|| format!("No se pudo leer {}", directory.display()))?
+                .filter_map(Result::ok)
+                .map(|entry| entry.path())
+                .filter(|path| path.extension().is_some_and(|value| value == "json"))
+                .collect();
+            found.sort();
+            found
+        }
+    };
+
+    let mut outcomes = Vec::new();
+    for file in &files {
+        let scenario = sandbox_markets::Scenario::load(file).map_err(anyhow::Error::msg)?;
+        outcomes.push(scenario.run());
+    }
+
+    if json {
+        println!("{}", serde_json::to_string_pretty(&outcomes)?);
+    } else {
+        println!(
+            "Custodia y segregación · {} escenario(s)
+",
+            outcomes.len()
+        );
+        println!(
+            "⚠ Activos, clientes y saldos SIMULADOS. Sin autorización de ninguna autoridad.
+"
+        );
+        for outcome in &outcomes {
+            let mark = if outcome.matches_expectation { "✅" } else { "❌" };
+            let state = if outcome.reconciled { "conciliado" } else { "CON HALLAZGOS" };
+            println!("{mark} {} · {} · {state}", outcome.id, outcome.title);
+            for finding in &outcome.findings {
+                println!("   · {finding}");
+            }
+            for deviation in &outcome.deviations {
+                println!("   ⚠ {deviation}");
+            }
+        }
+        let broken = outcomes.iter().filter(|outcome| !outcome.matches_expectation).count();
+        println!(
+            "
+{} escenario(s) · {broken} que no hacen lo que declaran",
+            outcomes.len()
+        );
+    }
+
+    Ok(i32::from(outcomes.iter().any(|outcome| !outcome.matches_expectation)))
 }

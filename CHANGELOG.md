@@ -37,6 +37,27 @@ Versionado semántico.
   inyecta `INVOCATION_ID` por su cuenta; la cadena intercala ahora un `env -i` y
   el runtime arranca con el entorno vacío. El contrato es vaciar, no enumerar.
 
+### Added — CM-03, el primer caso de mercado de capitales que se ejecuta
+
+- **Custodia y segregación de activos**, sobre la invariante
+  `registrado = custodiado + pendiente explicado`. Se ejecuta con
+  `sandboxctl markets reconcile`.
+- **Los activos propios del custodio nunca entran en la comparación.** Es el
+  fallo que la segregación existe para impedir: en el escenario `FALTANTE-003`
+  hay 1.300 títulos en total y parece que sobran, pero a los clientes les faltan
+  200 — los 1.000 propios no son de ellos.
+- **Un pendiente sin motivo no explica nada.** La diferencia entre una
+  explicación y una excusa: sin `reason` el pendiente no tapa el hueco y además
+  se denuncia por sí mismo.
+- **Sobrar también es un hallazgo.** No tranquiliza: significa que el registro
+  no describe la realidad, y mañana puede ser al revés.
+- **Seis escenarios que declaran lo que esperan detectar.** Uno adverso que deje
+  de provocar su hallazgo se marca como roto y devuelve código 1 — un escenario
+  que aprueba pase lo que pase es decoración. Y un hallazgo que aparece sin
+  estar declarado también se marca: el escenario ya no describe lo que ocurre.
+- El extracto del custodio es un **dato externo** a propósito. Si se derivara del
+  registro, la conciliación no compararía nada.
+
 ### Added — cimientos de mercado de capitales
 
 - **Catálogo con dos familias**, `technical` y `capital-markets`, que **no se

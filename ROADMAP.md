@@ -40,7 +40,9 @@ desechable.
 - ✅ Libro mayor de doble entrada, solo-añadir, con sus invariantes probadas.
 - ⛔ Motor de escenarios con semilla, reloj simulado, participantes,
   instrumentos y política regulatoria como código.
-- ⛔ Los 21 casos CM-00 a CM-20. Ninguno construido — ver
+- ✅ **CM-03 · Custodia y segregación**: seis escenarios que se ejecutan y
+  declaran lo que esperan detectar.
+- ⛔ Los otros veinte casos. Ver
   [domains/capital-markets/](domains/capital-markets/README.md).
 
 Dinero simulado, sin autorización de ninguna autoridad y sin recomendaciones de
