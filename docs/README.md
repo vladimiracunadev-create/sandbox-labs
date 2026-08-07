@@ -3,11 +3,10 @@
 > **Versión** 0.1.0 · Empieza por [Qué es un sandbox](QUE-ES-UN-SANDBOX.md) si
 > es tu primera vez aquí.
 
-> [!IMPORTANT]
-> Dos documentos responden a las preguntas que más se hacen:
-> **[Estado del proyecto](ESTADO.md)** dice qué está construido de verdad y qué
-> lo demuestra; **[Catálogo completo](CATALOGO.md)** lista los 36 casos, y cada
-> uno tiene su [ficha detallada](casos/README.md).
+Dos documentos responden a las preguntas que más se hacen:
+**[Estado del proyecto](ESTADO.md)** dice qué está construido de verdad y qué lo
+demuestra; **[Catálogo completo](CATALOGO.md)** lista los 36 casos, y cada uno
+tiene su [ficha detallada](casos/README.md).
 
 ---
 
