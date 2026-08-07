@@ -4,7 +4,7 @@
 > acciones en dos, o reparte dividendos. Nadie compró ni vendió nada, pero todas
 > las cuentas de todos los dueños tienen que cambiar a la vez.
 
-**Estado real:** 🔴 `planned` · **Carpeta prevista:** `domains/capital-markets/cases/17-corporate-actions`
+**Estado real:** 🟠 `prototype` — hay código y escenarios que se ejecutan, **sin verificación en un entorno real** · **Módulo:** [`crates/sandbox-markets/src/cases/corporate_actions.rs`](../../crates/sandbox-markets/src/cases/corporate_actions.rs)
 
 > [!WARNING]
 > **Emisores, eventos y posiciones simulados.** No es una autorización regulatoria
@@ -158,8 +158,8 @@ sandboxctl markets corporate-action --event ca-2026-05
 
 ## Si algo falla
 
-Este caso **todavía no tiene código**. Lo que sigue son los fallos que el diseño
-tiene que resolver, y cómo va a resolverlos:
+El caso **ya tiene código y escenarios que se ejecutan**. Lo que sigue son sus
+fallos con la causa y la salida:
 
 | Situación | Causa | Cómo se resuelve |
 |---|---|---|
@@ -176,6 +176,27 @@ evidencia— están resueltos uno a uno en
 Esta familia **no necesita aislamiento del sistema**: no ejecuta código ajeno,
 sino reglas de negocio deterministas. Por eso casi ningún fallo suyo viene del
 entorno, y casi todos vienen de los datos.
+
+## Cómo se comprueba
+
+```bash
+cargo run -p sandboxctl -- markets check --case CM-17
+```
+
+Ejecuta los escenarios de este caso y compara cada uno con lo que **declara de
+antemano** que debe salir. Corre en cada commit: si el caso deja de detectar lo
+que dice detectar, la integración continua se pone roja.
+
+```bash
+cargo test -p sandbox-markets corporate_actions
+```
+
+Los invariantes del módulo, incluidos los que ningún escenario de arriba cubre.
+
+> **Sigue en `prototype`, no en `functional`.** Los escenarios se ejecutan y
+> pasan, pero el caso **no emite evidencia firmada por ejecución** ni se ha
+> usado contra datos que no sean los suyos. La regla completa está en el
+> [ROADMAP](../../ROADMAP.md).
 
 ---
 

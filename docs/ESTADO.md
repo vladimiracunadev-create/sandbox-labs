@@ -18,17 +18,17 @@ funciona viene con el comando que hay que ejecutar para comprobarlo.
 |---|:--:|:--:|
 | **Núcleo de aislamiento** | 9 de 9 controles | ✅ completo y verificado en CI |
 | **Casos técnicos** | 4 | de 15 |
-| **Casos de mercado de capitales** | 2 | de 21 |
+| **Casos de mercado de capitales** | 21 | de 21 |
 
-El núcleo está terminado. Los casos, no. Ese es el estado honesto: **la
-plataforma que aplica y verifica controles funciona; el catálogo de casos que se
-apoya en ella está al principio.**
+El núcleo está terminado. La familia financiera tiene los 21 casos con código y
+escenarios que se ejecutan, aunque **ninguno emite todavía evidencia firmada**,
+que es lo que hace falta para `verified`. La familia técnica está a un tercio.
 
 ---
 
 ## Lo que se puede ejecutar hoy y comprobar
 
-Tres comandos que corren **en cada commit**, no en un documento:
+Cinco comandos que corren **en cada commit**, no en un documento:
 
 ```bash
 cargo run -p sandboxctl -- escape
@@ -55,6 +55,14 @@ cargo run -p sandboxctl -- markets reconcile
 
 Seis escenarios de custodia, cada uno con el hallazgo que **debe** producir. Si la
 conciliación deja de detectar un descuadre que declara detectar, CI se pone rojo.
+
+```bash
+cargo run -p sandboxctl -- markets check
+```
+
+Los 19 casos de mercado de capitales con código, con **119 escenarios** que
+declaran de antemano qué debe salir de cada uno. Si alguno deja de detectar lo
+que dice detectar, CI se pone rojo.
 
 ```bash
 node scripts/verify-cases.mjs
@@ -114,7 +122,7 @@ ejecución, que es el requisito para `verified`.
 
 ---
 
-## Mercado de capitales — 2 de 21
+## Mercado de capitales — 21 de 21 con código
 
 > [!WARNING]
 > **Sin dinero real, sin valores reales, sin credenciales reales y sin
@@ -140,7 +148,7 @@ las que dependen todos los casos financieros:
 |:--:|---|:--:|---|---|
 | CM-02 | [Sistema alternativo de transacción](casos/cm-02-sistema-alternativo-de-transaccion.md) | 🟠 `prototype` | Libro de órdenes con **11 invariantes**: prioridad precio-tiempo, precio fijado por la orden que descansa, libro nunca cruzado | Los 7 escenarios; órdenes de mercado; **reconstrucción completa de la sesión** |
 | CM-03 | [Custodia y segregación de activos](casos/cm-03-custodia-y-segregacion-de-activos.md) | 🟢 `functional` | El invariante de custodia, 5 tipos de hallazgo, **6 escenarios verificados en cada commit** | Dividendos, bloqueos, garantías, insolvencia del custodio |
-| CM-00, CM-01, CM-04–CM-20 | [Los diecinueve restantes](casos/README.md#-familia-mercado-de-capitales--21-casos) | 🔴 `planned` | — | Especificados con ficha completa; sin código |
+| CM-00, CM-01, CM-04–CM-20 | [Los diecinueve restantes](casos/README.md#-familia-mercado-de-capitales--21-casos) | 🟠 `prototype` | Un módulo por caso con su modelo y **119 escenarios que se ejecutan en cada commit** | Evidencia firmada por ejecución; datos que no sean los suyos |
 
 ---
 

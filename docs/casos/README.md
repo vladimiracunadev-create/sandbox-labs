@@ -52,27 +52,27 @@ Probar modelos Fintech con dinero, instrumentos y participantes **simulados**.
 
 | # | Ficha | Estado |
 |---|---|:--:|
-| CM-00 | [Entrada al sandbox regulatorio](cm-00-entrada-al-sandbox-regulatorio.md) | 🔴 `planned` |
-| CM-01 | [Financiamiento colectivo](cm-01-financiamiento-colectivo.md) | 🔴 `planned` |
+| CM-00 | [Entrada al sandbox regulatorio](cm-00-entrada-al-sandbox-regulatorio.md) | 🟠 `prototype` |
+| CM-01 | [Financiamiento colectivo](cm-01-financiamiento-colectivo.md) | 🟠 `prototype` |
 | CM-02 | [Sistema alternativo de transacción](cm-02-sistema-alternativo-de-transaccion.md) | 🟠 `prototype` |
 | CM-03 | [Custodia y segregación de activos](cm-03-custodia-y-segregacion-de-activos.md) | 🟢 `functional` |
-| CM-04 | [Enrutamiento inteligente de órdenes](cm-04-enrutamiento-inteligente-de-ordenes.md) | 🔴 `planned` |
-| CM-05 | [Intermediación financiera](cm-05-intermediacion-financiera.md) | 🔴 `planned` |
-| CM-06 | [Asesoría crediticia](cm-06-asesoria-crediticia.md) | 🔴 `planned` |
-| CM-07 | [Robo-advisor](cm-07-robo-advisor.md) | 🔴 `planned` |
-| CM-08 | [Tokenización de instrumentos](cm-08-tokenizacion-de-instrumentos.md) | 🔴 `planned` |
-| CM-09 | [Vigilancia de abuso de mercado](cm-09-vigilancia-de-abuso-de-mercado.md) | 🔴 `planned` |
-| CM-10 | [Compensación y liquidación](cm-10-compensacion-y-liquidacion.md) | 🔴 `planned` |
-| CM-11 | [Finanzas abiertas y consentimiento](cm-11-finanzas-abiertas-y-consentimiento.md) | 🔴 `planned` |
-| CM-12 | [Reportería regulatoria y SupTech](cm-12-reporteria-regulatoria.md) | 🔴 `planned` |
-| CM-13 | [Salida ordenada](cm-13-salida-ordenada.md) | 🔴 `planned` |
-| CM-14 | [Resiliencia operacional](cm-14-resiliencia-operacional.md) | 🔴 `planned` |
-| CM-15 | [KYC, AML y sanciones](cm-15-kyc-aml-y-sanciones.md) | 🔴 `planned` |
-| CM-16 | [Integridad de datos de mercado](cm-16-integridad-de-datos-de-mercado.md) | 🔴 `planned` |
-| CM-17 | [Eventos corporativos](cm-17-eventos-corporativos.md) | 🔴 `planned` |
-| CM-18 | [Margen, garantías y riesgo](cm-18-margen-garantias-y-riesgo.md) | 🔴 `planned` |
-| CM-19 | [Fraude y toma de cuentas](cm-19-fraude-y-toma-de-cuentas.md) | 🔴 `planned` |
-| CM-20 | [Gobierno de modelos e IA financiera](cm-20-gobierno-de-modelos-e-ia-financiera.md) | 🔴 `planned` |
+| CM-04 | [Enrutamiento inteligente de órdenes](cm-04-enrutamiento-inteligente-de-ordenes.md) | 🟠 `prototype` |
+| CM-05 | [Intermediación financiera](cm-05-intermediacion-financiera.md) | 🟠 `prototype` |
+| CM-06 | [Asesoría crediticia](cm-06-asesoria-crediticia.md) | 🟠 `prototype` |
+| CM-07 | [Robo-advisor](cm-07-robo-advisor.md) | 🟠 `prototype` |
+| CM-08 | [Tokenización de instrumentos](cm-08-tokenizacion-de-instrumentos.md) | 🟠 `prototype` |
+| CM-09 | [Vigilancia de abuso de mercado](cm-09-vigilancia-de-abuso-de-mercado.md) | 🟠 `prototype` |
+| CM-10 | [Compensación y liquidación](cm-10-compensacion-y-liquidacion.md) | 🟠 `prototype` |
+| CM-11 | [Finanzas abiertas y consentimiento](cm-11-finanzas-abiertas-y-consentimiento.md) | 🟠 `prototype` |
+| CM-12 | [Reportería regulatoria y SupTech](cm-12-reporteria-regulatoria.md) | 🟠 `prototype` |
+| CM-13 | [Salida ordenada](cm-13-salida-ordenada.md) | 🟠 `prototype` |
+| CM-14 | [Resiliencia operacional](cm-14-resiliencia-operacional.md) | 🟠 `prototype` |
+| CM-15 | [KYC, AML y sanciones](cm-15-kyc-aml-y-sanciones.md) | 🟠 `prototype` |
+| CM-16 | [Integridad de datos de mercado](cm-16-integridad-de-datos-de-mercado.md) | 🟠 `prototype` |
+| CM-17 | [Eventos corporativos](cm-17-eventos-corporativos.md) | 🟠 `prototype` |
+| CM-18 | [Margen, garantías y riesgo](cm-18-margen-garantias-y-riesgo.md) | 🟠 `prototype` |
+| CM-19 | [Fraude y toma de cuentas](cm-19-fraude-y-toma-de-cuentas.md) | 🟠 `prototype` |
+| CM-20 | [Gobierno de modelos e IA financiera](cm-20-gobierno-de-modelos-e-ia-financiera.md) | 🟠 `prototype` |
 
 ---
 

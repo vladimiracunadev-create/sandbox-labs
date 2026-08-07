@@ -22,7 +22,7 @@ reales, y que se apaga dejando constancia de qué pudo tocar y qué no.
 |---|:--:|:--:|
 | **Núcleo de aislamiento** | 9 de 9 controles | ✅ completo, verificado en CI |
 | **Casos técnicos** | 4 | de 15 |
-| **Casos de mercado de capitales** | 2 | de 21 |
+| **Casos de mercado de capitales** | 21 | de 21 |
 
 El núcleo está terminado. Los casos, no. **[docs/ESTADO.md](docs/ESTADO.md)**
 dice, caso por caso, qué hay, qué lo demuestra y qué falta — sin usar la palabra
@@ -39,7 +39,7 @@ dice, caso por caso, qué hay, qué lo demuestra y qué falta — sin usar la pa
 
 ## Qué puedes ejecutar hoy
 
-Cuatro comprobaciones que corren **en cada commit**, no en un documento:
+Cinco comprobaciones que corren **en cada commit**, no en un documento:
 
 ```bash
 cargo run -p sandboxctl -- escape             # 8 sondas intentan escaparse del sandbox
@@ -54,7 +54,11 @@ cargo run -p sandboxctl -- markets reconcile  # custodia de activos: 6 escenario
 ```
 
 ```bash
-node scripts/verify-cases.mjs                 # comportamiento de los casos técnicos
+cargo run -p sandboxctl -- markets check      # 19 casos financieros: 119 escenarios
+```
+
+```bash
+node scripts/verify-cases.mjs                # comportamiento de los casos técnicos
 ```
 
 ---
@@ -124,7 +128,7 @@ Probar modelos Fintech con dinero, instrumentos y participantes **simulados**.
 |---|---|---|:--:|
 | CM-03 | [Custodia y segregación de activos](docs/casos/cm-03-custodia-y-segregacion-de-activos.md) | Que los activos de clientes cuadren con los custodiados | 🟢 `functional` |
 | CM-02 | [Sistema alternativo de transacción](docs/casos/cm-02-sistema-alternativo-de-transaccion.md) | Libro de órdenes con prioridad precio-tiempo | 🟠 `prototype` |
-| CM-00, CM-01, CM-04–CM-20 | [Diecinueve casos más](docs/casos/README.md#-familia-mercado-de-capitales--21-casos) | Entrada regulatoria, liquidación, vigilancia, salida ordenada… | 🔴 `planned` |
+| CM-00, CM-01, CM-04–CM-20 | [Diecinueve casos más](docs/casos/README.md#-familia-mercado-de-capitales--21-casos) | Entrada regulatoria, liquidación, vigilancia, salida ordenada… | 🟠 `prototype` |
 
 > [!WARNING]
 > El simulador de mercado de capitales usa **dinero, instrumentos y participantes

@@ -14,8 +14,9 @@ lo dice en lugar de sugerir lo contrario.
 > `functional` se ejecuta y hay una prueba que lo demuestra, `verified` además
 > tiene evidencia firmada y CI que la valida.
 
-**Qué está construido y qué no, en una línea:** 4 casos técnicos de 15 y 2 de
-mercado de capitales de 21. El detalle honesto de cada uno, con la prueba que lo
+**Qué está construido y qué no, en una línea:** 4 casos técnicos de 15 y **los
+21 de mercado de capitales**, estos últimos en `prototype`: se ejecutan y sus
+escenarios pasan, pero todavía no emiten evidencia firmada. El detalle honesto de cada uno, con la prueba que lo
 respalda o la ausencia de ella, está en **[Estado del proyecto](ESTADO.md)**.
 
 ---
@@ -410,27 +411,27 @@ Por defecto, todo caso de esta familia corre con:
 
 | # | Ficha del caso | Carpeta | Estado | Qué prueba |
 |---|---|---|:--:|---|
-| CM-00 | [Entrada al sandbox regulatorio](casos/cm-00-entrada-al-sandbox-regulatorio.md) | — | 🔴 `planned` | Clasificar un modelo de negocio y emitir aprobación, condicionada o rechazo |
-| CM-01 | [Financiamiento colectivo](casos/cm-01-financiamiento-colectivo.md) | — | 🔴 `planned` | Campañas, meta mínima, sobredemanda, asignación y devolución |
+| CM-00 | [Entrada al sandbox regulatorio](casos/cm-00-entrada-al-sandbox-regulatorio.md) | `crates/sandbox-markets` | 🟠 `prototype` | Clasificar un modelo de negocio y emitir aprobación, condicionada o rechazo |
+| CM-01 | [Financiamiento colectivo](casos/cm-01-financiamiento-colectivo.md) | `crates/sandbox-markets` | 🟠 `prototype` | Campañas, meta mínima, sobredemanda, asignación y devolución |
 | CM-02 | [Sistema alternativo de transacción](casos/cm-02-sistema-alternativo-de-transaccion.md) | `domains/capital-markets/cases/02-alternative-trading-system` | 🟠 `prototype` | Libro de órdenes con prioridad precio-tiempo |
 | CM-03 | [Custodia y segregación de activos](casos/cm-03-custodia-y-segregacion-de-activos.md) | `domains/capital-markets/cases/03-asset-custody` | 🟢 `functional` | Que los activos de clientes cuadren con los custodiados |
-| CM-04 | [Enrutamiento inteligente de órdenes](casos/cm-04-enrutamiento-inteligente-de-ordenes.md) | — | 🔴 `planned` | Decidir dónde ejecutar y **poder explicar por qué** |
-| CM-05 | [Intermediación financiera](casos/cm-05-intermediacion-financiera.md) | — | 🔴 `planned` | Agente frente a principal, y detectar front-running |
-| CM-06 | [Asesoría crediticia](casos/cm-06-asesoria-crediticia.md) | — | 🔴 `planned` | Capacidad de pago, costo total y conflictos comerciales |
-| CM-07 | [Robo-advisor](casos/cm-07-robo-advisor.md) | — | 🔴 `planned` | Perfil, cartera y recomendación explicable y versionada |
-| CM-08 | [Tokenización de instrumentos](casos/cm-08-tokenizacion-de-instrumentos.md) | — | 🔴 `planned` | Que las unidades emitidas no superen el respaldo |
-| CM-09 | [Vigilancia de abuso de mercado](casos/cm-09-vigilancia-de-abuso-de-mercado.md) | — | 🔴 `planned` | Wash trading, spoofing, layering, manipulación del cierre |
-| CM-10 | [Compensación y liquidación](casos/cm-10-compensacion-y-liquidacion.md) | — | 🔴 `planned` | Netting y entrega contra pago, con fallas y reversas |
-| CM-11 | [Finanzas abiertas y consentimiento](casos/cm-11-finanzas-abiertas-y-consentimiento.md) | — | 🔴 `planned` | Alcance, renovación, revocación y trazabilidad del consentimiento |
-| CM-12 | [Reportería regulatoria y SupTech](casos/cm-12-reporteria-regulatoria.md) | — | 🔴 `planned` | Consolidar, validar, firmar y corregir sin alterar el histórico |
-| CM-13 | [Salida ordenada](casos/cm-13-salida-ordenada.md) | — | 🔴 `planned` | Cerrar la operación devolviendo todo lo que no es tuyo |
-| CM-14 | [Resiliencia operacional](casos/cm-14-resiliencia-operacional.md) | — | 🔴 `planned` | Kill switch, degradación controlada, replay y post mortem |
-| CM-15 | [KYC, AML y sanciones](casos/cm-15-kyc-aml-y-sanciones.md) | — | 🔴 `planned` | Riesgo, PEP y sanciones **simuladas**, sin datos personales reales |
-| CM-16 | [Integridad de datos de mercado](casos/cm-16-integridad-de-datos-de-mercado.md) | — | 🔴 `planned` | Precio cero, moneda incorrecta, timestamp futuro, dato obsoleto |
-| CM-17 | [Eventos corporativos](casos/cm-17-eventos-corporativos.md) | — | 🔴 `planned` | Dividendos, splits y canjes que actualizan posiciones y costo |
-| CM-18 | [Margen, garantías y riesgo](casos/cm-18-margen-garantias-y-riesgo.md) | — | 🔴 `planned` | Haircut, margen inicial y de variación, liquidación forzada |
-| CM-19 | [Fraude y toma de cuentas](casos/cm-19-fraude-y-toma-de-cuentas.md) | — | 🔴 `planned` | Dispositivo nuevo, retiro anómalo, sesión imposible |
-| CM-20 | [Gobierno de modelos e IA financiera](casos/cm-20-gobierno-de-modelos-e-ia-financiera.md) | — | 🔴 `planned` | Versión, métricas, sesgo, drift, rollback y supervisión humana |
+| CM-04 | [Enrutamiento inteligente de órdenes](casos/cm-04-enrutamiento-inteligente-de-ordenes.md) | `crates/sandbox-markets` | 🟠 `prototype` | Decidir dónde ejecutar y **poder explicar por qué** |
+| CM-05 | [Intermediación financiera](casos/cm-05-intermediacion-financiera.md) | `crates/sandbox-markets` | 🟠 `prototype` | Agente frente a principal, y detectar front-running |
+| CM-06 | [Asesoría crediticia](casos/cm-06-asesoria-crediticia.md) | `crates/sandbox-markets` | 🟠 `prototype` | Capacidad de pago, costo total y conflictos comerciales |
+| CM-07 | [Robo-advisor](casos/cm-07-robo-advisor.md) | `crates/sandbox-markets` | 🟠 `prototype` | Perfil, cartera y recomendación explicable y versionada |
+| CM-08 | [Tokenización de instrumentos](casos/cm-08-tokenizacion-de-instrumentos.md) | `crates/sandbox-markets` | 🟠 `prototype` | Que las unidades emitidas no superen el respaldo |
+| CM-09 | [Vigilancia de abuso de mercado](casos/cm-09-vigilancia-de-abuso-de-mercado.md) | `crates/sandbox-markets` | 🟠 `prototype` | Wash trading, spoofing, layering, manipulación del cierre |
+| CM-10 | [Compensación y liquidación](casos/cm-10-compensacion-y-liquidacion.md) | `crates/sandbox-markets` | 🟠 `prototype` | Netting y entrega contra pago, con fallas y reversas |
+| CM-11 | [Finanzas abiertas y consentimiento](casos/cm-11-finanzas-abiertas-y-consentimiento.md) | `crates/sandbox-markets` | 🟠 `prototype` | Alcance, renovación, revocación y trazabilidad del consentimiento |
+| CM-12 | [Reportería regulatoria y SupTech](casos/cm-12-reporteria-regulatoria.md) | `crates/sandbox-markets` | 🟠 `prototype` | Consolidar, validar, firmar y corregir sin alterar el histórico |
+| CM-13 | [Salida ordenada](casos/cm-13-salida-ordenada.md) | `crates/sandbox-markets` | 🟠 `prototype` | Cerrar la operación devolviendo todo lo que no es tuyo |
+| CM-14 | [Resiliencia operacional](casos/cm-14-resiliencia-operacional.md) | `crates/sandbox-markets` | 🟠 `prototype` | Kill switch, degradación controlada, replay y post mortem |
+| CM-15 | [KYC, AML y sanciones](casos/cm-15-kyc-aml-y-sanciones.md) | `crates/sandbox-markets` | 🟠 `prototype` | Riesgo, PEP y sanciones **simuladas**, sin datos personales reales |
+| CM-16 | [Integridad de datos de mercado](casos/cm-16-integridad-de-datos-de-mercado.md) | `crates/sandbox-markets` | 🟠 `prototype` | Precio cero, moneda incorrecta, timestamp futuro, dato obsoleto |
+| CM-17 | [Eventos corporativos](casos/cm-17-eventos-corporativos.md) | `crates/sandbox-markets` | 🟠 `prototype` | Dividendos, splits y canjes que actualizan posiciones y costo |
+| CM-18 | [Margen, garantías y riesgo](casos/cm-18-margen-garantias-y-riesgo.md) | `crates/sandbox-markets` | 🟠 `prototype` | Haircut, margen inicial y de variación, liquidación forzada |
+| CM-19 | [Fraude y toma de cuentas](casos/cm-19-fraude-y-toma-de-cuentas.md) | `crates/sandbox-markets` | 🟠 `prototype` | Dispositivo nuevo, retiro anómalo, sesión imposible |
+| CM-20 | [Gobierno de modelos e IA financiera](casos/cm-20-gobierno-de-modelos-e-ia-financiera.md) | `crates/sandbox-markets` | 🟠 `prototype` | Versión, métricas, sesgo, drift, rollback y supervisión humana |
 
 ### La base compartida: dinero y libro contable
 

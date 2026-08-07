@@ -17,12 +17,14 @@
 //! - **No es asesoría financiera.** Nada de lo que salga de aquí es una
 //!   recomendación de inversión.
 
+pub mod cases;
 pub mod custody;
 pub mod ledger;
 pub mod money;
 pub mod orderbook;
 pub mod scenario;
 
+pub use cases::{CaseReport, Check, Maturity};
 pub use custody::{CustodyBook, Finding, Owner, PendingMovement, Position, Reconciliation};
 pub use ledger::{Entry, Ledger, LedgerError, Transaction};
 pub use money::{Currency, Money, MoneyError};

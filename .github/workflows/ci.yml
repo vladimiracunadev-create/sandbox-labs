@@ -86,6 +86,12 @@ jobs:
       - name: Humo — los escenarios de custodia detectan lo que declaran
         run: cargo run --locked -q -p sandboxctl -- markets reconcile
 
+      # Cada caso de mercado de capitales declara de antemano qué debe salir de
+      # cada escenario. Si uno deja de detectar lo que venía a detectar, deja de
+      # servir para nada y esto se pone rojo.
+      - name: Humo — los casos de mercado de capitales hacen lo que declaran
+        run: cargo run --locked -q -p sandboxctl -- markets check
+
       - name: Resumen
         if: always()
         run: |

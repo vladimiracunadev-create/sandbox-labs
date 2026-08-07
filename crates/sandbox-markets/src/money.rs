@@ -15,6 +15,7 @@
 //! que es lo más cerca que se puede estar sin un tipo por moneda. Un ledger que
 //! suma monedas distintas cuadra perfectamente y no significa nada.
 
+use serde::{Deserialize, Serialize};
 use std::fmt;
 
 /// Un importe en la unidad mínima de su moneda.
@@ -23,7 +24,8 @@ use std::fmt;
 /// —yen, peso chileno— y con muchos ceros se acerca al límite de 64 bits antes
 /// de lo que parece. El coste es nulo aquí y el desbordamiento silencioso sería
 /// caro.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct Money {
     minor_units: i128,
     currency: Currency,
@@ -34,7 +36,8 @@ pub struct Money {
 /// Una lista cerrada y no una cadena libre: `"CLP"` y `"clp"` serían dos monedas
 /// distintas para un mapa, y ese es el tipo de error que solo aparece cuando ya
 /// hay saldos.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "UPPERCASE")]
 pub enum Currency {
     /// Peso chileno. **Cero decimales**: su unidad mínima es el peso.
     Clp,

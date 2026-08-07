@@ -121,6 +121,15 @@ enum Command {
 
 #[derive(Debug, Subcommand)]
 enum MarketsAction {
+    /// Ejecuta los escenarios de todos los casos con código y compara cada uno
+    /// con lo que declara esperar.
+    Check {
+        /// Un caso concreto: `CM-04`. Sin él, todos.
+        #[arg(long)]
+        case: Option<String>,
+        #[arg(long)]
+        json: bool,
+    },
     /// Concilia la custodia de un escenario, o de todos los de un caso.
     Reconcile {
         /// Escenario concreto; sin él se ejecutan todos los del caso CM-03.
@@ -233,6 +242,7 @@ fn main() -> Result<()> {
             }
         }
         Command::Markets { action } => match action {
+            MarketsAction::Check { case, json } => markets_check(case.as_deref(), json),
             MarketsAction::Reconcile { path, json } => markets_reconcile(&root, path.as_deref(), json),
         },
         Command::Evidence { action } => match action {
@@ -461,6 +471,62 @@ fn evidence_verify(root: &Path, path: Option<&Path>, json: bool) -> Result<i32> 
 
     let broken = reports.iter().any(|report| !report.passed()) || chain.iter().any(|check| check.passed == Some(false));
     Ok(i32::from(broken))
+}
+
+/// `markets check`: ejecuta los escenarios de todos los casos de mercado de
+/// capitales que tienen código.
+///
+/// Devuelve 1 si alguno se desvía de lo que declara. Un escenario que deja de
+/// detectar lo que venía a detectar es un escenario roto, y dejarlo pasar lo
+/// convertiría en decoración.
+fn markets_check(case: Option<&str>, json: bool) -> Result<i32> {
+    let reports: Vec<sandbox_markets::CaseReport> = sandbox_markets::cases::all()
+        .into_iter()
+        .filter(|report| case.is_none_or(|wanted| report.id.eq_ignore_ascii_case(wanted)))
+        .collect();
+
+    if reports.is_empty() {
+        anyhow::bail!(
+            "No hay ningún caso con ese identificador. Los que tienen código: {}",
+            sandbox_markets::cases::all().iter().map(|report| report.id).collect::<Vec<_>>().join(", ")
+        );
+    }
+
+    if json {
+        println!("{}", serde_json::to_string_pretty(&reports)?);
+    } else {
+        println!(
+            "Mercado de capitales · {} caso(s) con código
+",
+            reports.len()
+        );
+        println!(
+            "⚠ Dinero, instrumentos, participantes y datos SIMULADOS. Sin autorización de ninguna autoridad
+  y sin recomendaciones de inversión.
+"
+        );
+        for report in &reports {
+            let mark = if report.passed() { "✅" } else { "❌" };
+            println!("{mark} {} · {} [{}]", report.id, report.title, report.maturity.label());
+            for check in &report.checks {
+                if check.passed() {
+                    println!("   · {}", check.scenario);
+                } else {
+                    println!("   ❌ {}", check.scenario);
+                    println!("      esperaba «{}» y obtuve «{}»", check.expected, check.actual);
+                }
+            }
+        }
+        let checks: usize = reports.iter().map(|report| report.checks.len()).sum();
+        let broken = reports.iter().filter(|report| !report.passed()).count();
+        println!(
+            "
+{} caso(s) · {checks} escenario(s) · {broken} que no hacen lo que declaran",
+            reports.len()
+        );
+    }
+
+    Ok(i32::from(reports.iter().any(|report| !report.passed())))
 }
 
 /// `markets reconcile`: ejecuta escenarios de custodia y compara con lo que
