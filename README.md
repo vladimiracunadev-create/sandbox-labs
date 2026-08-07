@@ -1,10 +1,23 @@
 # 🛡️ sandbox-labs
 
-**Ejecuta código que no controlas, sin entregarle tu equipo.**
+**Ejecutar lo que no controlas, y medir cuánto se contiene de verdad.**
 
-Una plataforma para aprender —y comprobar— cómo se contiene lo desconocido. Cada
-caso es un producto que se levanta en su propio `localhost`, donde haces tareas
-reales, y que se apaga dejando constancia de qué pudo tocar y qué no.
+sandbox-labs es un **laboratorio de aislamiento**. Ejecuta código, archivos y
+modelos de negocio ajenos dentro de fronteras declaradas en una política, y emite
+un acta firmada de qué controles se aplicaron **realmente en tu equipo** — no de
+los que la política pedía.
+
+Esa distinción es el proyecto entero. Un runtime puede declarar que corta la red
+y no cortarla; aquí ocho sondas intentan escaparse en cada commit y publican el
+resultado.
+
+| | |
+|---|---|
+| **Qué contiene** | **36 casos** en dos familias que no se mezclan: sandboxes técnicos —código generado por IA, archivos, plugins, agentes, claves— y mercado de capitales con **dinero simulado** —custodia, negociación, liquidación, cumplimiento |
+| **Qué produce** | Evidencia firmada por ejecución · matriz de contención por runtime · coste medido de cada frontera |
+| **Para quién** | Quien enseña o estudia aislamiento en Linux · quien tiene que ejecutar código de terceros y quiere ver qué se contiene · quien prueba un modelo Fintech sin tocar dinero real |
+| **Qué NO es** | Un producto de seguridad. Es **experimental y educativo**: para cargas hostiles de verdad, una máquina virtual desechable |
+| **Dónde corre** | Linux o WSL2 · Rust con bubblewrap, seccomp y cgroups v2 · Python en los casos, Node en el panel |
 
 [![CI](https://github.com/vladimiracunadev-create/sandbox-labs/actions/workflows/ci.yml/badge.svg)](https://github.com/vladimiracunadev-create/sandbox-labs/actions/workflows/ci.yml)
 [![Security](https://github.com/vladimiracunadev-create/sandbox-labs/actions/workflows/security.yml/badge.svg)](https://github.com/vladimiracunadev-create/sandbox-labs/actions/workflows/security.yml)
@@ -18,16 +31,17 @@ reales, y que se apaga dejando constancia de qué pudo tocar y qué no.
 
 ## 📊 Estado, sin adornos
 
-| | Construido | Del total |
+| | Con código y prueba que corre en CI | Estado más alto alcanzado |
 |---|:--:|:--:|
-| **Núcleo de aislamiento** | 9 de 9 controles | ✅ completo, verificado en CI |
-| **Casos técnicos** | 15 | de 15 |
-| **Casos de mercado de capitales** | 21 | de 21 |
+| **Núcleo de aislamiento** | 9 de 9 controles | ✅ verificado en cada commit |
+| **Casos técnicos** | 15 de 15 | 🟡 `building` |
+| **Casos de mercado de capitales** | 21 de 21 | 🟢 `functional` en uno · 🟠 `prototype` en el resto |
 
-Los 36 casos tienen código y prueba que corre en cada commit. Ninguno llega a
-`verified`: para eso hace falta evidencia firmada por ejecución.
+Los 36 tienen código y prueba. **Ninguno llega a `verified`**: para eso hace
+falta que cada ejecución emita evidencia firmada, y todavía no la emiten.
 **[docs/ESTADO.md](docs/ESTADO.md)** dice, caso por caso, qué hay, qué lo
-demuestra y qué falta — sin usar la palabra «listo» en ningún sitio.
+demuestra y cuánta distancia queda — sin usar la palabra «listo» en ningún
+sitio.
 
 > [!IMPORTANT]
 > Proyecto **experimental y educativo**. `experimental` **no** significa «seguro
