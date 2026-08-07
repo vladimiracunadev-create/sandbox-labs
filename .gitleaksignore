@@ -1,0 +1,24 @@
+# Hallazgos de gitleaks aceptados, uno a uno.
+#
+# Cada línea es la **huella exacta** de un hallazgo: commit, fichero, regla y
+# línea. No es una regla desactivada ni un patrón excluido: si el mismo secreto
+# apareciera en otro sitio, o uno nuevo en el mismo fichero, el escáner seguiría
+# fallando. Esa precisión es lo que hace que una excepción no deje ciego al
+# escáner para el siguiente.
+#
+# ── scripts/lib/case-checks.mjs, commit aa1cbd0 ──────────────────────────────
+#
+# Datos de prueba del caso 09, que demuestra que los secretos se tachan antes de
+# llegar al registro. Para demostrarlo, el fixture tiene que tener **la forma
+# exacta** de una credencial real, y gitleaks no puede distinguir un fixture de
+# una fuga: hizo bien en avisar.
+#
+# En el árbol de trabajo ya no existe el literal —se monta por trozos en tiempo
+# de ejecución, ver el comentario del propio fichero—, pero el commit que lo
+# introdujo sigue en el historial. Reescribir el historial por dos cadenas
+# inventadas costaría más de lo que vale; anclarlas aquí las deja registradas y
+# revisables.
+#
+# La cadena es `AKIA` seguido del alfabeto: no corresponde a ninguna cuenta.
+aa1cbd0a9bbcfa87badf1cfc1a722258522cfa36:scripts/lib/case-checks.mjs:aws-access-token:122
+aa1cbd0a9bbcfa87badf1cfc1a722258522cfa36:scripts/lib/case-checks.mjs:aws-access-token:129
