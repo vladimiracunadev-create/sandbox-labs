@@ -2,8 +2,9 @@
 
 **Ejecuta código que no controlas, sin entregarle tu equipo.**
 
-Cada caso es un producto que se levanta en su propio `localhost`, donde haces
-tareas reales, y que se apaga dejando constancia de qué pudo tocar y qué no.
+Una plataforma para aprender —y comprobar— cómo se contiene lo desconocido. Cada
+caso es un producto que se levanta en su propio `localhost`, donde haces tareas
+reales, y que se apaga dejando constancia de qué pudo tocar y qué no.
 
 [![CI](https://github.com/vladimiracunadev-create/sandbox-labs/actions/workflows/ci.yml/badge.svg)](https://github.com/vladimiracunadev-create/sandbox-labs/actions/workflows/ci.yml)
 [![Security](https://github.com/vladimiracunadev-create/sandbox-labs/actions/workflows/security.yml/badge.svg)](https://github.com/vladimiracunadev-create/sandbox-labs/actions/workflows/security.yml)
@@ -11,44 +12,50 @@ tareas reales, y que se apaga dejando constancia de qué pudo tocar y qué no.
 ![Platform](https://img.shields.io/badge/Platform-Linux%20%7C%20WSL2-orange)
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 
-🌐 **[Sitio del proyecto](https://vladimiracunadev-create.github.io/sandbox-labs/)** · 📚 **[Documentación](docs/)** · 🧠 **[Qué es un sandbox](docs/QUE-ES-UN-SANDBOX.md)**
+🌐 **[Sitio del proyecto](https://vladimiracunadev-create.github.io/sandbox-labs/)** · 📋 **[Catálogo de los 36 casos](docs/CATALOGO.md)** · 📊 **[Estado real](docs/ESTADO.md)** · 📚 **[Documentación](docs/)**
 
 ---
 
-## Qué hay hoy
+## 📊 Estado, sin adornos
 
-Tres comprobaciones que corren **en cada commit**, no en un documento:
+| | Construido | Del total |
+|---|:--:|:--:|
+| **Núcleo de aislamiento** | 9 de 9 controles | ✅ completo, verificado en CI |
+| **Casos técnicos** | 4 | de 15 |
+| **Casos de mercado de capitales** | 2 | de 21 |
+
+El núcleo está terminado. Los casos, no. **[docs/ESTADO.md](docs/ESTADO.md)**
+dice, caso por caso, qué hay, qué lo demuestra y qué falta — sin usar la palabra
+«listo» en ningún sitio.
+
+> [!IMPORTANT]
+> Proyecto **experimental y educativo**. `experimental` **no** significa «seguro
+> para código hostil»: no te promete una caja fuerte, te dice con evidencia qué
+> controles quedaron efectivos en tu equipo. Para cargas desconocidas de verdad,
+> usa una máquina virtual desechable. **Nunca ejecutes malware real en el equipo
+> anfitrión.**
+
+---
+
+## Qué puedes ejecutar hoy
+
+Cuatro comprobaciones que corren **en cada commit**, no en un documento:
 
 ```bash
 cargo run -p sandboxctl -- escape             # 8 sondas intentan escaparse del sandbox
+```
+
+```bash
 cargo run -p sandboxctl -- evidence verify    # huella, firma, cadena y hashes de la evidencia
+```
+
+```bash
 cargo run -p sandboxctl -- markets reconcile  # custodia de activos: 6 escenarios
 ```
 
-## Dos familias que no se mezclan
-
-| Familia | Qué contiene | Estado |
-|---|---|---|
-| **Sandboxes técnicos** | Código, archivos, plugins, agentes y secretos que no controlas | 3 de 5 casos construidos |
-| **Mercado de capitales** | Custodia, negociación, operación y cumplimiento con dinero **simulado** | 2 de 21: [CM-03 custodia](domains/capital-markets/cases/03-asset-custody/README.md) · [CM-02 libro de órdenes](domains/capital-markets/cases/02-alternative-trading-system/README.md) |
-
-Están separadas porque tienen modelos de amenazas distintos, y «esto está
-contenido» significa cosas muy diferentes en cada lado.
-
-> [!WARNING]
-> El simulador de mercado de capitales usa **dinero, instrumentos y
-> participantes simulados**. Sin conexión a ningún banco ni medio de pago, **sin
-> autorización de la CMF ni de ninguna autoridad**, y nada de lo que salga de él
-> es una recomendación de inversión.
-
-Detalle y los 19 casos que faltan en
-**[domains/capital-markets/](domains/capital-markets/README.md)**.
-
----
-
-Y la tabla de qué control se traduce a qué mecanismo del kernel —con los huecos
-marcados como tales— está en [Qué aplica de verdad](#qué-aplica-de-verdad-y-con-qué),
-más abajo.
+```bash
+node scripts/verify-cases.mjs                 # comportamiento de los casos técnicos
+```
 
 ---
 
@@ -74,32 +81,60 @@ pide tu clave SSH no recibe «acceso denegado», recibe «ese archivo no está»
 Por eso conviven: metes tu app en Docker para desplegarla, y metes en un sandbox
 el código de terceros que esa app tiene que ejecutar.
 
-Comparación completa en [docs/COMPARATIVA.md](docs/COMPARATIVA.md).
+Comparación completa en [docs/COMPARATIVA.md](docs/COMPARATIVA.md) · Concepto
+desde cero en [docs/QUE-ES-UN-SANDBOX.md](docs/QUE-ES-UN-SANDBOX.md).
 
 ---
 
-## Los cinco casos
-
-Cada uno enseña una idea que ningún otro enseña.
-
-| # | Caso | La idea | Puerto | Estado |
-|---|---|---|:--:|:--:|
-| 01 | Contenido web no confiable | Quien interpreta contenido ajeno no toca el disco | 8801 | 🔴 pendiente |
-| 02 | Código generado por IA | Efímero y sin red: se crea, corre y se destruye | 8802 | 🟡 en obra |
-| 03 | Detonación de archivo | El sandbox como microscopio: el informe vale más que el bloqueo | 8803 | 🟡 en obra |
-| 04 | Plugins de terceros | Conceder capacidades una a una, no restar permisos | 8804 | 🔴 pendiente |
-| 05 | Contratos inteligentes | Sin entrada ni salida, con el trabajo medido en vez del tiempo | 8805 | 🟡 en obra |
+## Dos familias que no se mezclan
 
 ```mermaid
 flowchart TB
-  R["🧭 Entorno raíz · :9093<br/>levanta, apaga y vigila"] --> C1["🌐 :8801"] & C2["🤖 :8802"] & C3["🔬 :8803"] & C4["🧩 :8804"] & C5["⛓️ :8805"]
-  C1 & C2 & C3 & C4 & C5 --> E["🧾 Evidencia por ejecución"]
+  R["🧭 Entorno raíz · :9093<br/>levanta, apaga y vigila"]
+  R --> T["🛡️ Familia técnica<br/>15 casos"]
+  R --> M["🏛️ Mercado de capitales<br/>21 casos"]
+  T --> T1["Código, archivos, plugins,<br/>agentes y secretos ajenos"]
+  M --> M1["Custodia, negociación, operación<br/>y cumplimiento SIMULADOS"]
+  T1 --> E["🧾 Evidencia firmada<br/>por ejecución"]
+  M1 --> E
 ```
 
-Por encima, el **entorno raíz** en `127.0.0.1:9093` los levanta, los apaga y
-muestra bajo qué política corre cada uno.
+Están separadas porque tienen modelos de amenazas distintos, y «esto está
+contenido» significa cosas muy diferentes en cada lado.
 
-Ficha de cada caso en [docs/CASOS.md](docs/CASOS.md).
+### 🛡️ Familia técnica — 15 casos
+
+Ejecutar código, archivos, plugins, agentes y secretos que no controlas, bajo
+políticas verificables.
+
+| # | Caso | La idea que enseña | Estado |
+|---|---|---|:--:|
+| 01 | [Contenido web no confiable](docs/casos/01-contenido-web-no-confiable.md) | Quien interpreta contenido ajeno no toca el disco | 🟡 `building` |
+| 02 | [Código generado por IA](docs/casos/02-codigo-generado-por-ia.md) | Efímero: se crea, ejecuta y se destruye | 🟡 `building` |
+| 03 | [Procesamiento seguro de archivos](docs/casos/03-procesamiento-seguro-de-archivos.md) | El informe por entrada vale más que el bloqueo | 🟡 `building` |
+| 04 | [Plugins de terceros](docs/casos/04-plugins-de-terceros.md) | Conceder capacidades una a una, no restar permisos | 🔴 `planned` |
+| 05 | [Custodia de claves y firma](docs/casos/05-custodia-de-claves-y-firma.md) | El secreto entra solo si manifiesto, política y entorno coinciden | 🟡 `building` |
+| 06–15 | [Diez casos más](docs/casos/README.md#-familia-técnica--15-casos) | microVM, determinismo, agentes IA, CI, cadena de suministro… | 🔴 `planned` |
+
+### 🏛️ Familia mercado de capitales — 21 casos
+
+Probar modelos Fintech con dinero, instrumentos y participantes **simulados**.
+
+| # | Caso | Qué prueba | Estado |
+|---|---|---|:--:|
+| CM-03 | [Custodia y segregación de activos](docs/casos/cm-03-custodia-y-segregacion-de-activos.md) | Que los activos de clientes cuadren con los custodiados | 🟢 `functional` |
+| CM-02 | [Sistema alternativo de transacción](docs/casos/cm-02-sistema-alternativo-de-transaccion.md) | Libro de órdenes con prioridad precio-tiempo | 🟠 `prototype` |
+| CM-00, CM-01, CM-04–CM-20 | [Diecinueve casos más](docs/casos/README.md#-familia-mercado-de-capitales--21-casos) | Entrada regulatoria, liquidación, vigilancia, salida ordenada… | 🔴 `planned` |
+
+> [!WARNING]
+> El simulador de mercado de capitales usa **dinero, instrumentos y participantes
+> simulados**. Sin conexión a ningún banco ni medio de pago, **sin autorización de
+> la CMF ni de ninguna autoridad**, y nada de lo que salga de él es una
+> recomendación de inversión.
+
+**Cada uno de los 36 casos tiene ficha completa** —por qué existe, esquemas,
+software necesario, instalación, procesos, tiempo de carga y diagramas— en
+**[docs/casos/](docs/casos/README.md)**.
 
 ---
 
@@ -110,22 +145,39 @@ Necesitas **Linux o WSL2**: los sandboxes son primitivas del kernel de Linux
 [docs/INSTALACION.md](docs/INSTALACION.md).
 
 ```bash
-sudo apt install bubblewrap util-linux
-cargo build -p sandboxctl --release
+sudo apt install bubblewrap util-linux python3
+```
 
-cargo run -p sandboxctl -- doctor            # qué hay en este host
-cargo run -p sandboxctl -- cases             # los casos y su estado
+```bash
+cargo build --release
+```
+
+```bash
+cargo run -p sandboxctl -- doctor
+```
+
+`doctor` es el paso que importa: enumera qué runtimes hay en **tu** equipo, qué
+controles puede aplicar cada uno aquí, y **qué controles se pedirán pero no se
+podrán aplicar**.
+
+Después, levantar un caso:
+
+```bash
 cargo run -p sandboxctl -- service up file-detonation
-cargo run -p sandboxctl -- service list
+```
+
+```bash
 cargo run -p sandboxctl -- service down --all
 ```
 
-O con el panel:
+O con el panel de control:
 
 ```bash
-pnpm install --frozen-lockfile
-pnpm dashboard:build && pnpm dashboard:start
+pnpm install --frozen-lockfile && pnpm dashboard:build && pnpm dashboard:start
 ```
+
+> Este proyecto usa **pnpm**, no `npm`. Los ficheros de bloqueo están versionados
+> a propósito: son lo que hace que una instalación sea reproducible.
 
 ---
 
@@ -149,10 +201,24 @@ Referencia completa en [docs/POLICY_REFERENCE.md](docs/POLICY_REFERENCE.md).
 
 ---
 
-## Qué aplica de verdad, y con qué
+## La regla central del proyecto
 
-Cada control de la política se traduce a un mecanismo concreto del kernel. Lo
-que no tiene mecanismo **no se declara**:
+> **Un control solicitado, un control aplicado y un control reportado tienen que
+> describir la misma realidad.**
+
+Por eso cada acta de ejecución distingue cinco listas: `requestedControls`,
+`effectiveControls`, `unsupportedControls`, `failedControls` y
+`observedControls`.
+
+Y por eso, si una política estricta pide un control obligatorio que este equipo
+no puede aplicar, **la ejecución no ocurre**: falla cerrada y explica qué falta.
+La alternativa —ejecutar con menos controles de los pedidos— es exactamente cómo
+se construyen sistemas que **parecen** seguros.
+
+### Qué aplica de verdad, y con qué
+
+Cada control se traduce a un mecanismo concreto del kernel. Lo que no tiene
+mecanismo **no se declara**:
 
 | Control | Mecanismo | Estado |
 |---|---|---|
@@ -168,15 +234,15 @@ que no tiene mecanismo **no se declara**:
 
 Los tres de cgroups pasan por `systemd-run --user --scope`, y **antes de la
 primera ejecución se levanta un scope de prueba** para comprobar que el kernel
-los acepta. Donde falle, los controles no aparecen en la evidencia y una
-política estricta que los exija no ejecuta. `sandboxctl doctor` lo enseña.
+los acepta. Donde falle, los controles no aparecen en la evidencia y una política
+estricta que los exija no ejecuta.
 
 Los aplica **un solo compilador**, el mismo para una carga que termina y para un
 servicio que se queda levantado. Tenerlos separados fue exactamente cómo el
 camino de los servicios acabó sin `--cap-drop ALL`, sin identidad propia y sin
 filtro de llamadas, mientras su tarjeta prometía los tres.
 
-Los huecos conocidos, uno por uno y con lo que haría falta para cerrarlos, en
+Los huecos conocidos, uno por uno, en
 **[docs/IMPLEMENTATION_BACKLOG.md](docs/IMPLEMENTATION_BACKLOG.md)**.
 
 ---
@@ -197,7 +263,7 @@ nada. Detalle en [docs/CONTAINMENT_SUITE.md](docs/CONTAINMENT_SUITE.md).
 El peor veredicto posible no es «escapó», es **`❌ DECLARADO`**: el runtime
 prometió el control y la sonda demostró que no lo aplica. Eso tumba el build.
 
-## Y que la evidencia no se ha tocado
+### Y que la evidencia no se ha tocado
 
 Cada ejecución escribe un informe firmado con su propia huella:
 
@@ -223,23 +289,36 @@ describe el código de hoy. También corre en CI.
 
 ---
 
-> [!IMPORTANT]
-> `experimental` **no** significa «seguro para código hostil». Este proyecto no
-> te promete una caja fuerte: te dice, con evidencia, qué controles quedaron
-> efectivos en tu host. Antes de ejecutar una carga desconocida, valida el
-> runtime en una VM que puedas destruir.
+## Reglas que el proyecto no rompe
+
+| Regla | Por qué |
+|---|---|
+| **Nunca malware real** en el repositorio ni en el equipo anfitrión | Las muestras son sintéticas e inofensivas |
+| **Nunca dinero real** ni conectividad de producción | La familia financiera es un simulador, no un servicio |
+| **Nunca credenciales reales** | Ni en fixtures, ni en evidencia, ni en logs, ni en CI, ni en capturas |
+| **Nunca datos personales reales**, tampoco como datos de prueba | Todo es sintético y está documentado como tal |
+| **No es autorización regulatoria** de ninguna autoridad | Ni lo será |
+| **No se declara probado lo que no se ejecutó** | Y no se ocultan los errores |
+
+---
 
 ## Documentación
 
 | Si quieres… | Ve a |
 |---|---|
+| **Saber qué está construido de verdad** | **[Estado del proyecto](docs/ESTADO.md)** |
+| **Ver los 36 casos y su estado** | **[Catálogo completo](docs/CATALOGO.md)** |
+| **La ficha detallada de un caso** | **[docs/casos/](docs/casos/README.md)** |
 | Entender el concepto desde cero | [Qué es un sandbox](docs/QUE-ES-UN-SANDBOX.md) |
 | Saber en qué se diferencia de Docker | [Comparativa](docs/COMPARATIVA.md) |
-| Ver qué hace cada caso | [Los cinco casos](docs/CASOS.md) |
 | Instalarlo | [Instalación](docs/INSTALACION.md) |
 | Escribir una política | [Referencia de políticas](docs/POLICY_REFERENCE.md) |
+| Entender el formato de la evidencia | [Formato de evidencia](docs/EVIDENCE_FORMAT.md) |
+| Ver las sondas de contención | [Suite de contención](docs/CONTAINMENT_SUITE.md) |
 | Entender el vocabulario | [Glosario](docs/GLOSARIO.md) |
 | Saber qué protege y qué no | [Modelo de amenazas](docs/THREAT_MODEL.md) |
+| Operarlo día a día | [Runbook](RUNBOOK.md) |
+| Ver la arquitectura | [Arquitectura](docs/ARCHITECTURE.md) |
 
 Índice completo en **[docs/](docs/)**.
 

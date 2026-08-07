@@ -36,27 +36,52 @@ const escape = (value) =>
 
 // ── Markdown mínimo ──────────────────────────────────────────────────────────
 
-function inline(text) {
+const GITHUB_BLOB = "https://github.com/vladimiracunadev-create/sandbox-labs/blob/main/";
+
+/**
+ * A dónde apunta un enlace del markdown una vez publicado.
+ *
+ * El sitio publica `docs/*.md` y `docs/casos/*.md`. Un enlace entre dos de esos
+ * documentos tiene página generada y se queda dentro; cualquier otro archivo del
+ * repositorio —código, políticas, RUNBOOK— se manda a GitHub, que es donde vive.
+ *
+ * `area` dice desde qué carpeta se escribió el enlace. Sin ese dato no se puede
+ * distinguir un `../CATALOGO.md` —hermano publicado, se queda— de un
+ * `../RUNBOOK.md`, que vive en la raíz del repositorio y se va a GitHub.
+ */
+function resolveHref(href, area) {
+  const [path, hash] = href.split("#");
+  const anchor = hash ? `#${hash}` : "";
+
+  if (/^[A-Za-z0-9_.-]+\.md$/.test(path)) return docSlug(path) + ".html" + anchor;
+  if (area === "docs" && /^casos\/[A-Za-z0-9_.-]+\.md$/.test(path)) {
+    return "casos/" + docSlug(path.slice("casos/".length)) + ".html" + anchor;
+  }
+  if (area === "casos" && /^\.\.\/[A-Za-z0-9_.-]+\.md$/.test(path)) {
+    return "../" + docSlug(path.slice(3)) + ".html" + anchor;
+  }
+  if (path.startsWith("../") || path.endsWith(".md")) {
+    return GITHUB_BLOB + path.replace(/^(\.\.\/)+/, "");
+  }
+  return href;
+}
+
+function inlineText(text, area) {
   return escape(text)
     .replace(/`([^`]+)`/g, (_, code) => `<code>${code}</code>`)
     .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
     .replace(/(^|[\s(])\*([^*\n]+)\*/g, "$1<em>$2</em>")
     .replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, (_, label, href) => {
-      // Los enlaces relativos a otros .md apuntan al HTML generado; el resto
-      // se manda a GitHub, que es donde vive el archivo.
-      let target = href;
-      if (/^[A-Za-z0-9_-]+\.md$/.test(href)) {
-        // Un documento hermano de docs/ tiene su propia página generada.
-        target = docSlug(href) + ".html";
-      } else if (href.startsWith("../") || href.endsWith(".md")) {
-        target = `https://github.com/vladimiracunadev-create/sandbox-labs/blob/main/${href.replace(/^(\.\.\/)+/, "")}`;
-      }
+      const target = resolveHref(href, area);
       const external = /^https?:/.test(target);
       return `<a href="${escape(target)}"${external ? ' target="_blank" rel="noreferrer noopener"' : ""}>${label}</a>`;
     });
 }
 
-function renderMarkdown(markdown) {
+function renderMarkdown(markdown, area = "docs") {
+  // El área viaja con el documento entero: cada enlace de dentro se resuelve
+  // sabiendo desde qué carpeta se escribió.
+  const inline = (text) => inlineText(text, area);
   const lines = markdown.split(/\r?\n/);
   const html = [];
   let index = 0;
@@ -160,7 +185,9 @@ function renderMarkdown(markdown) {
 const STYLE = await readFile(join(root, "site-src", "_style.css"), "utf8");
 
 function page({ title, description, body, active = "", depth = 0 }) {
-  const base = depth ? "../" : "";
+  // Una página de `docs/casos/` está dos niveles por debajo de la raíz del
+  // sitio: la barra de navegación tiene que subir los dos.
+  const base = "../".repeat(depth);
   const nav = [
     ["", "Inicio"],
     ["conceptos.html", "Qué es un sandbox"],
@@ -282,7 +309,29 @@ for (const name of docFiles) {
       description: title,
       active: "docs/",
       depth: 1,
-      body: `<article class="doc">${renderMarkdown(markdown)}</article>`
+      body: `<article class="doc">${renderMarkdown(markdown, "docs")}</article>`
+    })
+  );
+}
+
+// Las fichas de los casos son 36 documentos con la misma estructura. Se publican
+// en su propia carpeta para que la ruta del sitio coincida con la del repositorio
+// y un enlace escrito en GitHub siga funcionando aquí.
+const caseFiles = (await readdir(join(root, "docs", "casos"))).filter((name) => name.endsWith(".md")).sort();
+await mkdir(join(out, "docs", "casos"), { recursive: true });
+
+for (const name of caseFiles) {
+  const markdown = await readFile(join(root, "docs", "casos", name), "utf8");
+  const slug = docSlug(name);
+  const title = docTitle(markdown, slug);
+  await writeFile(
+    join(out, "docs", "casos", slug + ".html"),
+    page({
+      title: title + " — sandbox-labs",
+      description: title,
+      active: "docs/",
+      depth: 2,
+      body: `<article class="doc">${renderMarkdown(markdown, "casos")}</article>`
     })
   );
 }
@@ -312,5 +361,5 @@ await writeFile(
 );
 
 console.log(
-  `✅ Sitio generado: portada, conceptos y ${docFiles.length} documentos · ${cases.length} casos (${cases.filter((c) => c.built).length} construidos)`
+  `✅ Sitio generado: portada, conceptos, ${docFiles.length} documentos y ${caseFiles.length} fichas de caso · ${cases.length} servicios (${cases.filter((c) => c.built).length} construidos)`
 );

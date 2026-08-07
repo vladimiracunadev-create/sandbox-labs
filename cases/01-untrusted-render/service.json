@@ -1,0 +1,21 @@
+{
+  "$schema": "../../schemas/service.schema.json",
+  "id": "untrusted-render",
+  "name": "Contenido web no confiable",
+  "category": "platform",
+  "description": "Recibe HTML o Markdown de origen desconocido y lo interpreta en un proceso aparte que no tiene filesystem ni red. Devuelve la vista segura y la lista de lo que el contenido intentó hacer.",
+  "teaches": "Separar por proceso: quien interpreta contenido ajeno no toca el disco. Un XXE o un SSRF no necesitan JavaScript, solo que el intérprete tenga acceso a algo.",
+  "port": 8801,
+  "kind": "python",
+  "entrypoint": "app.py",
+  "command": "python3",
+  "args": [],
+  "policy": "service-isolated",
+  "runtimes": [
+    "bwrap",
+    "unshare"
+  ],
+  "healthPath": "/health",
+  "transport": "unix-socket",
+  "publish": "proxy"
+}
