@@ -17,12 +17,12 @@ funciona viene con el comando que hay que ejecutar para comprobarlo.
 | | Construido | Del total |
 |---|:--:|:--:|
 | **Núcleo de aislamiento** | 9 de 9 controles | ✅ completo y verificado en CI |
-| **Casos técnicos** | 4 | de 15 |
-| **Casos de mercado de capitales** | 21 | de 21 |
+| **Casos técnicos** | 15 | de 15, con código |
+| **Casos de mercado de capitales** | 21 | de 21, con código |
 
-El núcleo está terminado. La familia financiera tiene los 21 casos con código y
-escenarios que se ejecutan, aunque **ninguno emite todavía evidencia firmada**,
-que es lo que hace falta para `verified`. La familia técnica está a un tercio.
+**Los 36 casos del catálogo tienen código y prueba que se ejecuta en cada
+commit.** Ninguno llega a `verified`: para eso hace falta evidencia firmada por
+ejecución, y todavía no la emiten. Esa es la distancia que queda, y está medida.
 
 ---
 
@@ -106,19 +106,20 @@ cerrada y explica qué falta. El detalle está en
 
 ---
 
-## Casos técnicos — 4 de 15
+## Casos técnicos — 15 de 15 con código
 
 | # | Caso | Estado | Qué hay | Qué falta |
 |:--:|---|:--:|---|---|
 | 01 | [Contenido web no confiable](casos/01-contenido-web-no-confiable.md) | 🟡 `building` | Coordinador e intérprete separados por proceso, 15 tipos de rechazo, **10 comprobaciones automáticas** | Ficha en el panel; levantar el servicio bajo `bwrap` dentro de CI |
 | 02 | [Código generado por IA](casos/02-codigo-generado-por-ia.md) | 🟡 `building` | Ejecución sin red, entorno vacío, disco temporal, techo de tiempo | **Rediseño**: un sandbox efímero por ejecución, con cola y cancelación. Más lenguajes |
 | 03 | [Procesamiento de archivos](casos/03-procesamiento-seguro-de-archivos.md) | 🟡 `building` | zip slip, zip bomb, rutas absolutas, enlaces, informe por entrada | Renombrar a `03-safe-archive-processing`; MIME real, más formatos, checksum |
-| 04 | [Plugins de terceros](casos/04-plugins-de-terceros.md) | 🔴 `planned` | — | Todo: manifiesto, concesión, seis plugins de ejemplo |
+| 04 | [Plugins de terceros](casos/04-plugins-de-terceros.md) | 🟡 `building` | Manifiesto, concesión traducida a montajes y red, registro de intentos · **8 comprobaciones** | Los seis plugins de ejemplo; flujo de aprobación en el panel |
 | 05 | [Custodia de claves y firma](casos/05-custodia-de-claves-y-firma.md) | 🟡 `building` | Firma Ed25519 en la jaula, red `none`, socket Unix, clave fuera del repositorio | Dividir: el determinismo se va al caso 07. Límites de monto, rotación, revocación |
-| 06–15 | [Los diez restantes](casos/README.md#-familia-técnica--15-casos) | 🔴 `planned` | — | Especificados con ficha completa; sin código |
+| 06–15 | [Los diez restantes](casos/README.md#-familia-técnica--15-casos) | 🟡 `building` | Un núcleo por caso con **62 comprobaciones** entre todos, y su servicio | Levantarlos bajo `bwrap` en CI; evidencia firmada. 06 y 14 necesitan además KVM |
 
-**Ninguno está en `ready`.** Ninguno tiene todavía evidencia firmada por
-ejecución, que es el requisito para `verified`.
+**Ninguno está en `ready`.** Los núcleos se comprueban —80 comprobaciones entre
+los doce casos con prueba—, pero ninguno se levanta bajo `bwrap` dentro de CI ni
+emite evidencia firmada por ejecución, que es el requisito para `verified`.
 
 ---
 

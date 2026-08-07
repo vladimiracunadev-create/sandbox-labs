@@ -1,0 +1,21 @@
+{
+  "$schema": "../../schemas/service.schema.json",
+  "id": "supply-chain",
+  "name": "Instalación de cadena de suministro",
+  "category": "platform",
+  "description": "Instala en jaula con el entorno vacío y devuelve qué scripts se ejecutaron, qué buscaron en el entorno, a dónde intentaron conectarse y qué nombres son sospechosos.",
+  "teaches": "Instalar ejecuta scripts de cientos de personas antes de que hayas escrito una línea. El entorno vacío convierte «se llevó tu token» en «buscó y no había».",
+  "port": 8815,
+  "kind": "python",
+  "entrypoint": "app.py",
+  "command": "python3",
+  "args": [],
+  "policy": "service-isolated",
+  "runtimes": [
+    "bwrap",
+    "unshare"
+  ],
+  "healthPath": "/health",
+  "transport": "unix-socket",
+  "publish": "proxy"
+}

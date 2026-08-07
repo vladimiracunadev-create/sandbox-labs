@@ -13,6 +13,7 @@ import { spawnSync } from "node:child_process";
 import { readFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { CHECKS } from "./lib/case-checks.mjs";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const catalog = JSON.parse(await readFile(resolve(root, "sandbox.config.json"), "utf8"));
@@ -98,6 +99,9 @@ const RENDER_ATTACKS = [
 ];
 
 const CASES = {
+  // Los casos 04 y 06–15 se comprueban llamando a su núcleo, que es un módulo
+  // de Python puro. Sus comprobaciones viven en scripts/lib/case-checks.mjs.
+  ...CHECKS,
   /** 01 — el intérprete no tiene capacidades, y lo que rechaza queda anotado. */
   "01": () => {
     const results = [];

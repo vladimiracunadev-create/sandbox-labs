@@ -1,0 +1,21 @@
+{
+  "$schema": "../../schemas/service.schema.json",
+  "id": "ai-agent-tools",
+  "name": "Sandbox de herramientas de agente IA",
+  "category": "platform",
+  "description": "Media cada llamada a herramienta de un agente contra su concesión, detecta inyecciones en el contenido leído y registra los intentos de ampliarse.",
+  "teaches": "Lo que el agente lee es dato, nunca orden. El mediador vive fuera de su proceso, o el aislamiento es decorativo.",
+  "port": 8808,
+  "kind": "python",
+  "entrypoint": "app.py",
+  "command": "python3",
+  "args": [],
+  "policy": "service-isolated",
+  "runtimes": [
+    "bwrap",
+    "unshare"
+  ],
+  "healthPath": "/health",
+  "transport": "unix-socket",
+  "publish": "proxy"
+}

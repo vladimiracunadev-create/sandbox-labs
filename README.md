@@ -21,12 +21,13 @@ reales, y que se apaga dejando constancia de qué pudo tocar y qué no.
 | | Construido | Del total |
 |---|:--:|:--:|
 | **Núcleo de aislamiento** | 9 de 9 controles | ✅ completo, verificado en CI |
-| **Casos técnicos** | 4 | de 15 |
+| **Casos técnicos** | 15 | de 15 |
 | **Casos de mercado de capitales** | 21 | de 21 |
 
-El núcleo está terminado. Los casos, no. **[docs/ESTADO.md](docs/ESTADO.md)**
-dice, caso por caso, qué hay, qué lo demuestra y qué falta — sin usar la palabra
-«listo» en ningún sitio.
+Los 36 casos tienen código y prueba que corre en cada commit. Ninguno llega a
+`verified`: para eso hace falta evidencia firmada por ejecución.
+**[docs/ESTADO.md](docs/ESTADO.md)** dice, caso por caso, qué hay, qué lo
+demuestra y qué falta — sin usar la palabra «listo» en ningún sitio.
 
 > [!IMPORTANT]
 > Proyecto **experimental y educativo**. `experimental` **no** significa «seguro
@@ -116,9 +117,9 @@ políticas verificables.
 | 01 | [Contenido web no confiable](docs/casos/01-contenido-web-no-confiable.md) | Quien interpreta contenido ajeno no toca el disco | 🟡 `building` |
 | 02 | [Código generado por IA](docs/casos/02-codigo-generado-por-ia.md) | Efímero: se crea, ejecuta y se destruye | 🟡 `building` |
 | 03 | [Procesamiento seguro de archivos](docs/casos/03-procesamiento-seguro-de-archivos.md) | El informe por entrada vale más que el bloqueo | 🟡 `building` |
-| 04 | [Plugins de terceros](docs/casos/04-plugins-de-terceros.md) | Conceder capacidades una a una, no restar permisos | 🔴 `planned` |
+| 04 | [Plugins de terceros](docs/casos/04-plugins-de-terceros.md) | Conceder capacidades una a una, no restar permisos | 🟡 `building` |
 | 05 | [Custodia de claves y firma](docs/casos/05-custodia-de-claves-y-firma.md) | El secreto entra solo si manifiesto, política y entorno coinciden | 🟡 `building` |
-| 06–15 | [Diez casos más](docs/casos/README.md#-familia-técnica--15-casos) | microVM, determinismo, agentes IA, CI, cadena de suministro… | 🔴 `planned` |
+| 06–15 | [Diez casos más](docs/casos/README.md#-familia-técnica--15-casos) | microVM, determinismo, agentes IA, CI, cadena de suministro… | 🟡 `building` |
 
 ### 🏛️ Familia mercado de capitales — 21 casos
 

@@ -1,0 +1,21 @@
+{
+  "$schema": "../../schemas/service.schema.json",
+  "id": "package-build",
+  "name": "Construcción de paquetes de terceros",
+  "category": "platform",
+  "description": "Resuelve dependencias con red por lista de permitidos, verifica checksums contra el fichero de bloqueo y compila sin red, registrando quién intentó salir.",
+  "teaches": "Compilar no necesita red y casi siempre la tiene. Cerrarla tras verificar es un control barato que casi nadie aplica.",
+  "port": 8810,
+  "kind": "python",
+  "entrypoint": "app.py",
+  "command": "python3",
+  "args": [],
+  "policy": "service-isolated",
+  "runtimes": [
+    "bwrap",
+    "unshare"
+  ],
+  "healthPath": "/health",
+  "transport": "unix-socket",
+  "publish": "proxy"
+}

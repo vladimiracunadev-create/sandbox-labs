@@ -1,0 +1,21 @@
+{
+  "$schema": "../../schemas/service.schema.json",
+  "id": "db-migration",
+  "name": "Migraciones de base de datos",
+  "category": "platform",
+  "description": "Ejecuta una migración no confiable sobre una copia, detecta sentencias destructivas, mide el coste y compara esquema y datos antes y después.",
+  "teaches": "Casi todo se puede probar ejecutándolo otra vez. Una migración se ejecuta una vez sobre datos que existen una vez.",
+  "port": 8813,
+  "kind": "python",
+  "entrypoint": "app.py",
+  "command": "python3",
+  "args": [],
+  "policy": "service-isolated",
+  "runtimes": [
+    "bwrap",
+    "unshare"
+  ],
+  "healthPath": "/health",
+  "transport": "unix-socket",
+  "publish": "proxy"
+}

@@ -1,0 +1,21 @@
+{
+  "$schema": "../../schemas/service.schema.json",
+  "id": "binary-analysis",
+  "name": "Análisis de binarios de terceros",
+  "category": "platform",
+  "description": "Analiza un binario sin ejecutarlo y, donde hay KVM, lo caracteriza en una máquina desechable: a qué se conecta, qué escribe y qué lanza.",
+  "teaches": "Un binario no se puede leer. La única forma de saber qué hace es ejecutarlo donde actuar no tenga consecuencias.",
+  "port": 8814,
+  "kind": "python",
+  "entrypoint": "app.py",
+  "command": "python3",
+  "args": [],
+  "policy": "service-isolated",
+  "runtimes": [
+    "bwrap",
+    "unshare"
+  ],
+  "healthPath": "/health",
+  "transport": "unix-socket",
+  "publish": "proxy"
+}

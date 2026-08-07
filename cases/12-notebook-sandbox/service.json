@@ -1,0 +1,21 @@
+{
+  "$schema": "../../schemas/service.schema.json",
+  "id": "notebook-sandbox",
+  "name": "Notebooks de ciencia de datos",
+  "category": "platform",
+  "description": "Ejecuta una sesión de notebook con datasets montados de solo lectura, salida separada y cuotas de memoria, procesos y tamaño.",
+  "teaches": "Aquí lo valioso son los datos: protegerlos es que el análisis no pueda modificar aquello que analiza.",
+  "port": 8812,
+  "kind": "python",
+  "entrypoint": "app.py",
+  "command": "python3",
+  "args": [],
+  "policy": "service-isolated",
+  "runtimes": [
+    "bwrap",
+    "unshare"
+  ],
+  "healthPath": "/health",
+  "transport": "unix-socket",
+  "publish": "proxy"
+}

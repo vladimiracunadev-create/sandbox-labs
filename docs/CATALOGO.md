@@ -14,9 +14,9 @@ lo dice en lugar de sugerir lo contrario.
 > `functional` se ejecuta y hay una prueba que lo demuestra, `verified` además
 > tiene evidencia firmada y CI que la valida.
 
-**Qué está construido y qué no, en una línea:** 4 casos técnicos de 15 y **los
-21 de mercado de capitales**, estos últimos en `prototype`: se ejecutan y sus
-escenarios pasan, pero todavía no emiten evidencia firmada. El detalle honesto de cada uno, con la prueba que lo
+**Qué está construido y qué no, en una línea:** **los 36 casos tienen código y
+prueba que se ejecuta en cada commit**, y ninguno llega a `verified`: para eso
+hace falta evidencia firmada por ejecución, y todavía no la emiten. El detalle honesto de cada uno, con la prueba que lo
 respalda o la ausencia de ella, está en **[Estado del proyecto](ESTADO.md)**.
 
 ---
@@ -156,18 +156,18 @@ instalación, procesos, tiempo de carga y diagramas— en
 | 01 | [Contenido web no confiable](casos/01-contenido-web-no-confiable.md) | `cases/01-untrusted-render` | 🟡 `building` | Quien interpreta contenido ajeno no toca el disco |
 | 02 | [Código generado por IA](casos/02-codigo-generado-por-ia.md) | `cases/02-ai-code-runner` | 🟡 `building` | Efímero: se crea, ejecuta y se destruye |
 | 03 | [Procesamiento seguro de archivos](casos/03-procesamiento-seguro-de-archivos.md) | `cases/03-file-detonation` | 🟡 `building` | El informe por entrada vale más que el bloqueo |
-| 04 | [Plugins de terceros](casos/04-plugins-de-terceros.md) | — | 🔴 `planned` | Conceder capacidades una a una, no restar permisos |
+| 04 | [Plugins de terceros](casos/04-plugins-de-terceros.md) | `cases/04-third-party-plugins` | 🟡 `building` | Conceder capacidades una a una, no restar permisos |
 | 05 | [Custodia de claves y firma](casos/05-custodia-de-claves-y-firma.md) | `cases/05-smart-contracts` | 🟡 `building` | El secreto entra solo si manifiesto, política y entorno coinciden |
-| 06 | [Detonación en microVM](casos/06-detonacion-en-microvm.md) | — | 🔴 `planned` | Cuando el namespace no basta: máquina desechable |
-| 07 | [Runtime determinista de contratos](casos/07-runtime-determinista-de-contratos.md) | — | 🔴 `planned` | Medir el trabajo, no el tiempo |
-| 08 | [Sandbox de herramientas de agente IA](casos/08-sandbox-de-herramientas-de-agente-ia.md) | — | 🔴 `planned` | Un prompt inyectado no puede ampliar capacidades |
-| 09 | [Runner de CI con pull request externo](casos/09-runner-de-ci-con-pull-request-externo.md) | — | 🔴 `planned` | El código del PR no alcanza el token de CI |
-| 10 | [Construcción de paquetes](casos/10-construccion-de-paquetes.md) | — | 🔴 `planned` | Red abierta al resolver, cerrada al compilar |
-| 11 | [Renderizado de documentos](casos/11-renderizado-de-documentos.md) | — | 🔴 `planned` | El parser de PDF es el eslabón débil |
-| 12 | [Notebooks de ciencia de datos](casos/12-notebooks-de-ciencia-de-datos.md) | — | 🔴 `planned` | Datos de solo lectura, salida separada |
-| 13 | [Migraciones de base de datos](casos/13-migraciones-de-base-de-datos.md) | — | 🔴 `planned` | Snapshot y rollback como control |
-| 14 | [Análisis de binarios de terceros](casos/14-analisis-de-binarios-de-terceros.md) | — | 🔴 `planned` | Ejecutar lo desconocido en máquina desechable |
-| 15 | [Instalación de cadena de suministro](casos/15-instalacion-de-cadena-de-suministro.md) | — | 🔴 `planned` | El `postinstall` es código que nadie leyó |
+| 06 | [Detonación en microVM](casos/06-detonacion-en-microvm.md) | `cases/06-microvm-detonation` | 🟡 `building` | Cuando el namespace no basta: máquina desechable |
+| 07 | [Runtime determinista de contratos](casos/07-runtime-determinista-de-contratos.md) | `cases/07-deterministic-contracts` | 🟡 `building` | Medir el trabajo, no el tiempo |
+| 08 | [Sandbox de herramientas de agente IA](casos/08-sandbox-de-herramientas-de-agente-ia.md) | `cases/08-ai-agent-tools` | 🟡 `building` | Un prompt inyectado no puede ampliar capacidades |
+| 09 | [Runner de CI con pull request externo](casos/09-runner-de-ci-con-pull-request-externo.md) | `cases/09-ci-untrusted-pr` | 🟡 `building` | El código del PR no alcanza el token de CI |
+| 10 | [Construcción de paquetes](casos/10-construccion-de-paquetes.md) | `cases/10-package-build` | 🟡 `building` | Red abierta al resolver, cerrada al compilar |
+| 11 | [Renderizado de documentos](casos/11-renderizado-de-documentos.md) | `cases/11-document-render` | 🟡 `building` | El parser de PDF es el eslabón débil |
+| 12 | [Notebooks de ciencia de datos](casos/12-notebooks-de-ciencia-de-datos.md) | `cases/12-notebook-sandbox` | 🟡 `building` | Datos de solo lectura, salida separada |
+| 13 | [Migraciones de base de datos](casos/13-migraciones-de-base-de-datos.md) | `cases/13-db-migration` | 🟡 `building` | Snapshot y rollback como control |
+| 14 | [Análisis de binarios de terceros](casos/14-analisis-de-binarios-de-terceros.md) | `cases/14-binary-analysis` | 🟡 `building` | Ejecutar lo desconocido en máquina desechable |
+| 15 | [Instalación de cadena de suministro](casos/15-instalacion-de-cadena-de-suministro.md) | `cases/15-supply-chain` | 🟡 `building` | El `postinstall` es código que nadie leyó |
 
 ### 01 · Contenido web no confiable
 

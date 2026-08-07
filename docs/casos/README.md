@@ -27,18 +27,18 @@ Ejecutar código, archivos, plugins, agentes y secretos que no controlas.
 | 01 | [Contenido web no confiable](01-contenido-web-no-confiable.md) | 🟡 `building` |
 | 02 | [Código generado por IA](02-codigo-generado-por-ia.md) | 🟡 `building` |
 | 03 | [Procesamiento seguro de archivos comprimidos](03-procesamiento-seguro-de-archivos.md) | 🟡 `building` |
-| 04 | [Plugins de terceros](04-plugins-de-terceros.md) | 🔴 `planned` |
+| 04 | [Plugins de terceros](04-plugins-de-terceros.md) | 🟡 `building` |
 | 05 | [Custodia de claves y firma](05-custodia-de-claves-y-firma.md) | 🟡 `building` |
-| 06 | [Detonación en microVM](06-detonacion-en-microvm.md) | 🔴 `planned` |
-| 07 | [Runtime determinista de contratos](07-runtime-determinista-de-contratos.md) | 🔴 `planned` |
-| 08 | [Sandbox de herramientas de agente IA](08-sandbox-de-herramientas-de-agente-ia.md) | 🔴 `planned` |
-| 09 | [Runner de CI con pull request externo](09-runner-de-ci-con-pull-request-externo.md) | 🔴 `planned` |
-| 10 | [Construcción de paquetes de terceros](10-construccion-de-paquetes.md) | 🔴 `planned` |
-| 11 | [Renderizado de documentos](11-renderizado-de-documentos.md) | 🔴 `planned` |
-| 12 | [Notebooks de ciencia de datos](12-notebooks-de-ciencia-de-datos.md) | 🔴 `planned` |
-| 13 | [Migraciones de base de datos](13-migraciones-de-base-de-datos.md) | 🔴 `planned` |
-| 14 | [Análisis de binarios de terceros](14-analisis-de-binarios-de-terceros.md) | 🔴 `planned` |
-| 15 | [Instalación de cadena de suministro](15-instalacion-de-cadena-de-suministro.md) | 🔴 `planned` |
+| 06 | [Detonación en microVM](06-detonacion-en-microvm.md) | 🟡 `building` |
+| 07 | [Runtime determinista de contratos](07-runtime-determinista-de-contratos.md) | 🟡 `building` |
+| 08 | [Sandbox de herramientas de agente IA](08-sandbox-de-herramientas-de-agente-ia.md) | 🟡 `building` |
+| 09 | [Runner de CI con pull request externo](09-runner-de-ci-con-pull-request-externo.md) | 🟡 `building` |
+| 10 | [Construcción de paquetes de terceros](10-construccion-de-paquetes.md) | 🟡 `building` |
+| 11 | [Renderizado de documentos](11-renderizado-de-documentos.md) | 🟡 `building` |
+| 12 | [Notebooks de ciencia de datos](12-notebooks-de-ciencia-de-datos.md) | 🟡 `building` |
+| 13 | [Migraciones de base de datos](13-migraciones-de-base-de-datos.md) | 🟡 `building` |
+| 14 | [Análisis de binarios de terceros](14-analisis-de-binarios-de-terceros.md) | 🟡 `building` |
+| 15 | [Instalación de cadena de suministro](15-instalacion-de-cadena-de-suministro.md) | 🟡 `building` |
 
 ## 🏛️ Familia mercado de capitales — 21 casos
 

@@ -1,0 +1,21 @@
+{
+  "$schema": "../../schemas/service.schema.json",
+  "id": "microvm-detonation",
+  "name": "Detonación en microVM",
+  "category": "platform",
+  "description": "Comprueba si este equipo puede detonar una muestra y clasifica la línea de tiempo observada. Con muestras sintéticas e inofensivas.",
+  "teaches": "Un namespace comparte kernel. Para observar algo que intenta escapar, la frontera tiene que ser una máquina.",
+  "port": 8806,
+  "kind": "python",
+  "entrypoint": "app.py",
+  "command": "python3",
+  "args": [],
+  "policy": "service-isolated",
+  "runtimes": [
+    "bwrap",
+    "unshare"
+  ],
+  "healthPath": "/health",
+  "transport": "unix-socket",
+  "publish": "proxy"
+}

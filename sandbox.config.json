@@ -188,7 +188,7 @@
       "title": "Plugins de terceros",
       "idea": "Conceder capacidades una a una en vez de restar permisos",
       "port": 8804,
-      "status": "planned"
+      "status": "building"
     },
     {
       "id": "05",
@@ -196,6 +196,86 @@
       "title": "Contratos inteligentes",
       "idea": "Sin entrada ni salida, con el trabajo medido en vez del tiempo",
       "port": 8805,
+      "status": "building"
+    },
+    {
+      "id": "06",
+      "slug": "microvm-detonation",
+      "title": "Detonación en microVM",
+      "idea": "Cuando el namespace no basta: una máquina que se destruye entera",
+      "port": 8806,
+      "status": "building"
+    },
+    {
+      "id": "07",
+      "slug": "deterministic-contracts",
+      "title": "Runtime determinista de contratos",
+      "idea": "Medir el trabajo, no el tiempo: sin reloj, sin azar, sin mundo",
+      "port": 8807,
+      "status": "building"
+    },
+    {
+      "id": "08",
+      "slug": "ai-agent-tools",
+      "title": "Sandbox de herramientas de agente IA",
+      "idea": "Un prompt inyectado no puede ampliar las capacidades del agente",
+      "port": 8808,
+      "status": "building"
+    },
+    {
+      "id": "09",
+      "slug": "ci-untrusted-pr",
+      "title": "Runner de CI con pull request externo",
+      "idea": "El código del desconocido no alcanza la credencial que lo ejecuta",
+      "port": 8809,
+      "status": "building"
+    },
+    {
+      "id": "10",
+      "slug": "package-build",
+      "title": "Construcción de paquetes de terceros",
+      "idea": "Red abierta al resolver, cerrada al compilar",
+      "port": 8810,
+      "status": "building"
+    },
+    {
+      "id": "11",
+      "slug": "document-render",
+      "title": "Renderizado de documentos",
+      "idea": "Aislar el parser, no el fichero: el fallo está en tu propio código",
+      "port": 8811,
+      "status": "building"
+    },
+    {
+      "id": "12",
+      "slug": "notebook-sandbox",
+      "title": "Notebooks de ciencia de datos",
+      "idea": "Datos de entrada de solo lectura, salida en otro sitio",
+      "port": 8812,
+      "status": "building"
+    },
+    {
+      "id": "13",
+      "slug": "db-migration",
+      "title": "Migraciones de base de datos",
+      "idea": "Snapshot y rollback: el aislamiento impide que algo QUEDE",
+      "port": 8813,
+      "status": "building"
+    },
+    {
+      "id": "14",
+      "slug": "binary-analysis",
+      "title": "Análisis de binarios de terceros",
+      "idea": "Caracterizar qué hace un binario, no decidir si es peligroso",
+      "port": 8814,
+      "status": "building"
+    },
+    {
+      "id": "15",
+      "slug": "supply-chain",
+      "title": "Instalación de cadena de suministro",
+      "idea": "El `postinstall` es código que nadie leyó, ejecutándose con tus permisos",
+      "port": 8815,
       "status": "building"
     }
   ],

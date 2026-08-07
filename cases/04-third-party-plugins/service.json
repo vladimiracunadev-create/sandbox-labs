@@ -1,0 +1,21 @@
+{
+  "$schema": "../../schemas/service.schema.json",
+  "id": "third-party-plugins",
+  "name": "Plugins de terceros",
+  "category": "platform",
+  "description": "Valida el manifiesto de un plugin, compila la concesión a montajes y red concretos, y registra cada intento fuera de lo autorizado.",
+  "teaches": "Sumar capacidades en vez de restar permisos. El punto de partida no es «todo menos lo prohibido», es nada.",
+  "port": 8804,
+  "kind": "python",
+  "entrypoint": "app.py",
+  "command": "python3",
+  "args": [],
+  "policy": "service-isolated",
+  "runtimes": [
+    "bwrap",
+    "unshare"
+  ],
+  "healthPath": "/health",
+  "transport": "unix-socket",
+  "publish": "proxy"
+}

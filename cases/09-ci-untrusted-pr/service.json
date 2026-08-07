@@ -1,0 +1,21 @@
+{
+  "$schema": "../../schemas/service.schema.json",
+  "id": "ci-untrusted-pr",
+  "name": "Runner de CI con pull request externo",
+  "category": "platform",
+  "description": "Ejecuta el código de un pull request con entorno vacío y red por lista de permitidos, tacha los secretos de los registros y separa la publicación en otra etapa.",
+  "teaches": "La etapa que ejecuta código ajeno no tiene llaves, y la que tiene llaves no ejecuta código ajeno.",
+  "port": 8809,
+  "kind": "python",
+  "entrypoint": "app.py",
+  "command": "python3",
+  "args": [],
+  "policy": "service-isolated",
+  "runtimes": [
+    "bwrap",
+    "unshare"
+  ],
+  "healthPath": "/health",
+  "transport": "unix-socket",
+  "publish": "proxy"
+}

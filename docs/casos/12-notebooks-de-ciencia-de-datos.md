@@ -4,7 +4,7 @@
 > se ejecuta trozo a trozo, con acceso a los datos de verdad, y que a menudo lo
 > ejecuta alguien que no lo escribió.
 
-**Estado real:** 🔴 `planned` — **no hay código todavía**
+**Estado real:** 🟡 `building` — hay código y **6 comprobaciones automáticas**, sin levantarse bajo `bwrap` en CI · **Carpeta:** [`cases/12-notebook-sandbox/`](../../cases/12-notebook-sandbox) · **Puerto:** `8812`
 
 ---
 
@@ -151,9 +151,8 @@ de procesos sin ninguna mala intención.
 
 ## Si algo falla
 
-Este caso **todavía no tiene código**. Lo que sigue son los fallos que el diseño
-tiene que resolver, y cómo va a resolverlos — escrito antes de la primera línea,
-que es cuando sirve de algo:
+El caso **ya tiene código**: el núcleo en `core.py` y el servicio en `app.py`.
+Lo que sigue son sus fallos, la causa y la salida:
 
 | Situación | Causa | Cómo se resuelve |
 |---|---|---|
@@ -167,6 +166,27 @@ que es cuando sirve de algo:
 Los fallos que afectan a **cualquier** caso —no se puede crear el sandbox, no hay
 cgroups, un puerto ocupado, procesos huérfanos, la compilación en Windows— están
 resueltos uno a uno en **[Cuando algo falla](../SOLUCION-DE-PROBLEMAS.md)**.
+
+## Cómo se comprueba
+
+```bash
+node scripts/verify-cases.mjs
+```
+
+Llama al núcleo del caso con situaciones concretas y comprueba **qué hizo con
+ellas**, no cómo está escrito. Son 6 comprobaciones, y corren en cada
+commit.
+
+```bash
+cargo run -p sandboxctl -- service up notebook-sandbox
+```
+
+Levanta el caso como producto en `127.0.0.1:8812`. `POST /api/run` acepta el
+cuerpo que describen los esquemas de arriba.
+
+> **Sigue en `building`, no en `functional`.** El núcleo se comprueba, pero el
+> servicio **no se levanta bajo `bwrap` dentro de CI** y el caso no emite
+> evidencia firmada. La regla completa está en el [ROADMAP](../../ROADMAP.md).
 
 ---
 

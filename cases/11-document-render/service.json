@@ -1,0 +1,21 @@
+{
+  "$schema": "../../schemas/service.schema.json",
+  "id": "document-render",
+  "name": "Renderizado de documentos",
+  "category": "platform",
+  "description": "Detecta el tipo real por contenido, aplica techos antes de parsear y registra las referencias externas que el documento pide y no se resuelven.",
+  "teaches": "Aquí lo desconocido son los datos y el código es tuyo. Hay que aislar tu propio software, porque el fallo va a estar ahí.",
+  "port": 8811,
+  "kind": "python",
+  "entrypoint": "app.py",
+  "command": "python3",
+  "args": [],
+  "policy": "service-isolated",
+  "runtimes": [
+    "bwrap",
+    "unshare"
+  ],
+  "healthPath": "/health",
+  "transport": "unix-socket",
+  "publish": "proxy"
+}

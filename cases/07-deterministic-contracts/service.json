@@ -1,0 +1,21 @@
+{
+  "$schema": "../../schemas/service.schema.json",
+  "id": "deterministic-contracts",
+  "name": "Runtime determinista de contratos",
+  "category": "platform",
+  "description": "Ejecuta un programa con presupuesto por instrucciones, sin reloj ni red, y devuelve el estado final con su huella canónica.",
+  "teaches": "Acotar por tiempo destruye el determinismo: la máquina lenta se corta donde la rápida siguió.",
+  "port": 8807,
+  "kind": "python",
+  "entrypoint": "app.py",
+  "command": "python3",
+  "args": [],
+  "policy": "service-isolated",
+  "runtimes": [
+    "bwrap",
+    "unshare"
+  ],
+  "healthPath": "/health",
+  "transport": "unix-socket",
+  "publish": "proxy"
+}
