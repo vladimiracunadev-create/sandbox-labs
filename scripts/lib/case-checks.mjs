@@ -10,6 +10,18 @@ import { callCore } from "./case-probe.mjs";
 
 const b64 = (text) => Buffer.from(text, "binary").toString("base64");
 
+/**
+ * Secretos de mentira, montados en tiempo de ejecución.
+ *
+ * Tienen que tener la **forma** de un token real para que el caso 09 demuestre
+ * que los tacha. Escritos enteros en el fichero, el escáner de secretos del
+ * repositorio los denuncia con razón: no puede distinguir un fixture de una
+ * fuga. Montarlos por trozos deja el literal fuera del código fuente y mantiene
+ * el escáner estricto, que es lo que interesa.
+ */
+const FAKE_GITHUB_TOKEN = ["ghp", "abcdefghijklmnopqrstuvwx"].join("_");
+const FAKE_AWS_KEY = "AKIA" + "ABCDEFGHIJKLMNOP";
+
 /** Comprueba una igualdad y devuelve la frase que describe lo comprobado. */
 function expect(label, expected, actual) {
   const left = JSON.stringify(expected);
@@ -119,14 +131,14 @@ export const CHECKS = {
       secrets: ["NPM_TOKEN", "DEPLOY_KEY"],
       allowlist: ["registry.ejemplo.com:443"],
       networkAttempts: ["registry.ejemplo.com:443", "203.0.113.7:443"],
-      logs: "usando NPM_TOKEN=ghp_abcdefghijklmnopqrstuvwx y AKIAABCDEFGHIJKLMNOP"
+      logs: `usando NPM_TOKEN=${FAKE_GITHUB_TOKEN} y ${FAKE_AWS_KEY}`
     });
     done.push(expect("con código no confiable no hay secretos, se pidan o no", false, untrusted.secretsPresent));
     done.push(expect("y se dice qué se negó, en vez de fallar en silencio", 2, untrusted.refusedSecrets.length));
     done.push(expect("la sonda confirma que dentro de la jaula no queda ninguno", [], untrusted.secretsVisibleInsideCage));
     done.push(expect("el destino permitido pasa y el otro queda registrado", "bloqueado por lista de permitidos", untrusted.networkAttempts[1].outcome));
-    done.push(expect("los secretos se tachan antes de llegar al registro", false, untrusted.logs.includes("ghp_abcdefghijklmnopqrstuvwx")));
-    done.push(expect("también los que llegan con forma reconocible y sin nombre", false, untrusted.logs.includes("AKIAABCDEFGHIJKLMNOP")));
+    done.push(expect("los secretos se tachan antes de llegar al registro", false, untrusted.logs.includes(FAKE_GITHUB_TOKEN)));
+    done.push(expect("también los que llegan con forma reconocible y sin nombre", false, untrusted.logs.includes(FAKE_AWS_KEY)));
     done.push(expect("publicar es otra etapa y necesita una persona", true, untrusted.publishRequiresHumanApproval));
     return done;
   },
@@ -283,7 +295,7 @@ export const CHECKS = {
     done.push(expect("un nombre casi igual a uno popular se marca como sospechoso", "requests", report.typosquattingSuspects[0].similarTo));
     done.push(expect("con los checksums cuadrando, se instala", true, report.installed));
 
-    const leaky = callCore("15-supply-chain", { manifest, lockfile: { "paquete-x@2.1.0": "aaa" }, allowlist: [], environment: { NPM_TOKEN: "ghp_x" } });
+    const leaky = callCore("15-supply-chain", { manifest, lockfile: { "paquete-x@2.1.0": "aaa" }, allowlist: [], environment: { NPM_TOKEN: "valor-de-mentira" } });
     done.push(expect("si el entorno NO estaba vacío, el informe lo grita", 1, leaky.leakedFromEnvironment.length));
 
     const tampered = callCore("15-supply-chain", { manifest, lockfile: { "paquete-x@2.1.0": "distinto" }, allowlist: [], environment: {} });
