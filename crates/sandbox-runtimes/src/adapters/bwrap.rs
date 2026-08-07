@@ -59,6 +59,30 @@ fn effective_limits(
     limits
 }
 
+/// Los ficheros que la carga dejó en su directorio de salida, con su hash.
+///
+/// Se recogen antes de borrar el temporal: después no habría nada que hashear.
+/// Un informe que dice «completado» sin decir qué produjo no permite comprobar
+/// nada más tarde.
+fn collect_artifacts(output: &std::path::Path) -> Vec<sandbox_core::evidence::Artifact> {
+    let mut found = Vec::new();
+    let Ok(entries) = std::fs::read_dir(output) else { return found };
+    for entry in entries.flatten() {
+        let path = entry.path();
+        if !path.is_file() {
+            continue;
+        }
+        let Ok(bytes) = std::fs::read(&path) else { continue };
+        found.push(sandbox_core::evidence::Artifact {
+            path: path.file_name().map(|name| name.to_string_lossy().to_string()).unwrap_or_default(),
+            bytes: bytes.len() as u64,
+            sha256: sandbox_core::sha256_hex(&bytes),
+        });
+    }
+    found.sort_by(|a, b| a.path.cmp(&b.path));
+    found
+}
+
 pub struct BwrapAdapter;
 impl RuntimeAdapter for BwrapAdapter {
     fn kind(&self) -> RuntimeKind {
@@ -209,6 +233,14 @@ impl RuntimeAdapter for BwrapAdapter {
         if let Some(proxy) = egress {
             outcome.network_events = proxy.finish();
         }
+        outcome.artifacts = collect_artifacts(&output);
+        // El directorio temporal se borra al soltar `temp`. Se dice antes de
+        // soltarlo para que la evidencia no tenga que suponerlo.
+        outcome.cleanup = serde_json::json!({
+            "workspaceRemoved": true,
+            "workspacePath": temp.path().display().to_string(),
+            "egressSocketRemoved": network_isolated,
+        });
         Ok(outcome)
     }
 }

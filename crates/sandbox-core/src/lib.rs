@@ -2,6 +2,7 @@ pub mod bench;
 pub mod catalog;
 pub mod cgroup;
 pub mod compiler;
+pub mod dirs;
 pub mod doctor;
 pub mod egress;
 pub mod escape;
@@ -11,6 +12,7 @@ pub mod policy;
 pub mod runtime;
 pub mod seccomp;
 pub mod service;
+pub mod signing;
 pub mod workload;
 
 pub use bench::{BenchmarkReport, RuntimeBenchmark, Stats};

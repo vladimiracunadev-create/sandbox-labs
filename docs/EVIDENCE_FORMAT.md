@@ -22,9 +22,19 @@ Campos principales:
   Lo tercero no es corrupción: es un informe de hace tres semanas diciendo, con
   razón, que ya no describe el código de hoy.
 
-  **No es una firma.** Quien pueda editar el fichero puede recalcular la huella.
-  Lo que detecta es la alteración accidental o descuidada, que es el caso que se
-  da en la práctica. La firma con clave local sigue en el backlog.
+  Además va **firmada** con Ed25519 sobre esa huella (`integrity.signature`), y
+  **encadenada** con la anterior (`previousEvidenceSha256`). Cada mecanismo ve lo
+  que el anterior no:
+
+  | Mecanismo | Detecta |
+  |---|---|
+  | huella | el fichero se tocó |
+  | firma | alguien lo rehízo recalculando la huella |
+  | cadena | alguien borró un informe entero |
+
+  **La firma no es una notarización.** La clave la guarda la misma máquina que
+  ejecuta: quien tenga acceso al equipo puede firmar lo que quiera. Prueba que el
+  informe no cambió después de escribirse, no que la ejecución ocurriera.
 - `policy.requestedControls`: controles obligatorios.
 - `policy.effective`: controles realmente aplicados por el adaptador.
 - `unsupported`: controles solicitados que no pudieron demostrarse.
@@ -52,5 +62,22 @@ Campos principales:
 - `result`: código de salida, motivo, duración y salida truncada.
 - `violations`: observaciones estructuradas.
 - `plan`: decisiones del adaptador.
+- `artifacts`: los ficheros que la ejecución produjo, con su tamaño y su hash.
+- `cleanup`: qué se retiró al terminar. Un sandbox que deja rastro tiene que
+  decirlo.
+- `verdict`: **¿se puede confiar en esta ejecución?**, que no es lo mismo que si
+  terminó bien.
+
+  | Veredicto | Qué pasó |
+  |---|---|
+  | `contained` | Ejecutó con todos los controles pedidos y terminó bien |
+  | `controls-missing` | Faltaron controles. Manda sobre cualquier otro resultado |
+  | `timeout` | El supervisor la cortó por tiempo |
+  | `failed` | Ejecutó con sus controles y falló por sus propios motivos |
+  | `not-executed` | No llegó a ejecutar |
+
+  Una carga que sale con código 0 habiendo perdido un control es
+  `controls-missing`: el resultado puede ser correcto y no significar nada,
+  porque se obtuvo sin la frontera que se creía puesta.
 
 Una evidencia `planned` no demuestra aislamiento. Una evidencia `completed` tampoco prueba por sí sola la ausencia de escape; debe acompañarse de pruebas negativas.

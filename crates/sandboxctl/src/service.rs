@@ -20,35 +20,10 @@ use std::{
 /// Tiempo máximo esperando a que el puerto responda tras levantar.
 const READY_TIMEOUT: Duration = Duration::from_secs(20);
 
-/// Crea el directorio si no existe, tolerando que ya exista.
-///
-/// `create_dir_all` es idempotente en un filesystem normal, pero sobre DrvFs
-/// —el montaje de un disco de Windows dentro de WSL— puede devolver EEXIST
-/// igualmente. Tratar eso como error impedía levantar cualquier servicio desde
-/// un repositorio alojado en `/mnt/c`.
+/// Crea el directorio tolerando la caché de DrvFs. La tolerancia vive en
+/// `sandbox_core::dirs`, porque hizo falta también para la clave de firma.
 fn ensure_dir(path: &Path) -> Result<()> {
-    match fs::create_dir_all(path) {
-        Ok(()) => {}
-        Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => {}
-        Err(error) => return Err(error).with_context(|| format!("No se pudo crear {}", path.display())),
-    }
-    if path.is_dir() {
-        return Ok(());
-    }
-    // EEXIST sin que el directorio exista: la caché de DrvFs quedó
-    // desincronizada, típicamente porque alguien borró la ruta desde Windows
-    // mientras WSL la tenía vista. Un reintento la refresca; si aún así no
-    // está, se dice qué pasa en vez de fallar más adelante con un ENOENT
-    // opaco al abrir el log.
-    std::thread::sleep(Duration::from_millis(150));
-    fs::create_dir_all(path).ok();
-    if path.is_dir() {
-        return Ok(());
-    }
-    bail!(
-        "No se pudo crear {}: el sistema de archivos dice que ya existe pero no está.          Si el repositorio vive en /mnt/c y borraste el directorio desde Windows,          cierra WSL (`wsl --shutdown`) y vuelve a intentarlo.",
-        path.display()
-    )
+    sandbox_core::dirs::ensure(path)
 }
 
 pub struct ServiceContext {

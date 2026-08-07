@@ -37,6 +37,31 @@ Versionado semántico.
   inyecta `INVOCATION_ID` por su cuenta; la cadena intercala ahora un `env -i` y
   el runtime arranca con el entorno vacío. El contrato es vaciar, no enumerar.
 
+### Added — la evidencia se firma, se encadena y dice qué significó
+
+- **Firma Ed25519** sobre la huella, con clave local generada la primera vez y
+  guardada fuera del repositorio con permisos de solo su dueño. Detecta lo que
+  la huella sola no veía: que alguien **rehiciera** el documento recalculando su
+  SHA-256.
+- **Cadena entre evidencias** (`previousEvidenceSha256`): detecta que alguien
+  **borre** un informe entero, cosa que una firma no ve — las que quedan siguen
+  siendo válidas.
+- **`verdict`**, que responde a «¿se puede confiar en esta ejecución?» y no a
+  «¿terminó bien?». Una carga que sale con código 0 habiendo perdido un control
+  pedido es `controls-missing`.
+- **`artifacts`** con el hash de lo que produjo, y **`cleanup`** con lo que
+  retiró al terminar.
+- `sandboxctl evidence verify` comprueba las cuatro cosas. Probado contra
+  manipulación real: rehacer el JSON rompe la firma, borrar una evidencia rompe
+  la cadena, y las dos devuelven código 1.
+- **No es una notarización, y se dice.** La clave la guarda la misma máquina que
+  ejecuta: prueba que el informe no cambió tras escribirse, no que la ejecución
+  ocurriera.
+- La tolerancia a la caché de DrvFs —`mkdir` dice «existe» y `ls` dice que no—
+  pasa a `sandbox_core::dirs`, en un solo sitio. Estaba en el lanzador de
+  servicios y volvió a hacer falta para guardar la clave, que sin ella no
+  llegaba a existir en la plataforma objetivo.
+
 ### Added — `network: allowlist` deja de ser una lista que nadie hacía cumplir
 
 - **La salida se entrega como capacidad, no como propiedad del entorno.** Con

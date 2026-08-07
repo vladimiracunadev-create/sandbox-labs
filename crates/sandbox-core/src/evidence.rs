@@ -31,6 +31,39 @@ pub struct Violation {
     pub result: String,
 }
 
+/// El veredicto de una ejecución, que responde a «¿se puede confiar en esto?».
+///
+/// No es lo mismo que «¿terminó bien?». Una carga que sale con código 0 después
+/// de haber perdido un control que la política pedía **no** es un aprobado: el
+/// resultado puede ser correcto y aun así no significar nada, porque se obtuvo
+/// sin la frontera que se creía puesta.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Verdict {
+    /// Ejecutó con todos los controles pedidos y terminó bien.
+    Contained,
+    /// Faltaron controles. Es el veredicto que manda, gane quien gane después.
+    ControlsMissing,
+    /// El supervisor la cortó por tiempo.
+    Timeout,
+    /// Ejecutó con sus controles y falló por sus propios motivos.
+    Failed,
+    /// No llegó a ejecutar: plan, bloqueo o runtime ausente.
+    NotExecuted,
+}
+
+impl From<Verdict> for String {
+    fn from(value: Verdict) -> Self {
+        match value {
+            Verdict::Contained => "contained",
+            Verdict::ControlsMissing => "controls-missing",
+            Verdict::Timeout => "timeout",
+            Verdict::Failed => "failed",
+            Verdict::NotExecuted => "not-executed",
+        }
+        .to_string()
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Evidence {
@@ -52,6 +85,27 @@ pub struct Evidence {
     /// bytes. Un filtro que no cuenta lo que dejó pasar no se puede auditar.
     #[serde(default)]
     pub network_events: Vec<crate::ConnectionRecord>,
+    /// Qué produjo la ejecución, con su hash. Un informe que dice «completado»
+    /// sin decir qué salió no permite comprobar nada después.
+    #[serde(default)]
+    pub artifacts: Vec<Artifact>,
+    /// Qué se retiró al terminar. Un sandbox que no limpia deja rastro, y quien
+    /// lee la evidencia tiene derecho a saber si lo dejó.
+    #[serde(default)]
+    pub cleanup: Value,
+    /// El veredicto, explícito. Ver `Verdict`.
+    #[serde(default)]
+    pub verdict: String,
+}
+
+/// Un fichero producido por la ejecución.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct Artifact {
+    /// Ruta relativa al directorio de salida del sandbox.
+    pub path: String,
+    pub bytes: u64,
+    pub sha256: String,
 }
 
 impl Evidence {
@@ -100,6 +154,19 @@ impl Evidence {
             .filter(|value| value.status.success())
             .map(|value| String::from_utf8_lossy(&value.stdout).trim().to_string())
             .unwrap_or_else(|| "unknown".into());
+        // El veredicto responde a «¿se puede confiar en esta ejecución?», que no
+        // es lo mismo que «¿terminó bien?». Una carga que sale con código 0
+        // habiendo perdido un control pedido no es un aprobado.
+        let verdict = if !plan.controls.unsupported.is_empty() {
+            Verdict::ControlsMissing
+        } else {
+            match outcome {
+                None => Verdict::NotExecuted,
+                Some(value) if value.status == "completed" => Verdict::Contained,
+                Some(value) if value.status == "timeout" => Verdict::Timeout,
+                Some(_) => Verdict::Failed,
+            }
+        };
         let (status, result, effective_limits, observed) = match outcome {
             None => (
                 if plan.runtime.to_string() == "dry-run" { EvidenceStatus::Planned } else { EvidenceStatus::Blocked },
@@ -142,6 +209,9 @@ impl Evidence {
             unsupported: plan.controls.unsupported.clone(),
             plan: plan.steps.clone(),
             network_events: outcome.map(|value| value.network_events.clone()).unwrap_or_default(),
+            artifacts: outcome.map(|value| value.artifacts.clone()).unwrap_or_default(),
+            cleanup: outcome.map(|value| value.cleanup.clone()).unwrap_or_else(|| json!({})),
+            verdict: verdict.into(),
         }
     }
 
@@ -159,28 +229,89 @@ impl Evidence {
     /// backlog.
     pub fn digest(&self) -> Result<String> {
         let mut copy = self.clone();
+        // Todo lo que se calcula A PARTIR de la huella queda fuera de ella: la
+        // propia huella, y la firma, que se hace sobre la huella. Incluirlas
+        // sería morderse la cola, y añadirlas después de sellar —que fue el
+        // primer intento— deja el documento con una huella que ya no describe
+        // su contenido.
+        for derived in ["evidenceSha256", "signature", "signatureUnavailable"] {
+            if let Some(object) = copy.integrity.as_object_mut() {
+                object.remove(derived);
+            }
+        }
         copy.integrity["evidenceSha256"] = Value::String(String::new());
         Ok(sha256_hex(serde_json::to_vec(&copy)?))
     }
 
     /// Sella la evidencia con su propia huella. Idempotente.
     pub fn seal(&mut self) -> Result<()> {
-        self.integrity["evidenceSha256"] = Value::String(String::new());
         let digest = self.digest()?;
         self.integrity["evidenceSha256"] = Value::String(digest);
         Ok(())
     }
 
-    pub fn write(&self, directory: impl AsRef<Path>) -> Result<PathBuf> {
+    /// Escribe la evidencia sellada, encadenada y firmada.
+    ///
+    /// `data_root` es donde vive la clave de firma. Si no se puede firmar —no
+    /// hay clave y no se puede crear— se escribe igual **sin firma**: una
+    /// evidencia sin firmar es peor que una firmada, y muchísimo mejor que
+    /// ninguna. `evidence verify` distingue las dos.
+    pub fn write(&self, directory: impl AsRef<Path>, data_root: Option<&Path>) -> Result<PathBuf> {
         let directory = directory.as_ref();
         fs::create_dir_all(directory).with_context(|| format!("No se pudo crear {}", directory.display()))?;
         let path = directory.join(format!("{}.json", self.run_id));
+
         let mut sealed = self.clone();
+        // La cadena va ANTES del sellado: forma parte de lo que la huella cubre.
+        sealed.integrity["previousEvidenceSha256"] = Value::String(read_chain(directory));
         sealed.seal()?;
+
+        // Y la firma se calcula sobre la huella, que ya resume el contenido
+        // entero. Firmar el documento completo daría lo mismo con más trabajo.
+        let digest = sealed.integrity["evidenceSha256"].as_str().unwrap_or_default().to_string();
+        if let Some(root) = data_root {
+            match crate::signing::load_or_create(root) {
+                Ok(key) => {
+                    let (public, signature) = crate::signing::sign(&key, digest.as_bytes());
+                    sealed.integrity["signature"] = json!({
+                        "algorithm": crate::signing::ALGORITHM,
+                        "publicKey": public,
+                        "fingerprint": crate::signing::fingerprint(&key.verifying_key()),
+                        "value": signature,
+                    });
+                }
+                // Escribir la evidencia sin firma es mejor que no escribirla,
+                // pero **callarse el motivo** no: una evidencia sin firmar que
+                // no dice por qué se confunde con una que nadie quiso firmar.
+                Err(error) => {
+                    sealed.integrity["signatureUnavailable"] = Value::String(error.to_string());
+                }
+            }
+        }
+
         fs::write(&path, serde_json::to_string_pretty(&sealed)?)
             .with_context(|| format!("No se pudo escribir {}", path.display()))?;
+        write_chain(directory, &digest);
         Ok(path)
     }
+}
+
+/// Fichero donde se guarda la huella de la última evidencia escrita.
+fn chain_path(directory: &Path) -> PathBuf {
+    directory.join(".chain")
+}
+
+/// La huella de la evidencia anterior, o vacío si esta es la primera.
+///
+/// Encadenarlas detecta lo que una firma por sí sola no ve: que alguien **borre**
+/// un informe. Una evidencia firmada sigue siendo válida aunque la de al lado
+/// haya desaparecido; con la cadena, el hueco se nota.
+fn read_chain(directory: &Path) -> String {
+    fs::read_to_string(chain_path(directory)).map(|value| value.trim().to_string()).unwrap_or_default()
+}
+
+fn write_chain(directory: &Path, digest: &str) {
+    let _ = fs::write(chain_path(directory), digest);
 }
 
 /// Resultado de comprobar una evidencia contra sí misma y contra el repositorio.
@@ -189,6 +320,12 @@ impl Evidence {
 pub struct VerificationReport {
     pub path: String,
     pub run_id: String,
+    /// Huella de esta evidencia y de la que dice tener delante. Sirven para
+    /// comprobar la cadena entre varias.
+    pub digest: String,
+    pub previous_digest: String,
+    /// Momento de la ejecución, para poder ordenarlas antes de encadenar.
+    pub timestamp: String,
     /// Cada comprobación con su veredicto. `None` = no se pudo comprobar, que
     /// no es lo mismo que fallar.
     pub checks: Vec<VerificationCheck>,
@@ -248,11 +385,93 @@ pub fn verify(path: impl AsRef<Path>, root: impl AsRef<Path>) -> Result<Verifica
         });
     }
 
+    checks.push(check_signature(&evidence, &recorded));
+
     let root = root.as_ref();
     checks.push(rehash_policy(&evidence, root));
     checks.push(rehash_workload(&evidence, root));
 
-    Ok(VerificationReport { path: path.display().to_string(), run_id: evidence.run_id.clone(), checks })
+    Ok(VerificationReport {
+        path: path.display().to_string(),
+        run_id: evidence.run_id.clone(),
+        digest: recorded.clone(),
+        previous_digest: evidence
+            .integrity
+            .get("previousEvidenceSha256")
+            .and_then(Value::as_str)
+            .unwrap_or_default()
+            .to_string(),
+        timestamp: evidence.timestamp.to_rfc3339(),
+        checks,
+    })
+}
+
+/// Comprueba la firma de la evidencia sobre su propia huella.
+///
+/// Sin firma no es un fallo: es una evidencia **sin verificar** por esa vía, y
+/// así se informa. Tratar la ausencia como aprobado sería exactamente lo que
+/// este proyecto no hace.
+fn check_signature(evidence: &Evidence, digest: &str) -> VerificationCheck {
+    let name = "firma".to_string();
+    let Some(block) = evidence.integrity.get("signature") else {
+        let reason = evidence
+            .integrity
+            .get("signatureUnavailable")
+            .and_then(Value::as_str)
+            .map(|value| format!("no se pudo firmar: {value}"))
+            .unwrap_or_else(|| "la evidencia no viene firmada".to_string());
+        return VerificationCheck { name, passed: None, detail: reason };
+    };
+    let field = |key: &str| block.get(key).and_then(Value::as_str).unwrap_or_default().to_string();
+    if field("algorithm") != crate::signing::ALGORITHM {
+        return VerificationCheck {
+            name,
+            passed: None,
+            detail: format!("algoritmo desconocido: «{}»", field("algorithm")),
+        };
+    }
+    match crate::signing::verify(&field("publicKey"), &field("value"), digest.as_bytes()) {
+        Ok(()) => {
+            VerificationCheck { name, passed: Some(true), detail: format!("válida · clave {}", field("fingerprint")) }
+        }
+        Err(reason) => VerificationCheck { name, passed: Some(false), detail: reason },
+    }
+}
+
+/// Comprueba que las evidencias de un directorio formen una cadena sin huecos.
+///
+/// Cada una guarda la huella de la anterior. Si falta una del medio, la
+/// siguiente apunta a algo que ya no está y se nota. Una firma por sí sola no
+/// ve eso: las que quedan siguen siendo válidas.
+pub fn verify_chain(reports: &[VerificationReport]) -> Vec<VerificationCheck> {
+    let mut checks = Vec::new();
+    let mut previous: Option<String> = None;
+    for report in reports {
+        let expected = previous.clone().unwrap_or_default();
+        if report.previous_digest != expected {
+            checks.push(VerificationCheck {
+                name: format!("cadena en {}", report.run_id),
+                passed: Some(false),
+                detail: if report.previous_digest.is_empty() {
+                    "no encadena con la anterior: falta el enlace".into()
+                } else {
+                    format!(
+                        "apunta a una evidencia que no está aquí ({})",
+                        &report.previous_digest[..16.min(report.previous_digest.len())]
+                    )
+                },
+            });
+        }
+        previous = Some(report.digest.clone());
+    }
+    if checks.is_empty() && reports.len() > 1 {
+        checks.push(VerificationCheck {
+            name: "cadena".into(),
+            passed: Some(true),
+            detail: format!("{} evidencias encadenadas sin huecos", reports.len()),
+        });
+    }
+    checks
 }
 
 fn rehash_policy(evidence: &Evidence, root: &Path) -> VerificationCheck {
@@ -317,6 +536,9 @@ mod tests {
             unsupported: vec![],
             plan: vec![],
             network_events: vec![],
+            artifacts: vec![],
+            cleanup: json!({}),
+            verdict: Verdict::Contained.into(),
         }
     }
 
@@ -355,6 +577,36 @@ mod tests {
         let mut retitled = sealed.clone();
         retitled.status = EvidenceStatus::Blocked;
         assert_ne!(retitled.digest().expect("recalcular"), recorded, "cambiar el estado tiene que romper la huella");
+    }
+
+    /// La trampa que rompió el primer intento: firmar después de sellar cambia
+    /// el documento, y entonces su huella ya no lo describe.
+    #[test]
+    fn what_is_derived_from_the_digest_stays_out_of_it() {
+        let mut sealed = evidence();
+        sealed.seal().expect("sellar");
+        let recorded = sealed.integrity["evidenceSha256"].as_str().expect("huella").to_string();
+
+        let mut signed = sealed.clone();
+        signed.integrity["signature"] = json!({"algorithm": "ed25519", "value": "loquesea"});
+        assert_eq!(signed.digest().expect("recalcular"), recorded, "la firma no puede entrar en su propia huella");
+
+        let mut excused = sealed.clone();
+        excused.integrity["signatureUnavailable"] = json!("no había clave");
+        assert_eq!(excused.digest().expect("recalcular"), recorded);
+    }
+
+    /// La cadena sí entra: forma parte de lo que la huella cubre, porque si no
+    /// se podría reescribir el enlace sin que se notara.
+    #[test]
+    fn the_link_to_the_previous_evidence_is_covered_by_the_digest() {
+        let mut sealed = evidence();
+        sealed.seal().expect("sellar");
+        let recorded = sealed.digest().expect("huella");
+
+        let mut relinked = sealed.clone();
+        relinked.integrity["previousEvidenceSha256"] = json!("otra cosa");
+        assert_ne!(relinked.digest().expect("recalcular"), recorded);
     }
 
     #[test]

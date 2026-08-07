@@ -115,6 +115,37 @@
         "evidenceSha256": {
           "description": "SHA-256 del propio contenido de la evidencia, calculado con este campo vacío. Detecta alteración accidental; no es una firma.",
           "type": "string"
+        },
+        "previousEvidenceSha256": {
+          "description": "Huella de la evidencia anterior de este directorio. Encadenarlas detecta lo que una firma no ve: que alguien BORRE un informe.",
+          "type": "string"
+        },
+        "signature": {
+          "description": "Firma Ed25519 sobre la huella. Detecta que alguien rehiciera el documento recalculando su SHA-256. No es una notarización: la clave la guarda la misma máquina que ejecuta.",
+          "type": "object",
+          "required": [
+            "algorithm",
+            "publicKey",
+            "value"
+          ],
+          "properties": {
+            "algorithm": {
+              "const": "ed25519"
+            },
+            "publicKey": {
+              "type": "string"
+            },
+            "fingerprint": {
+              "type": "string"
+            },
+            "value": {
+              "type": "string"
+            }
+          }
+        },
+        "signatureUnavailable": {
+          "description": "Por qué no se pudo firmar. Una evidencia sin firma que no dice el motivo se confunde con una que nadie quiso firmar.",
+          "type": "string"
         }
       }
     },
@@ -330,6 +361,44 @@
           }
         }
       }
+    },
+    "artifacts": {
+      "description": "Ficheros que produjo la ejecución, con su hash.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "path",
+          "bytes",
+          "sha256"
+        ],
+        "properties": {
+          "path": {
+            "type": "string"
+          },
+          "bytes": {
+            "type": "integer"
+          },
+          "sha256": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "cleanup": {
+      "description": "Qué se retiró al terminar.",
+      "type": "object"
+    },
+    "verdict": {
+      "description": "¿Se puede confiar en esta ejecución? No es lo mismo que si terminó bien: perder un control pedido no es un aprobado aunque el código de salida sea 0.",
+      "enum": [
+        "contained",
+        "controls-missing",
+        "timeout",
+        "failed",
+        "not-executed",
+        ""
+      ]
     }
   }
 }

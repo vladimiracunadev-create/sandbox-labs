@@ -105,6 +105,12 @@ pub struct ExecutionOutcome {
     /// cuando la política no monta canal.
     #[serde(default)]
     pub network_events: Vec<crate::ConnectionRecord>,
+    /// Ficheros que la carga dejó en su directorio de salida.
+    #[serde(default)]
+    pub artifacts: Vec<crate::evidence::Artifact>,
+    /// Qué retiró el teardown.
+    #[serde(default)]
+    pub cleanup: serde_json::Value,
 }
 
 impl RuntimeKind {

@@ -91,6 +91,8 @@ pub fn run(spec: CommandSpec, policy: &Policy) -> Result<ExecutionOutcome> {
         effective_limits: spec.effective_limits,
         observed,
         network_events: Vec::new(),
+        artifacts: Vec::new(),
+        cleanup: serde_json::json!({}),
     })
 }
 

@@ -20,6 +20,13 @@ seccompiler = "0.5"
 # Solo para `dup2` al pasar el descriptor del filtro a bubblewrap: no hay API
 # segura en std para heredar un descriptor concreto.
 libc = "0.2"
+# Firma Ed25519 de la evidencia. Rust puro, sin OpenSSL ni bibliotecas del
+# sistema. Es la implementación de referencia del ecosistema y la que usan
+# Solana, Substrate y `ssh-agent` en Rust.
+ed25519-dalek = { version = "2.1", default-features = false, features = ["std", "fast"] }
+# Solo para generar los 32 bytes de la clave desde el CSPRNG del sistema. Se usa
+# `getrandom` y no `rand` porque es lo único que hace falta y ya está en el árbol.
+getrandom = "0.4"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 sha2 = "0.11"

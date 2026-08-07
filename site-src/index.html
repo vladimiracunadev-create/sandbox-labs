@@ -106,8 +106,10 @@
     <b>Nada de esto se declara por estar escrito aquí.</b> Los límites de recursos se comprueban
     levantando un scope de systemd real antes de la primera ejecución; si el kernel no los acepta,
     el control no aparece en la evidencia y una política estricta que lo exija no ejecuta.
-    Y la evidencia de cada ejecución se sella con su propia huella, que
-    <code>sandboxctl evidence verify</code> recalcula.
+    Y la evidencia de cada ejecución va sellada con su huella, <b>firmada</b> con Ed25519 y
+    <b>encadenada</b> con la anterior: la huella ve que se tocó el fichero, la firma que alguien lo
+    rehizo, y la cadena que alguien borró un informe entero. <code>sandboxctl evidence verify</code>
+    lo comprueba, también en CI.
   </div>
 </section>
 

@@ -168,9 +168,21 @@ Cada ejecución escribe un informe firmado con su propia huella:
 cargo run -p sandboxctl -- evidence verify
 ```
 
-Recalcula esa huella y vuelve a hashear la política y la carga. Distingue que
-alguien editara el informe de que el código haya cambiado desde entonces, que no
-es lo mismo. También corre en CI.
+Comprueba cuatro cosas, y cada una ve lo que la anterior no:
+
+| Mecanismo | Detecta |
+|---|---|
+| huella SHA-256 | el fichero se tocó |
+| firma Ed25519 | alguien lo **rehízo** recalculando la huella |
+| cadena entre evidencias | alguien **borró** un informe entero |
+| rehash de política y carga | el código cambió desde aquella ejecución |
+
+Lo último no es corrupción: es un informe viejo diciendo con razón que ya no
+describe el código de hoy. También corre en CI.
+
+> **La firma no es una notarización.** La clave la guarda la misma máquina que
+> ejecuta, así que prueba que el informe no cambió tras escribirse — no que la
+> ejecución ocurriera. Para eso haría falta una clave que el operador no controle.
 
 ---
 

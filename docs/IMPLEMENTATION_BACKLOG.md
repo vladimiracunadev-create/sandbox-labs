@@ -355,40 +355,54 @@ efectivos lo dice.
 
 | | |
 |---|---|
-| **Estado** | 🟡 Verificable; sin firmar |
+| **Estado** | ✅ Cerrado |
 
 La evidencia lleva `schemaVersion`, los hashes de política, carga y binario, la
-partición de controles solicitados/efectivos/no soportados, y ahora los límites
-en tres bloques: pedido, aplicado y consumido.
+partición de controles, los límites en tres bloques —pedido, aplicado y
+consumido— y los intentos de salida.
 
-**Cerrado:** cada evidencia se sella con `integrity.evidenceSha256`, un SHA-256
-de su propio contenido calculado con ese campo vacío. `sandboxctl evidence
-verify` lo recalcula y además vuelve a hashear la política y la carga que la
-evidencia dice haber ejecutado. Comprobado contra manipulación real:
+**Cuatro cosas cerradas, cada una porque la anterior no bastaba:**
+
+| Mecanismo | Qué detecta que el anterior no |
+|---|---|
+| `evidenceSha256` | El fichero se tocó |
+| **Firma Ed25519** | Alguien lo **rehizo** recalculando la huella |
+| **`previousEvidenceSha256`** | Alguien **borró** un informe entero |
+| **`verdict`, `artifacts`, `cleanup`** | Qué significó la ejecución, qué produjo y qué dejó |
+
+Comprobado contra manipulación real:
 
 ```text
-tal cual                          → ✅ exit 0
-status Planned → Completed        → ✗ huella propia, exit 1
-effectiveControls con uno de más  → ✗ huella propia, exit 1
-la carga cambia en el repositorio → ✗ carga sin cambios, exit 1
+tal cual                                → ✅ exit 0, 3 evidencias encadenadas
+rehacer el JSON y recalcular su SHA-256 → ✗ firma: la firma no corresponde
+borrar una evidencia del medio          → ✗ cadena: apunta a una que no está
 ```
 
-El último caso distingue lo que importa: la huella sigue bien —nadie tocó el
-informe— pero el código que describe ya no es el que hay. Un informe de hace
-tres semanas tiene que poder contar eso.
+El segundo caso es el que la huella sola no veía: quien puede editar el fichero
+puede recalcular el SHA-256 y dejarlo coherente.
 
-Corre como paso de CI, así que una evidencia que no se verifique tumba el build.
+**El veredicto no es el código de salida.** Una carga que termina con 0 después
+de haber perdido un control que la política pedía sale como `controls-missing`.
+El resultado puede ser correcto y no significar nada, porque se obtuvo sin la
+frontera que se creía puesta.
 
-**Lo que queda:**
+**Lo que la firma NO es, dicho entero.** La clave la genera y la guarda la misma
+máquina que ejecuta. Quien tenga acceso al equipo la tiene, y con ella puede
+firmar lo que quiera. **No es una notarización**: no prueba a un tercero que la
+ejecución ocurrió, prueba que el informe no cambió después de escribirse sin
+pasar por la clave. Para lo primero haría falta firmar con algo que el operador
+no controle —un runner de CI con clave efímera, un servicio de sellado— y eso es
+otro problema con otro modelo de amenazas.
 
-- **No es una firma.** Quien pueda editar el fichero puede recalcular la huella.
-  Detecta alteración accidental o descuidada —un campo tocado a mano, una copia
-  truncada, un informe recortado antes de adjuntarlo—, que es el caso que se da
-  en la práctica. Una firma Ed25519 con clave local sigue pendiente.
-- **Sin encadenado entre eventos ni manifiesto de artefactos.** Los campos
-  `violations`, y los eventos de filesystem, red y seguridad, todavía no se
-  rellenan en las ejecuciones normales: solo la suite de contención observa y
-  reporta. Faltan también el bloque `cleanup` y un `verdict` explícito.
+**Detalle de implementación que costó un intento:** lo que se deriva de la
+huella queda fuera de ella. La firma se calcula sobre la huella, así que
+incluirla sería morderse la cola; y añadirla después de sellar deja el documento
+con una huella que ya no lo describe. La cadena sí entra, porque si no se podría
+reescribir el enlace sin que se notara.
+
+**Lo que queda:** los campos `violations` y los eventos de filesystem y
+seguridad siguen sin rellenarse en las ejecuciones normales — solo la suite de
+contención observa y reporta.
 
 ---
 

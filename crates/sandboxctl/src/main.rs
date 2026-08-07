@@ -315,14 +315,16 @@ fn run(
     let policy_hash = Policy::hash(&policy_file)?;
     let workload_hash = workload.hash()?;
     let catalog = Catalog::load(root.join("sandbox.config.json"))?;
-    let evidence_dir = root.join(catalog.project.evidence_directory);
+    let evidence_dir = root.join(&catalog.project.evidence_directory);
+    // La clave de firma vive en el directorio de datos, fuera del repositorio.
+    let data_root = root.join(&catalog.project.data_directory);
     let evidence = if plan.runtime == RuntimeKind::DryRun || !plan.executable {
         Evidence::planned(&plan, &policy, &policy_hash, &workload, &workload_hash)
     } else {
         let outcome = sandbox_runtimes::execute(&plan, &policy, &workload, args)?;
         Evidence::executed(&plan, &policy, &policy_hash, &workload, &workload_hash, &outcome)
     };
-    let path = evidence.write(evidence_dir)?;
+    let path = evidence.write(evidence_dir, Some(&data_root))?;
     if json_output {
         println!("{}", serde_json::to_string_pretty(&evidence)?);
     } else {
@@ -396,9 +398,13 @@ fn evidence_verify(root: &Path, path: Option<&Path>, json: bool) -> Result<i32> 
     for file in &files {
         reports.push(sandbox_core::evidence::verify(file, root)?);
     }
+    // La cadena se comprueba sobre el conjunto ordenado por momento de
+    // ejecución: es una propiedad de la serie, no de un informe suelto.
+    reports.sort_by(|a, b| a.timestamp.cmp(&b.timestamp));
+    let chain = if path.is_none() { sandbox_core::evidence::verify_chain(&reports) } else { Vec::new() };
 
     if json {
-        println!("{}", serde_json::to_string_pretty(&reports)?);
+        println!("{}", serde_json::to_string_pretty(&serde_json::json!({"evidences": reports, "chain": chain}))?);
     } else if reports.is_empty() {
         println!("No hay evidencias que comprobar en evidence/runs.");
     } else {
@@ -414,7 +420,16 @@ fn evidence_verify(root: &Path, path: Option<&Path>, json: bool) -> Result<i32> 
                 println!("{symbol} {}: {}", check.name, check.detail);
             }
         }
-        let failed = reports.iter().filter(|report| !report.passed()).count();
+        for check in &chain {
+            let symbol = match check.passed {
+                Some(true) => "✓",
+                Some(false) => "✗",
+                None => "⚠",
+            };
+            println!("{symbol} {}: {}", check.name, check.detail);
+        }
+        let failed = reports.iter().filter(|report| !report.passed()).count()
+            + chain.iter().filter(|check| check.passed == Some(false)).count();
         let unverifiable: usize = reports.iter().map(sandbox_core::evidence::VerificationReport::unverifiable).sum();
         println!(
             "\n{} evidencia(s) · {failed} con fallos · {unverifiable} comprobación(es) que no pudieron hacerse",
@@ -422,5 +437,6 @@ fn evidence_verify(root: &Path, path: Option<&Path>, json: bool) -> Result<i32> 
         );
     }
 
-    Ok(i32::from(reports.iter().any(|report| !report.passed())))
+    let broken = reports.iter().any(|report| !report.passed()) || chain.iter().any(|check| check.passed == Some(false));
+    Ok(i32::from(broken))
 }
