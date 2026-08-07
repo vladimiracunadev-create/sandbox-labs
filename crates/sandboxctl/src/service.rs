@@ -535,6 +535,65 @@ pub fn up(ctx: &ServiceContext, id: &str, wait: bool) -> Result<i32> {
     Ok(1)
 }
 
+/// Sandboxes del proyecto que siguen vivos **sin registro que los nombre**.
+///
+/// Existen porque un servicio ya no muere con el CLI que lo levantó — eso se
+/// quitó a propósito para que sobreviva a `service up`—, y el precio es que si
+/// su registro desaparece, nada del CLI vuelve a encontrarlo. Se han visto tres
+/// corriendo cuatro horas después de que su registro se borrara.
+///
+/// Hay **dos** clases, y cubrir solo una no sirve de nada:
+///
+/// - el sandbox, cuya línea de comandos monta el directorio del caso de ESTE
+///   repositorio en `/workspace/app`;
+/// - el **reenviador** del puerto, que es un proceso aparte del CLI. Se descubrió
+///   dejando solo el primero: el sandbox moría, el reenviador seguía ocupando el
+///   puerto, y el siguiente `service up` fallaba con «el puerto ya está ocupado
+///   por otro proceso» sin que nada dijera cuál.
+///
+/// En los dos casos la marca lleva la ruta de este repositorio, así que un
+/// proceso de otro proyecto no coincide.
+#[cfg(target_os = "linux")]
+fn orphans(ctx: &ServiceContext, known: &[u32]) -> Vec<(u32, String)> {
+    let repo = ctx.root.display().to_string();
+    let marker = ctx.root.join("cases").display().to_string();
+    let mut found = Vec::new();
+    let Ok(entries) = fs::read_dir("/proc") else { return found };
+    for entry in entries.flatten() {
+        let Some(pid) = entry.file_name().to_str().and_then(|name| name.parse::<u32>().ok()) else { continue };
+        if known.contains(&pid) {
+            continue;
+        }
+        let Ok(raw) = fs::read(entry.path().join("cmdline")) else { continue };
+        let cmdline = String::from_utf8_lossy(&raw).replace(char::from(0), " ");
+        // El sandbox.
+        if cmdline.contains(&marker) && cmdline.contains("/workspace/app") {
+            // El nombre del caso, para poder decir cuál es en vez de un PID.
+            let case = cmdline
+                .split_whitespace()
+                .find(|value| value.starts_with(&marker))
+                .and_then(|value| value.rsplit('/').next())
+                .unwrap_or("desconocido")
+                .to_string();
+            found.push((pid, case));
+            continue;
+        }
+        // El reenviador del puerto. Sin esto queda ocupando el puerto y el
+        // siguiente `service up` falla sin decir quién lo tiene.
+        if cmdline.contains(&repo) && cmdline.contains(" service ") && cmdline.contains(" forward ") {
+            let id = cmdline.split_whitespace().last().unwrap_or("desconocido").to_string();
+            found.push((pid, format!("reenviador de {id}")));
+        }
+    }
+    found.sort();
+    found
+}
+
+#[cfg(not(target_os = "linux"))]
+fn orphans(_ctx: &ServiceContext, _known: &[u32]) -> Vec<(u32, String)> {
+    Vec::new()
+}
+
 pub fn down(ctx: &ServiceContext, id: &str) -> Result<i32> {
     let service = ctx.find(id)?;
     let Some(record) = ServiceRecord::read(&ctx.data_root, &service.id) else {
@@ -630,10 +689,33 @@ fn kill(pid: u32) {
 }
 
 pub fn down_all(ctx: &ServiceContext) -> Result<i32> {
+    let mut known = Vec::new();
     for service in ctx.services()? {
-        if ServiceRecord::read(&ctx.data_root, &service.id).is_some() {
+        if let Some(record) = ServiceRecord::read(&ctx.data_root, &service.id) {
+            known.push(record.pid);
+            if let Some(proxy) = record.proxy_pid {
+                known.push(proxy);
+            }
             down(ctx, &service.id)?;
         }
+    }
+
+    // Y lo que sobrevivió sin registro. Bajar solo lo registrado dejaba
+    // sandboxes corriendo indefinidamente en cuanto su registro desaparecía —
+    // se encontraron tres con cuatro horas de vida—, y sin este barrido la
+    // única salida era `kill` a mano.
+    let stragglers = orphans(ctx, &known);
+    if !stragglers.is_empty() {
+        println!("\n⚠ {} sandbox(es) vivos sin registro que los nombre:", stragglers.len());
+        for (pid, case) in &stragglers {
+            println!("   · PID {pid} · {case}");
+            terminate(*pid);
+        }
+        std::thread::sleep(Duration::from_secs(2));
+        for (pid, _) in &stragglers {
+            kill(*pid);
+        }
+        println!("   detenidos.");
     }
     Ok(0)
 }

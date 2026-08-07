@@ -37,6 +37,23 @@ Versionado semántico.
   inyecta `INVOCATION_ID` por su cuenta; la cadena intercala ahora un `env -i` y
   el runtime arranca con el entorno vacío. El contrato es vaciar, no enumerar.
 
+### Fixed — sandboxes que sobrevivían sin que nada pudiera encontrarlos
+
+Encontrado porque tres del caso `03` llevaban **cuatro horas corriendo** en la
+máquina de desarrollo. Es la consecuencia no prevista de quitar
+`--die-with-parent` a los servicios: sobreviven a `service up`, que es lo que se
+quería, pero si su registro desaparece nada del CLI vuelve a verlos.
+
+- **`service down --all` barre también los huérfanos**, buscándolos por su línea
+  de comandos y nombrándolos antes de detenerlos. Cubre las **dos** clases, que
+  son procesos distintos: el sandbox y el reenviador del puerto. Cubrir solo el
+  primero dejaba el puerto ocupado y el siguiente `service up` fallaba con «ya
+  está ocupado por otro proceso» sin decir por quién — se descubrió justo así.
+- **`cleanup-test-state.mjs` se niega** si hay servicios con registro, y dice
+  cuáles y cómo bajarlos. Era él quien los borraba: el estado se limpiaba, los
+  procesos se quedaban.
+- El RUNBOOK explica el síntoma, la salida y cómo mirar sin tocar nada.
+
 ### Added — CM-02, motor de libro de órdenes con prioridad precio-tiempo
 
 - **Un mercado justo se reduce a una regla**: mejor precio primero, y a igual
