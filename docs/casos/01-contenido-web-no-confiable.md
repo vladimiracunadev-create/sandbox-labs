@@ -287,6 +287,22 @@ comprobaciones.
 **Falta para llegar a `verified`:** que cada interpretación emita evidencia
 firmada con los controles solicitados, aplicados y observados.
 
+## Si algo falla
+
+| Síntoma | Causa | Cómo se soluciona |
+|---|---|---|
+| `el intérprete no terminó en 5s y se le cortó` | El contenido hace que el parser tarde mucho. Se llama ReDoS | 1. Mirar `stats.nodes` y `stats.maxDepth` en la respuesta: dicen si el documento es desproporcionado. 2. Subir `INTERPRETER_TIMEOUT` en `app.py` si el contenido legítimo es grande. 3. Bajar `MAX_TEXT` para cortar antes |
+| `el intérprete terminó con código N` | El parser reventó con ese contenido | El servicio sigue en pie —para eso son dos procesos—. Reproducirlo con `python3 cases/01-untrusted-render/interpreter.py < fichero.html` y leer el `stderr` completo, que la respuesta trunca a 500 caracteres |
+| `contenido de más de 262144 bytes` | La entrada supera el techo del coordinador | 1. Trocear el contenido y interpretarlo por partes. 2. Subir `MAX_CONTENT` en `app.py`, sabiendo que un techo alto convierte el servicio en un blanco fácil |
+| Aparecen muchos `red-no-concedida` | El contenido trae enlaces `http(s)` que **no se resuelven**, porque el intérprete no tiene red | Si necesitas resolverlos, hazlo **fuera** del intérprete y con lista de permitidos —el proxy de salida ya existe— y vuelve a entrar solo con el resultado |
+| `python3: command not found` | En algunos sistemas el binario se llama `python` | `PYTHON=python node scripts/verify-cases.mjs`, y en `app.py` el intérprete se lanza con `sys.executable`, que ya usa el correcto |
+| Una comprobación de `verify-cases.mjs` falla tras tocar el intérprete | Una regla dejó de detectar lo que declaraba | El mensaje dice qué entrada, qué rechazo esperaba y qué obtuvo. Arreglar la regla en `interpreter.py`. **Relajar la prueba para que pase deja el caso mintiendo** |
+| Sale HTML que esperabas conservar | La etiqueta no está en `ALLOWED_TAGS`, o el atributo no está en `ALLOWED_ATTRS` | Añadirla a la lista de permitidos y **añadir una entrada en `verify-cases.mjs`** que fije qué no debe pasar con ella |
+
+Los fallos que afectan a **cualquier** caso —no se puede crear el sandbox, no hay
+cgroups, un puerto ocupado, procesos huérfanos, la compilación en Windows— están
+resueltos uno a uno en **[Cuando algo falla](../SOLUCION-DE-PROBLEMAS.md)**.
+
 ---
 
 **Ver también:** [Catálogo completo](../CATALOGO.md) · [Estado del proyecto](../ESTADO.md) · [Qué es un sandbox](../QUE-ES-UN-SANDBOX.md) · [Glosario](../GLOSARIO.md)

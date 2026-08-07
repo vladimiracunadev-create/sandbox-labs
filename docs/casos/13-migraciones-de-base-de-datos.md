@@ -153,6 +153,24 @@ alterar su propio informe.
 4. Presupuesto por tiempo y por filas tocadas.
 5. Comparación de esquema y de datos, antes y después.
 
+## Si algo falla
+
+Este caso **todavía no tiene código**. Lo que sigue son los fallos que el diseño
+tiene que resolver, y cómo va a resolverlos — escrito antes de la primera línea,
+que es cuando sirve de algo:
+
+| Situación | Causa | Cómo se resuelve |
+|---|---|---|
+| La migración excede el presupuesto y hace rollback | Toca más filas o tarda más de lo permitido | Es el resultado útil: ahora sabes cuánto tarda **antes** de la ventana de mantenimiento. Subir `budget` para medir el coste real, o partir la migración |
+| `destructive-without-confirmation` | Hay un `DROP`, un `TRUNCATE` o un `DELETE` sin `WHERE` | Se para y se muestra la sentencia exacta. Si es intencionada, confirmarla explícitamente. **Quitar la comprobación deja el caso sin sentido** |
+| El rollback no restaura el estado | El snapshot se tomó mal o el motor no lo soporta | Se comprueba comparando esquema y datos contra el snapshot antes de dar el rollback por bueno. Si no coincide, se declara fallido en vez de suponerlo |
+| El `schemaDiff` sale vacío pero la migración hizo algo | Solo cambiaron datos, no el esquema | Mirar `dataDiff.rowsChanged`. Son dos comparaciones distintas a propósito |
+| La base simulada no se parece a la real | Los datos sintéticos no reproducen el volumen | Generar con la misma semilla y un volumen comparable: una migración que tarda 200 ms sobre mil filas puede tardar horas sobre diez millones |
+
+Los fallos que afectan a **cualquier** caso —no se puede crear el sandbox, no hay
+cgroups, un puerto ocupado, procesos huérfanos, la compilación en Windows— están
+resueltos uno a uno en **[Cuando algo falla](../SOLUCION-DE-PROBLEMAS.md)**.
+
 ---
 
 **Ver también:** [Catálogo completo](../CATALOGO.md) · [Caso 07 · determinismo](07-runtime-determinista-de-contratos.md) · [CM-14 · resiliencia operacional](cm-14-resiliencia-operacional.md)

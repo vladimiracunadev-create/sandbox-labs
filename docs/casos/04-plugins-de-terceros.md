@@ -199,6 +199,25 @@ en la política, se calculan a partir de lo que el usuario aprobó**.
 Depende del [proxy de salida con lista de permitidos](../POLICY_REFERENCE.md),
 que **ya está construido** y es lo que hará posible la capacidad `net:`.
 
+## Si algo falla
+
+Este caso **todavía no tiene código**. Lo que sigue son los fallos que el diseño
+tiene que resolver, y cómo va a resolverlos — para que quede escrito antes de
+escribir la primera línea:
+
+| Situación | Causa | Cómo se resuelve |
+|---|---|---|
+| El manifiesto se rechaza antes de instalarse | Pide una capacidad que no existe en el esquema | Se rechaza al validar, **antes** de llegar a la pantalla de aprobación: el usuario nunca ve una petición imposible. Corregir el manifiesto contra el esquema publicado |
+| El plugin falla al hacer algo que declaró | El usuario concedió menos de lo que pidió | El plugin corre con lo concedido y el intento queda en el acta con su capacidad y su motivo. Volver a pedir esa capacidad y explicar para qué. **La concesión no se amplía por conveniencia** |
+| El plugin intenta algo que nunca declaró | Código que hace más de lo que dice su manifiesto | No hay «permiso denegado»: la capacidad no existe dentro de la jaula. El intento se registra, y ese registro es el producto del caso |
+| La ejecución no ocurre y dice que falta un control | Una capacidad no se puede traducir a un control real en este equipo | Resolver la carencia del equipo —ver [Cuando algo falla](../SOLUCION-DE-PROBLEMAS.md)—. La alternativa, ejecutar con menos contención de la prometida, es peor que no ejecutar |
+| Un plugin funcionaba y deja de funcionar tras actualizarse | La versión nueva pide capacidades nuevas | El manifiesto va versionado: un cambio de capacidades **vuelve a pedir aprobación**, no se hereda |
+| El plugin arrastra una dependencia vulnerable | El plugin es honesto y lo que trae, no | Es uno de los seis plugins de ejemplo previstos. Se resuelve por capacidades: la dependencia tampoco tiene más de lo concedido |
+
+Los fallos que afectan a **cualquier** caso —no se puede crear el sandbox, no hay
+cgroups, un puerto ocupado, procesos huérfanos, la compilación en Windows— están
+resueltos uno a uno en **[Cuando algo falla](../SOLUCION-DE-PROBLEMAS.md)**.
+
 ---
 
 **Ver también:** [Catálogo completo](../CATALOGO.md) · [Estado del proyecto](../ESTADO.md) · [Referencia de políticas](../POLICY_REFERENCE.md)

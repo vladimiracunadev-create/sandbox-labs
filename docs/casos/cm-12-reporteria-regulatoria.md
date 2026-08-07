@@ -164,6 +164,27 @@ autoridad, y no la habrá.
 5. Ciclo de observaciones y correcciones.
 6. Detección de alteración histórica.
 
+## Si algo falla
+
+Este caso **todavía no tiene código**. Lo que sigue son los fallos que el diseño
+tiene que resolver, y cómo va a resolverlos:
+
+| Situación | Causa | Cómo se resuelve |
+|---|---|---|
+| El reporte no se genera | Los totales no cuadran entre secciones | Es correcto: un reporte descuadrado no se envía. La validación cruzada dice qué dos secciones no coinciden, y ahí está el problema real |
+| Un dato ya enviado necesita corregirse | Ocurre y es legítimo | Se emite una **versión nueva** que apunta a la anterior por `previousSha256`. Corregir sobrescribiendo es alteración histórica, y eso sí es un problema |
+| La cadena de versiones no verifica | Alguien modificó una versión anterior | El enlace roto lo delata. Es el mismo mecanismo que la [evidencia del proyecto](../EVIDENCE_FORMAT.md) |
+| El esquema del reporte cambió | Los formatos regulatorios cambian | Los esquemas llevan **fecha de vigencia**: lo que se envió con el esquema viejo se conserva tal cual, no se reescribe |
+| Se esperaba un envío real | No lo hay | El envío es simulado. No hay conectividad de producción con ninguna autoridad, y no la habrá |
+
+Los fallos que afectan a **cualquier** caso —la compilación, el catálogo, la
+evidencia— están resueltos uno a uno en
+**[Cuando algo falla](../SOLUCION-DE-PROBLEMAS.md)**.
+
+Esta familia **no necesita aislamiento del sistema**: no ejecuta código ajeno,
+sino reglas de negocio deterministas. Por eso casi ningún fallo suyo viene del
+entorno, y casi todos vienen de los datos.
+
 ---
 
 **Ver también:** [Catálogo completo](../CATALOGO.md) · [Formato de evidencia](../EVIDENCE_FORMAT.md) · [CM-03 · custodia](cm-03-custodia-y-segregacion-de-activos.md)

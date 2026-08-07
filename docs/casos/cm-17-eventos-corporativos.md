@@ -156,6 +156,27 @@ sandboxctl markets corporate-action --event ca-2026-05
 6. Conciliación con [CM-03](cm-03-custodia-y-segregacion-de-activos.md) tras cada
    evento.
 
+## Si algo falla
+
+Este caso **todavía no tiene código**. Lo que sigue son los fallos que el diseño
+tiene que resolver, y cómo va a resolverlos:
+
+| Situación | Causa | Cómo se resuelve |
+|---|---|---|
+| Tras un split los tenedores tienen más o menos valor | El evento se aplicó mal | `totalValueChanged` tiene que ser `false`: un split no hace más rico a nadie. Si cambia, el cálculo está mal |
+| Quedan fracciones de unidad | Un split 3:2 sobre 5 unidades da 7,5 | Se compensa en efectivo con la regla publicada (`fractionPolicy`). Media unidad no existe y redondear en silencio genera descuadres |
+| El dividendo fue a quien no correspondía | Se usó la fecha equivocada | Cuenta quién tenía el instrumento en la **fecha de registro**, no quien lo tiene el día del pago. Es el error más común del caso |
+| El evento se aplicó a la mitad de las posiciones | Se rompió la atomicidad | O a todos o a ninguno, con reversa si algo falla a mitad. Después se concilia contra [CM-03](cm-03-custodia-y-segregacion-de-activos.md) |
+| Las series históricas dejan de ser comparables | Faltan los precios ajustados | Se recalculan hacia atrás con el factor del evento, conservando también los originales |
+
+Los fallos que afectan a **cualquier** caso —la compilación, el catálogo, la
+evidencia— están resueltos uno a uno en
+**[Cuando algo falla](../SOLUCION-DE-PROBLEMAS.md)**.
+
+Esta familia **no necesita aislamiento del sistema**: no ejecuta código ajeno,
+sino reglas de negocio deterministas. Por eso casi ningún fallo suyo viene del
+entorno, y casi todos vienen de los datos.
+
 ---
 
 **Ver también:** [Catálogo completo](../CATALOGO.md) · [CM-03 · custodia](cm-03-custodia-y-segregacion-de-activos.md) · [CM-16 · datos de mercado](cm-16-integridad-de-datos-de-mercado.md)

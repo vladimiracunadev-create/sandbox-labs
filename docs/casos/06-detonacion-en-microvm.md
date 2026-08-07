@@ -140,6 +140,24 @@ tomar.
 4. Red simulada que registre las conexiones sin dejarlas salir.
 5. Muestras sintéticas con comportamiento documentado.
 
+## Si algo falla
+
+Este caso **todavía no tiene código**. Lo que sigue son los fallos que el diseño
+tiene que resolver, y cómo va a resolverlos — escrito antes de la primera línea,
+que es cuando sirve de algo:
+
+| Situación | Causa | Cómo se resuelve |
+|---|---|---|
+| `/dev/kvm` no existe | Sin virtualización por hardware no hay microVM | 1. En WSL2, activar la virtualización anidada en `.wslconfig` (`nestedVirtualization=true`). 2. Comprobar que el BIOS tiene VT-x o AMD-V. 3. Si aun así no aparece, el caso **no se ejecuta aquí** y `doctor` lo dice en vez de fingir |
+| La VM no arranca | Kernel o rootfs mal construidos | El kernel y el rootfs se generan de forma reproducible y se verifican por checksum antes de arrancar. Si el checksum no coincide, no se arranca |
+| La muestra no hace nada observable | Detecta que está en un entorno de análisis, o necesita más tiempo | 1. Subir el techo de tiempo. 2. Es un resultado en sí mismo: «la muestra no actuó» se anota en la línea de tiempo, no se oculta |
+| La VM no se destruye | Un fallo del supervisor deja la máquina viva | La destrucción va en el camino de salida pase lo que pase, y hay un barrido equivalente al de `service down --all`. Una VM huérfana con una muestra dentro es el peor fallo posible de este caso |
+| El colector no recoge nada | Vive fuera de la VM a propósito, y perdió la conexión | Los eventos se escriben a un canal persistente, no a memoria: lo recogido antes de la desconexión se conserva |
+
+Los fallos que afectan a **cualquier** caso —no se puede crear el sandbox, no hay
+cgroups, un puerto ocupado, procesos huérfanos, la compilación en Windows— están
+resueltos uno a uno en **[Cuando algo falla](../SOLUCION-DE-PROBLEMAS.md)**.
+
 ---
 
 **Ver también:** [Catálogo completo](../CATALOGO.md) · [Comparativa de fronteras](../COMPARATIVA.md) · [Caso 03](03-procesamiento-seguro-de-archivos.md)

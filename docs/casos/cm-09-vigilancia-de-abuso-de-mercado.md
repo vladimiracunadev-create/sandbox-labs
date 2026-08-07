@@ -149,6 +149,27 @@ sandboxctl markets surveil --session sesion.jsonl
 5. Escenarios sintéticos con el patrón conocido de antemano, para poder medir
    falsos positivos y falsos negativos.
 
+## Si algo falla
+
+Este caso **todavía no tiene código**. Lo que sigue son los fallos que el diseño
+tiene que resolver, y cómo va a resolverlos:
+
+| Situación | Causa | Cómo se resuelve |
+|---|---|---|
+| Demasiadas alertas | Los umbrales están mal calibrados | Se ajustan con escenarios **etiquetados**: se sabe de antemano cuáles son abuso y cuáles no, así que se puede medir falsos positivos en vez de adivinar |
+| Una alerta no se puede investigar | Falta la reconstrucción del libro | Es requisito previo, y hoy [CM-02](cm-02-sistema-alternativo-de-transaccion.md) todavía no la tiene. Sin saber qué se veía en cada instante no se distingue una cancelación de mala fe de una legítima |
+| Un patrón conocido no se detecta | El detector tiene un hueco | El escenario etiquetado lo demuestra. Se corrige el detector y el escenario queda como prueba de regresión |
+| Cuentas relacionadas no se agrupan | El grafo de relación se quedó corto | Se relacionan por patrón temporal y contraparte recurrente, no solo por titular: coordinarse a través de titulares distintos es justamente el objetivo |
+| Una medida se toma sin expediente | Fallo de proceso | Ninguna medida sin expediente: alerta, análisis, reconstrucción, clasificación e investigación. El expediente es append-only |
+
+Los fallos que afectan a **cualquier** caso —la compilación, el catálogo, la
+evidencia— están resueltos uno a uno en
+**[Cuando algo falla](../SOLUCION-DE-PROBLEMAS.md)**.
+
+Esta familia **no necesita aislamiento del sistema**: no ejecuta código ajeno,
+sino reglas de negocio deterministas. Por eso casi ningún fallo suyo viene del
+entorno, y casi todos vienen de los datos.
+
 ---
 
 **Ver también:** [Catálogo completo](../CATALOGO.md) · [CM-02 · libro de órdenes](cm-02-sistema-alternativo-de-transaccion.md) · [CM-05 · intermediación](cm-05-intermediacion-financiera.md)

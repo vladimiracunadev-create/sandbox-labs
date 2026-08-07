@@ -158,6 +158,25 @@ libro nunca cruzado, ejecución parcial, cancelación y rechazo con motivo.
 Esa última es la que convierte el caso en auditable, y es la que decide el salto
 a `functional`.
 
+## Si algo falla
+
+| Situación | Causa | Cómo se resuelve |
+|---|---|---|
+| `bookCrossed: true` | Quedó una compra por encima de una venta sin casar | **Es un fallo del motor**, no del mercado. El invariante se comprueba tras cada orden precisamente para que salte aquí y no en producción |
+| Una ejecución sale al precio de la orden entrante | Se aplicó el precio equivocado | El precio lo fija **la orden que descansa**. Aplicar el de la entrante mueve dinero de forma sistemática hacia un lado. Es uno de los 11 invariantes |
+| Dos órdenes al mismo precio se ejecutan en orden distinto al de llegada | Se perdió la prioridad temporal | El tiempo es un **número de secuencia**, no el reloj del sistema: el reloj haría que la prioridad dependiera de la máquina |
+| Una orden cancelada se ejecuta | Condición de carrera entre cancelación y casación | Cancelar tiene que ser efectivo antes de procesar la siguiente orden. Si ocurre, el motor está mal |
+| No se puede reconstruir la sesión | **La reconstrucción todavía no está construida** | Es lo que separa este caso de `functional`, y es requisito previo de [CM-09](cm-09-vigilancia-de-abuso-de-mercado.md). Está en [ROADMAP](../../ROADMAP.md) |
+| `cargo test -p sandbox-markets` falla tras tocar el libro | Un invariante dejó de cumplirse | El nombre del test dice cuál. **Arreglar el motor, no el test**: cada invariante está ahí porque romperlo da ventaja a alguien |
+
+Los fallos que afectan a **cualquier** caso —la compilación, el catálogo, la
+evidencia— están resueltos uno a uno en
+**[Cuando algo falla](../SOLUCION-DE-PROBLEMAS.md)**.
+
+Esta familia **no necesita aislamiento del sistema**: no ejecuta código ajeno,
+sino reglas de negocio deterministas. Por eso casi ningún fallo suyo viene del
+entorno, y casi todos vienen de los datos.
+
 ---
 
 **Ver también:** [Catálogo completo](../CATALOGO.md) · [CM-09 · vigilancia](cm-09-vigilancia-de-abuso-de-mercado.md) · [CM-04 · enrutamiento](cm-04-enrutamiento-inteligente-de-ordenes.md)

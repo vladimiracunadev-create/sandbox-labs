@@ -140,6 +140,24 @@ sandboxctl analyze <binario>
 4. Red simulada que registre destinos sin dejar salir tráfico.
 5. Perfil comparable entre ejecuciones, para detectar cambios entre versiones.
 
+## Si algo falla
+
+Este caso **todavía no tiene código**. Lo que sigue son los fallos que el diseño
+tiene que resolver, y cómo va a resolverlos — escrito antes de la primera línea,
+que es cuando sirve de algo:
+
+| Situación | Causa | Cómo se resuelve |
+|---|---|---|
+| `/dev/kvm` no existe | Igual que en el [caso 06](06-detonacion-en-microvm.md): sin virtualización por hardware no hay microVM | Activar la virtualización anidada, o ejecutar el caso en una máquina Linux con KVM. `doctor` lo dice antes de intentarlo |
+| El binario no arranca dentro de la VM | Falta una biblioteca en el rootfs | `static.linkedLibraries` dice cuáles necesita. Se añaden al rootfs, que se genera de forma reproducible |
+| No se registra ninguna llamada al sistema | El trazador no arrancó, o el binario terminó antes | 1. Comprobar que el trazador está en el rootfs. 2. Un binario que termina de inmediato es un dato: aparece en `syscalls.execve` y poco más |
+| El perfil cambia entre dos ejecuciones del mismo binario | Puede ser legítimo —el binario usa el reloj o la red— o deliberado | Comparar los dos perfiles: un binario que se comporta distinto cuando cree que lo observan es exactamente lo que interesa detectar |
+| La VM no se destruye | El peor fallo posible de este caso | La destrucción va en el camino de salida pase lo que pase, y hay barrido de huérfanas |
+
+Los fallos que afectan a **cualquier** caso —no se puede crear el sandbox, no hay
+cgroups, un puerto ocupado, procesos huérfanos, la compilación en Windows— están
+resueltos uno a uno en **[Cuando algo falla](../SOLUCION-DE-PROBLEMAS.md)**.
+
 ---
 
 **Ver también:** [Catálogo completo](../CATALOGO.md) · [Caso 06 · detonación](06-detonacion-en-microvm.md) · [Caso 15 · cadena de suministro](15-instalacion-de-cadena-de-suministro.md)

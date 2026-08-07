@@ -150,6 +150,24 @@ llevó tu token» en «el `postinstall` buscó un token y no había ninguno».
 4. Detección de nombres sospechosamente parecidos.
 5. Verificación de checksums contra el fichero de bloqueo.
 
+## Si algo falla
+
+Este caso **todavía no tiene código**. Lo que sigue son los fallos que el diseño
+tiene que resolver, y cómo va a resolverlos — escrito antes de la primera línea,
+que es cuando sirve de algo:
+
+| Situación | Causa | Cómo se resuelve |
+|---|---|---|
+| Un `postinstall` falla porque no encuentra una variable | El entorno está vacío | **Ese es el hallazgo**: aparece en `environmentReads` con `outcome: entorno vacío`. Si la variable es legítima, se declara una a una en la política, nunca heredando el entorno entero |
+| La instalación falla por falta de red | La lista de permitidos no incluye el registro | Añadir el registro concreto. Todo lo demás queda registrado como intento bloqueado, que es el dato del caso |
+| `checksumMismatches` no está vacío | Lo descargado no coincide con el fichero de bloqueo | **No se instala.** Puede ser una caché sucia o un paquete alterado bajo la misma versión. Investigar antes de regenerar el bloqueo |
+| Un paquete legítimo sale como typosquatting | La detección por parecido de nombres tiene falsos positivos | Es una señal, no un veredicto: se revisa a mano. La lista de sospechosos incluye la distancia y el nombre parecido para poder juzgar |
+| El árbol de dependencias sale más pequeño de lo esperado | La resolución usó una caché | Instalar en limpio para ver el árbol completo, incluidas las transitivas |
+
+Los fallos que afectan a **cualquier** caso —no se puede crear el sandbox, no hay
+cgroups, un puerto ocupado, procesos huérfanos, la compilación en Windows— están
+resueltos uno a uno en **[Cuando algo falla](../SOLUCION-DE-PROBLEMAS.md)**.
+
 ---
 
 **Ver también:** [Catálogo completo](../CATALOGO.md) · [Caso 10 · construcción de paquetes](10-construccion-de-paquetes.md) · [Caso 09 · CI](09-runner-de-ci-con-pull-request-externo.md)

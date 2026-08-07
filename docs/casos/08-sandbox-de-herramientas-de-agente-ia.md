@@ -148,6 +148,24 @@ sandboxctl agent run <tarea>
 4. Correo y base de datos simulados.
 5. Un conjunto de contenidos con inyecciones, para probar que no funcionan.
 
+## Si algo falla
+
+Este caso **todavía no tiene código**. Lo que sigue son los fallos que el diseño
+tiene que resolver, y cómo va a resolverlos — escrito antes de la primera línea,
+que es cuando sirve de algo:
+
+| Situación | Causa | Cómo se resuelve |
+|---|---|---|
+| El agente intenta ampliarse los permisos | Casi siempre porque lo leyó en un contenido externo | La herramienta que concede permisos **no está a su alcance**: el mediador vive fuera del proceso del agente. El intento se registra junto con la fuente que lo provocó, para poder rastrear de dónde vino la orden |
+| El agente se queda esperando | Una acción requiere aprobación humana | Es el diseño. Las acciones con efecto —enviar, publicar, pagar— no se automatizan. Si bloquea un flujo, la solución es decidir qué acciones lo necesitan, no quitar la aprobación |
+| Una herramienta devuelve datos de fuera de su alcance | Un fallo de la herramienta, no del agente | Cada herramienta se prueba por separado con su alcance declarado. Si devuelve de más, el fallo es suyo y se corrige ahí |
+| El agente no puede leer algo que necesita | La concesión no lo incluye | Ampliar la concesión **explícitamente**, revisando por qué lo necesita. Ampliar «para que funcione» es cómo se pierden estos sistemas |
+| Un contenido con inyección pasa la prueba | El conjunto de contenidos hostiles se quedó corto | Se añade ese contenido al conjunto. La medida del caso no es «no ha pasado nada», es «esto es lo que se ha intentado y esto es lo que se impidió» |
+
+Los fallos que afectan a **cualquier** caso —no se puede crear el sandbox, no hay
+cgroups, un puerto ocupado, procesos huérfanos, la compilación en Windows— están
+resueltos uno a uno en **[Cuando algo falla](../SOLUCION-DE-PROBLEMAS.md)**.
+
 ---
 
 **Ver también:** [Catálogo completo](../CATALOGO.md) · [Caso 04 · capacidades](04-plugins-de-terceros.md) · [Modelo de amenazas](../THREAT_MODEL.md)

@@ -32,26 +32,40 @@ flowchart LR
 
 ## La definición
 
-> Un **sandbox** es decidir de antemano qué puede tocar un programa, y hacerlo
-> cumplir desde fuera de ese programa.
+> Un **sandbox** es un entorno que le entrega a un programa **una porción
+> declarada del sistema** —unas carpetas, quizá algo de red, un techo de memoria
+> y de CPU— para que haga trabajo real dentro de ella, y donde el resto del
+> sistema **no existe**.
 
-Lo importante es **cómo** se hace cumplir. No es un aviso de permisos que el
-programa pueda esquivar ni una promesa de buena conducta: desde dentro del
-sandbox, lo que no le concediste **no existe**.
+Las dos mitades importan, y la primera se olvida siempre:
 
-Si pide `~/.ssh/id_rsa`, no recibe «acceso denegado». Recibe **«ese archivo no
-está»**. Si intenta conectarse, no hay red que usar — no una red bloqueada: no
-hay pila de red.
+- **Se concede.** Un sandbox **no es una pared**: es un espacio de trabajo. Se le
+  da al programa lo que necesita para hacer su tarea de verdad —leer esta
+  carpeta, escribir en esta otra, hablar con este servidor— y con eso funciona
+  igual que fuera. Un sandbox donde no se puede hacer nada no sirve para nada.
+- **Lo demás no existe.** Todo lo que no se concedió, desde dentro, no está.
+
+Lo importante es **cómo** se hace cumplir la segunda mitad. No es un aviso de
+permisos que el programa pueda esquivar ni una promesa de buena conducta: si pide
+`~/.ssh/id_rsa`, no recibe «acceso denegado». Recibe **«ese archivo no está»**. Si
+intenta conectarse, no hay red que usar — no una red bloqueada: no hay pila de
+red.
 
 ```mermaid
 flowchart LR
-  subgraph J["🔒 La jaula"]
-    P["📦 El mismo programa"] --> W["📁 Una carpeta"]
+  subgraph J["🔒 El sandbox: la porción concedida"]
+    P["📦 El mismo programa"]
+    P --> W["📁 Su carpeta de trabajo"]
+    P --> N["🌐 Los destinos permitidos"]
+    P --> R["📊 Su memoria y su CPU"]
   end
-  P -.->|no existe| B["🌐 Internet"]
+  P -.->|no existe| B["🗄️ El resto del disco"]
   P -.->|no existe| C["🔑 Tus claves"]
   P -.->|no existe| D["⚙️ Tus procesos"]
 ```
+
+Por eso la pregunta útil no es «¿está aislado?», que se responde sí o no y no
+sirve de nada. Es **«¿qué porción del sistema le he dado, y qué hace con ella?»**
 
 ### La analogía
 
@@ -122,6 +136,57 @@ en las competiciones de seguridad. Si fuera fácil, no valdría tanto.
 
 ---
 
+## En qué se parece a una API o a un MCP, y en qué no
+
+Es la comparación más útil que se puede hacer, porque los tres responden a la
+misma idea: **dar acceso a una parte del sistema y no al resto**. Pero el
+mecanismo es distinto, y la diferencia decide cuándo sirve cada uno.
+
+| | Qué es la frontera | Quién la hace cumplir | Qué pasa si el programa no colabora |
+|---|---|---|---|
+| **API** | Un conjunto de operaciones ofrecidas. El programa solo puede pedir lo que la API expone | El servicio que la publica | Nada: el programa **sigue teniendo todo lo demás del sistema**. La API solo limita lo que pide *a ese servicio* |
+| **MCP** | Un conjunto de herramientas declaradas para un modelo | El servidor de herramientas | Igual: el modelo no puede usar otras herramientas, pero el proceso que lo ejecuta conserva sus permisos |
+| **Sandbox** | Una porción del sistema operativo: ficheros, red, procesos, memoria | **El kernel** | El programa puede intentar cualquier cosa, y **el kernel se la niega**. No depende de su colaboración |
+
+### La diferencia que importa
+
+Una API y un MCP son fronteras con las que el programa **colabora**. Funcionan
+porque el programa decide pedir las cosas por ahí.
+
+Un sandbox funciona **sobre un programa que no colabora**: uno que llama
+directamente a `open("/home/tú/.ssh/id_rsa")` sin pasar por ninguna API. No hay
+nada que le impida hacer esa llamada; lo que hay es un kernel que responde que
+ese fichero no existe.
+
+De ahí la regla práctica:
+
+> Si puedes confiar en que el código use solo tu API, **no necesitas un
+> sandbox**. Si no puedes confiar en eso —porque el código es ajeno, generado o
+> simplemente desconocido—, la API no te protege de nada.
+
+### Y se combinan, que es lo habitual
+
+No compiten. Un agente de IA real usa los tres a la vez:
+
+```mermaid
+flowchart LR
+  M["🤖 Modelo"] -->|"herramientas declaradas"| MCP["🔌 Servidor MCP"]
+  MCP -->|"operaciones expuestas"| API["🌐 API del servicio"]
+  MCP --> S
+  subgraph S["🔒 Sandbox"]
+    T["⚙️ La herramienta que ejecuta código"]
+  end
+  S -.->|no existe| H["🔑 El resto de tu equipo"]
+```
+
+El MCP decide **qué herramientas** hay. La API decide **qué operaciones** ofrece
+cada servicio. El sandbox decide **qué puede tocar del sistema** la herramienta
+que de verdad ejecuta algo — y es el único de los tres que sigue en pie si la
+herramienta hace algo que nadie previó. Eso es exactamente el
+[caso 08](casos/08-sandbox-de-herramientas-de-agente-ia.md).
+
+---
+
 ## Lo que un sandbox NO es
 
 - **No es un antivirus.** No busca amenazas conocidas: limita lo que cualquier
@@ -141,5 +206,5 @@ en las competiciones de seguridad. Si fuera fácil, no valdría tanto.
 ## Siguiente paso
 
 - [Comparativa: sandbox, Docker, WSL y unikernel](COMPARATIVA.md) — en qué se diferencian de verdad
-- [Los cinco casos](CASOS.md) — dónde se aplica esto
+- [Catálogo completo](CATALOGO.md) — los 36 casos, con ficha propia cada uno
 - [Suite de contención](CONTAINMENT_SUITE.md) — cómo se comprueba que contiene

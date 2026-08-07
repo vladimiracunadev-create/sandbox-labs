@@ -157,6 +157,27 @@ sandboxctl markets settle --scenario comprador-sin-fondos
 5. Conciliación con [CM-03](cm-03-custodia-y-segregacion-de-activos.md) tras cada
    ciclo.
 
+## Si algo falla
+
+Este caso **todavía no tiene código**. Lo que sigue son los fallos que el diseño
+tiene que resolver, y cómo va a resolverlos:
+
+| Situación | Causa | Cómo se resuelve |
+|---|---|---|
+| `netsToZero: false` | El cálculo de compensación está mal | **No se liquida nada.** La suma de obligaciones netas tiene que ser cero; si no lo es, alguien saldría ganando o perdiendo dinero inventado |
+| Una liquidación falla y una pata se movió | Se rompió la atomicidad | Es el peor fallo del caso: alguien entregó y no cobró. Las dos patas se mueven en la misma operación o no se mueve ninguna |
+| El comprador no tiene fondos | Escenario previsto | La operación falla entera, se registra, se penaliza y se reintenta. Nadie queda a medias |
+| Cae un participante | Sus obligaciones con todos quedan colgando | Se activan reservas y garantías ([CM-18](cm-18-margen-garantias-y-riesgo.md)). Es el escenario que justifica que existan |
+| Liquidación duplicada | Falta idempotencia | El libro de partida doble es idempotente por operación: repetir la misma no la aplica dos veces |
+
+Los fallos que afectan a **cualquier** caso —la compilación, el catálogo, la
+evidencia— están resueltos uno a uno en
+**[Cuando algo falla](../SOLUCION-DE-PROBLEMAS.md)**.
+
+Esta familia **no necesita aislamiento del sistema**: no ejecuta código ajeno,
+sino reglas de negocio deterministas. Por eso casi ningún fallo suyo viene del
+entorno, y casi todos vienen de los datos.
+
 ---
 
 **Ver también:** [Catálogo completo](../CATALOGO.md) · [CM-03 · custodia](cm-03-custodia-y-segregacion-de-activos.md) · [CM-18 · margen y garantías](cm-18-margen-garantias-y-riesgo.md)

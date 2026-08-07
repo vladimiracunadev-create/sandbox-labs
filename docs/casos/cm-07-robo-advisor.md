@@ -135,6 +135,27 @@ sandboxctl markets advise --client perfil.json --seed 42
 4. Medición del sesgo hacia productos propios.
 5. Historial inmutable que permita reconstruir cualquier recomendación pasada.
 
+## Si algo falla
+
+Este caso **todavía no tiene código**. Lo que sigue son los fallos que el diseño
+tiene que resolver, y cómo va a resolverlos:
+
+| Situación | Causa | Cómo se resuelve |
+|---|---|---|
+| No se puede reconstruir una recomendación de hace dos años | Falta la versión del modelo o el perfil de aquel momento | El historial es inmutable y guarda las tres cosas: versión, datos y razonamiento. Sin las tres no se puede responder a una reclamación |
+| La cartera no encaja con el horizonte | Recomendación inadecuada | Se detecta antes de emitirla y se bloquea. El deber de idoneidad no es opcional por estar automatizado |
+| `houseProductShare` alto | El modelo favorece productos propios | Puede ser legítimo o no. Se mide siempre y se declara; lo que no se puede es no medirlo |
+| Dos ejecuciones con los mismos datos dan carteras distintas | Falta la semilla | La simulación usa semilla explícita. Sin ella no hay forma de reproducir la recomendación |
+| El perfil tiene años | Datos desactualizados | Se bloquea la recomendación y se pide reperfilar. La vida del cliente cambió aunque el sistema no se enterara |
+
+Los fallos que afectan a **cualquier** caso —la compilación, el catálogo, la
+evidencia— están resueltos uno a uno en
+**[Cuando algo falla](../SOLUCION-DE-PROBLEMAS.md)**.
+
+Esta familia **no necesita aislamiento del sistema**: no ejecuta código ajeno,
+sino reglas de negocio deterministas. Por eso casi ningún fallo suyo viene del
+entorno, y casi todos vienen de los datos.
+
 ---
 
 **Ver también:** [Catálogo completo](../CATALOGO.md) · [CM-20 · gobierno de modelos](cm-20-gobierno-de-modelos-e-ia-financiera.md) · [CM-06 · asesoría crediticia](cm-06-asesoria-crediticia.md)

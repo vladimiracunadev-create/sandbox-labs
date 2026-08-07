@@ -317,6 +317,7 @@ describe el código de hoy. También corre en CI.
 | Ver las sondas de contención | [Suite de contención](docs/CONTAINMENT_SUITE.md) |
 | Entender el vocabulario | [Glosario](docs/GLOSARIO.md) |
 | Saber qué protege y qué no | [Modelo de amenazas](docs/THREAT_MODEL.md) |
+| **Resolver un fallo** | **[Cuando algo falla](docs/SOLUCION-DE-PROBLEMAS.md)** |
 | Operarlo día a día | [Runbook](RUNBOOK.md) |
 | Ver la arquitectura | [Arquitectura](docs/ARCHITECTURE.md) |
 

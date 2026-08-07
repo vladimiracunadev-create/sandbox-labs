@@ -151,6 +151,27 @@ igual**, que es lo que permite comparar respuestas entre versiones del sistema.
 5. Conciliación posterior contra [CM-03](cm-03-custodia-y-segregacion-de-activos.md).
 6. Post mortem generado con la línea de tiempo y las dos métricas.
 
+## Si algo falla
+
+Este caso **todavía no tiene código**. Lo que sigue son los fallos que el diseño
+tiene que resolver, y cómo va a resolverlos:
+
+| Situación | Causa | Cómo se resuelve |
+|---|---|---|
+| El kill switch no se dispara | Las condiciones estaban mal definidas | Se declaran de antemano y se ensayan con incidentes inyectados. Un kill switch que nunca se ha probado no se sabe si funciona |
+| Se detiene todo cuando bastaba con degradar | Respuesta desproporcionada | Se apaga por partes, en un orden decidido antes. `keptRunning` importa tanto como `stopped` |
+| Las cancelaciones se bloquean durante el incidente | Error de diseño frecuente | **Las cancelaciones siguen vivas siempre**: impedir cancelar mientras el mercado se mueve atrapa a los clientes en sus posiciones |
+| El replay duplica operaciones | Falta idempotencia | El libro es idempotente por operación. Repetir un evento del registro no lo aplica dos veces |
+| El mismo incidente da resultados distintos | Falta la semilla o el reloj simulado | Con semilla y reloj simulado el incidente se reproduce igual, que es lo que permite comparar la respuesta entre versiones |
+
+Los fallos que afectan a **cualquier** caso —la compilación, el catálogo, la
+evidencia— están resueltos uno a uno en
+**[Cuando algo falla](../SOLUCION-DE-PROBLEMAS.md)**.
+
+Esta familia **no necesita aislamiento del sistema**: no ejecuta código ajeno,
+sino reglas de negocio deterministas. Por eso casi ningún fallo suyo viene del
+entorno, y casi todos vienen de los datos.
+
 ---
 
 **Ver también:** [Catálogo completo](../CATALOGO.md) · [CM-10 · liquidación](cm-10-compensacion-y-liquidacion.md) · [CM-16 · datos de mercado](cm-16-integridad-de-datos-de-mercado.md)

@@ -514,6 +514,7 @@ Los criterios completos para subir de `prototype` a `functional` y de
 ## Y también
 
 - **[Estado del proyecto](ESTADO.md)** — qué se construyó, qué lo demuestra y qué falta
+- **[Cuando algo falla](SOLUCION-DE-PROBLEMAS.md)** — cada fallo del proyecto, con alternativas de solución
 - [Referencia de políticas](POLICY_REFERENCE.md) — cada control y a qué mecanismo del kernel se traduce
 - [Formato de evidencia](EVIDENCE_FORMAT.md) — qué se firma y cómo se verifica
 - [Suite de contención](CONTAINMENT_SUITE.md) — las sondas que intentan escaparse

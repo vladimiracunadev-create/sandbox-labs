@@ -141,6 +141,27 @@ sandboxctl markets crowdfunding --scenario no-alcanza-minimo
 3. Devolución íntegra verificada contra el libro contable.
 4. Los seis escenarios listados arriba, cada uno con su hallazgo esperado.
 
+## Si algo falla
+
+Este caso **todavía no tiene código**. Lo que sigue son los fallos que el diseño
+tiene que resolver, y cómo va a resolverlos:
+
+| Situación | Causa | Cómo se resuelve |
+|---|---|---|
+| La devolución no cuadra al céntimo | Se usó coma flotante en algún punto, o hubo redondeo al prorratear | Todo el dinero son enteros en unidades mínimas. El resto del prorrateo se asigna con una regla publicada, no se pierde |
+| Una campaña supera el máximo | Llegó más dinero del previsto | Se aplica `allocationRule`, publicada de antemano. Asignar por orden de llegada sin decirlo es lo que genera reclamaciones |
+| Un inversionista supera su límite individual | Protección al inversionista no calificado | Se rechaza la inversión con motivo. Si el límite está mal, se cambia en la política, no en el caso |
+| La campaña cierra sin alcanzar el mínimo y queda dinero sin devolver | Falló la devolución de algún inversionista | `refundComplete: false` **es un fallo de la plataforma, no del inversionista**. Se reintenta y se concilia contra el libro hasta que cuadre |
+| El emisor deja de reportar avances | Incumplimiento post-cierre | Se generan alertas y se informa a quienes invirtieron. El caso no puede recuperar el dinero, pero sí dejar constancia de cuándo se supo |
+
+Los fallos que afectan a **cualquier** caso —la compilación, el catálogo, la
+evidencia— están resueltos uno a uno en
+**[Cuando algo falla](../SOLUCION-DE-PROBLEMAS.md)**.
+
+Esta familia **no necesita aislamiento del sistema**: no ejecuta código ajeno,
+sino reglas de negocio deterministas. Por eso casi ningún fallo suyo viene del
+entorno, y casi todos vienen de los datos.
+
 ---
 
 **Ver también:** [Catálogo completo](../CATALOGO.md) · [CM-03 · custodia](cm-03-custodia-y-segregacion-de-activos.md) · [CM-00 · entrada](cm-00-entrada-al-sandbox-regulatorio.md)

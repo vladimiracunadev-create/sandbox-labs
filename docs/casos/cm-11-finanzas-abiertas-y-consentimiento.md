@@ -150,6 +150,27 @@ milisegundos, y sin llamar a ningún sistema externo.
 5. Detección de consulta excesiva, alcance incorrecto y duplicación.
 6. Escenario de indisponibilidad: la API cae y el sistema **no finge**.
 
+## Si algo falla
+
+Este caso **todavía no tiene código**. Lo que sigue son los fallos que el diseño
+tiene que resolver, y cómo va a resolverlos:
+
+| Situación | Causa | Cómo se resuelve |
+|---|---|---|
+| Una consulta funciona después de revocar | **El fallo más grave del caso** | El consentimiento se comprueba **en cada consulta**, no solo al conceder. Si se comprueba únicamente al conceder, revocar no significa nada |
+| `ScopeViolation` | El participante pide más de lo que se le concedió | Se rechaza y se registra. No se amplía el alcance sin volver a pedírselo al usuario |
+| `ExcessiveQuerying` | Miles de consultas para un servicio que necesita unas pocas | Puede ser un fallo del participante o una recolección encubierta. Se limita y se le pide explicación |
+| La API simulada no responde | Escenario de indisponibilidad | El sistema **no finge tener datos frescos**: devuelve el fallo. Servir datos viejos como actuales es peor que no servir nada |
+| El usuario no sabe quién consultó sus datos | Falta trazabilidad | Cada consulta queda registrada y es visible **para el usuario**, no solo para auditoría interna |
+
+Los fallos que afectan a **cualquier** caso —la compilación, el catálogo, la
+evidencia— están resueltos uno a uno en
+**[Cuando algo falla](../SOLUCION-DE-PROBLEMAS.md)**.
+
+Esta familia **no necesita aislamiento del sistema**: no ejecuta código ajeno,
+sino reglas de negocio deterministas. Por eso casi ningún fallo suyo viene del
+entorno, y casi todos vienen de los datos.
+
 ---
 
 **Ver también:** [Catálogo completo](../CATALOGO.md) · [CM-19 · fraude](cm-19-fraude-y-toma-de-cuentas.md) · [Caso 08 · agentes de IA](08-sandbox-de-herramientas-de-agente-ia.md)

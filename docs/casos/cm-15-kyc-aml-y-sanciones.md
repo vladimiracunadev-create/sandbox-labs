@@ -156,6 +156,27 @@ cliente es, en sí mismo, una transferencia de datos personales.
 5. Cola de revisión humana obligatoria antes de cualquier medida.
 6. Reporte simulado, que nunca sale a ninguna autoridad.
 
+## Si algo falla
+
+Este caso **todavía no tiene código**. Lo que sigue son los fallos que el diseño
+tiene que resolver, y cómo va a resolverlos:
+
+| Situación | Causa | Cómo se resuelve |
+|---|---|---|
+| Una persona honesta queda bloqueada | Falso positivo por parecido de nombre | **Ninguna medida automática** sobre una persona: `automaticMeasureTaken: false` y revisión humana obligatoria. El coste del falso positivo es real y se mide junto al de detección |
+| No se identifica al beneficiario final | Cadena societaria con varias capas | Se resuelve recorriendo la cadena. Si no se llega a una persona, **eso es el hallazgo**, no un dato que falte |
+| Una operación no encaja con el perfil | Puede ser legítima | Se pide origen de fondos antes de escalar. Una explicación razonable cierra la alerta y queda registrada |
+| Se esperan listas de sanciones reales | No las hay | Las listas son sintéticas y viven en el repositorio. Consultar listas externas con datos de un cliente es, en sí mismo, una transferencia de datos personales |
+| Aparecen datos personales reales | Prohibido en todo el proyecto | Se retiran y se regeneran sintéticos. No se usan datos reales ni como datos de prueba |
+
+Los fallos que afectan a **cualquier** caso —la compilación, el catálogo, la
+evidencia— están resueltos uno a uno en
+**[Cuando algo falla](../SOLUCION-DE-PROBLEMAS.md)**.
+
+Esta familia **no necesita aislamiento del sistema**: no ejecuta código ajeno,
+sino reglas de negocio deterministas. Por eso casi ningún fallo suyo viene del
+entorno, y casi todos vienen de los datos.
+
 ---
 
 **Ver también:** [Catálogo completo](../CATALOGO.md) · [CM-19 · fraude](cm-19-fraude-y-toma-de-cuentas.md) · [CM-20 · gobierno de modelos](cm-20-gobierno-de-modelos-e-ia-financiera.md)

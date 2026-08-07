@@ -147,6 +147,27 @@ sandboxctl markets margin --scenario caida-de-garantias --seed 3
 5. **Impacto de la liquidación sobre el precio**, realimentado.
 6. Límites de concentración por participante e instrumento.
 
+## Si algo falla
+
+Este caso **todavía no tiene código**. Lo que sigue son los fallos que el diseño
+tiene que resolver, y cómo va a resolverlos:
+
+| Situación | Causa | Cómo se resuelve |
+|---|---|---|
+| Las llamadas de margen se disparan todas a la vez | Las garantías cayeron junto con las posiciones | Es el escenario que este caso existe para simular. Se resuelve con haircuts realistas y límites de concentración, no bajando el margen requerido |
+| La liquidación forzada hunde el precio y genera más llamadas | Espiral | El modelo **realimenta el impacto de la liquidación**. Sin ese bucle la simulación es optimista y no sirve para prepararse |
+| Un participante concentra casi toda la exposición | Riesgo de concentración | Límite por participante e instrumento, comprobado en cada cierre |
+| El margen sale distinto por céntimos entre dos cálculos | Coma flotante | Enteros en unidades mínimas. Un redondeo en un cálculo de margen es una llamada equivocada a alguien |
+| Se acepta como garantía algo que no vale lo que dice | Falta el haircut o está mal | Los haircuts van por tipo de garantía, configurables y **versionados**: efectivo no descuenta, una acción sí |
+
+Los fallos que afectan a **cualquier** caso —la compilación, el catálogo, la
+evidencia— están resueltos uno a uno en
+**[Cuando algo falla](../SOLUCION-DE-PROBLEMAS.md)**.
+
+Esta familia **no necesita aislamiento del sistema**: no ejecuta código ajeno,
+sino reglas de negocio deterministas. Por eso casi ningún fallo suyo viene del
+entorno, y casi todos vienen de los datos.
+
 ---
 
 **Ver también:** [Catálogo completo](../CATALOGO.md) · [CM-10 · liquidación](cm-10-compensacion-y-liquidacion.md) · [CM-14 · resiliencia](cm-14-resiliencia-operacional.md)

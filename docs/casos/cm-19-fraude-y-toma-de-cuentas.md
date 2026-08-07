@@ -155,6 +155,27 @@ sandboxctl markets fraud --scenario toma-de-cuenta
 5. Métrica de falsos positivos junto a la de detección.
 6. Cola de revisión humana antes de cualquier bloqueo prolongado.
 
+## Si algo falla
+
+Este caso **todavía no tiene código**. Lo que sigue son los fallos que el diseño
+tiene que resolver, y cómo va a resolverlos:
+
+| Situación | Causa | Cómo se resuelve |
+|---|---|---|
+| Se bloquea a un cliente que está de viaje | Falso positivo por sesión imposible | El coste del falso positivo se escribe en el propio esquema (`falsePositiveCost`), junto a la decisión. Y la respuesta se **gradúa**: retrasar antes que bloquear |
+| Un fraude pasa con credenciales correctas | La autenticación funcionó: es una toma de cuenta | Autenticar no es autorizar. Cada acción sensible se evalúa por su propio riesgo en ese momento, no por la sesión |
+| El retiro se ejecuta antes de que nadie mire | No hubo demora | Una hora de espera en un cambio de beneficiario no molesta a un cliente legítimo y arruina un fraude. Es la medida más subestimada |
+| Un dispositivo nuevo bloquea a todo el mundo | Señal usada sola | Ninguna señal decide por sí misma. El riesgo se compone: dispositivo nuevo **más** beneficiario reciente **más** monto anómalo |
+| Se modelan ubicaciones reales | No hace falta y añade datos personales | Las ubicaciones son etiquetas (`zona-A`), no coordenadas. Basta para detectar una sesión imposible |
+
+Los fallos que afectan a **cualquier** caso —la compilación, el catálogo, la
+evidencia— están resueltos uno a uno en
+**[Cuando algo falla](../SOLUCION-DE-PROBLEMAS.md)**.
+
+Esta familia **no necesita aislamiento del sistema**: no ejecuta código ajeno,
+sino reglas de negocio deterministas. Por eso casi ningún fallo suyo viene del
+entorno, y casi todos vienen de los datos.
+
 ---
 
 **Ver también:** [Catálogo completo](../CATALOGO.md) · [CM-15 · KYC y AML](cm-15-kyc-aml-y-sanciones.md) · [CM-11 · consentimiento](cm-11-finanzas-abiertas-y-consentimiento.md)

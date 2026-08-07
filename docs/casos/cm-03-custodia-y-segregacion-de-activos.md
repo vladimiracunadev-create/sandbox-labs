@@ -188,6 +188,26 @@ idempotencia, y la comprobación automática en cada commit.
 escenario de **insolvencia del custodio**, que es donde el invariante deja de ser
 un ejercicio y se convierte en la única pregunta que importa.
 
+## Si algo falla
+
+| Situación | Causa | Cómo se resuelve |
+|---|---|---|
+| `Shortfall` | Hay menos custodiado que registrado | Alguien usó activos de clientes. Se localiza el movimiento que lo produjo en el libro append-only y se repone. **Es el hallazgo más grave del caso** |
+| `Surplus` | Hay más de lo registrado | Suena bien y no lo es: significa registro incompleto. Buscar la operación que no se anotó |
+| `UnexplainedPending` | Un pendiente sin `operationId` que lo respalde | Es el disfraz favorito de un descuadre permanente. Todo pendiente tiene que apuntar a una operación real, con fecha |
+| `CommingledAccount` | Activos de clientes y de la casa en la misma cuenta | Separar las cuentas. No hay arreglo contable posible: la segregación es física o no es |
+| `NegativeClientPosition` | Se entregó algo que el cliente no tenía | Revisar el orden de las operaciones: casi siempre es una entrega liquidada antes de que llegara el activo |
+| `markets reconcile` falla en CI tras tocar el motor | La conciliación dejó de detectar lo que declara | El escenario que falla dice qué hallazgo esperaba. **Arreglar la conciliación, no el escenario** |
+| Los importes no cuadran por céntimos | Se usó coma flotante en algún punto | `Money` son enteros en unidades mínimas y la moneda va pegada al importe. Si aparece un `f64` manejando dinero, eso es el fallo |
+
+Los fallos que afectan a **cualquier** caso —la compilación, el catálogo, la
+evidencia— están resueltos uno a uno en
+**[Cuando algo falla](../SOLUCION-DE-PROBLEMAS.md)**.
+
+Esta familia **no necesita aislamiento del sistema**: no ejecuta código ajeno,
+sino reglas de negocio deterministas. Por eso casi ningún fallo suyo viene del
+entorno, y casi todos vienen de los datos.
+
 ---
 
 **Ver también:** [Catálogo completo](../CATALOGO.md) · [CM-10 · liquidación](cm-10-compensacion-y-liquidacion.md) · [CM-13 · salida ordenada](cm-13-salida-ordenada.md) · [Estado del proyecto](../ESTADO.md)

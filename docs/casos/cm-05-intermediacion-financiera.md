@@ -141,6 +141,26 @@ sandboxctl markets intermediation --scenario front-running
 4. Declaración obligatoria de comisión y spread al cliente.
 5. Los cinco escenarios de conducta listados arriba.
 
+## Si algo falla
+
+Este caso **todavía no tiene código**. Lo que sigue son los fallos que el diseño
+tiene que resolver, y cómo va a resolverlos:
+
+| Situación | Causa | Cómo se resuelve |
+|---|---|---|
+| Aparece `FrontRunning` en operaciones legítimas | La detección es temporal y puede dar falsos positivos | Se revisa a mano con la reconstrucción del libro. La alerta trae `deltaMs` y `priceImpact` para poder juzgar, no un veredicto |
+| Una operación no tiene `capacity` | El campo es obligatorio | Sin saber si se actuó como agente o como principal no se puede evaluar nada. Se rechaza el registro incompleto |
+| El cliente no vio la comisión | `disclosedToClient: false` | Es `UndisclosedCommission`, y es un incumplimiento. Se corrige informando y dejando constancia de cuándo se informó |
+| El inventario propio se mezcla con el de clientes | Fallo de segregación | Es un hallazgo de [CM-03](cm-03-custodia-y-segregacion-de-activos.md), y es más grave que cualquier conducta de este caso |
+
+Los fallos que afectan a **cualquier** caso —la compilación, el catálogo, la
+evidencia— están resueltos uno a uno en
+**[Cuando algo falla](../SOLUCION-DE-PROBLEMAS.md)**.
+
+Esta familia **no necesita aislamiento del sistema**: no ejecuta código ajeno,
+sino reglas de negocio deterministas. Por eso casi ningún fallo suyo viene del
+entorno, y casi todos vienen de los datos.
+
 ---
 
 **Ver también:** [Catálogo completo](../CATALOGO.md) · [CM-09 · vigilancia](cm-09-vigilancia-de-abuso-de-mercado.md) · [CM-04 · enrutamiento](cm-04-enrutamiento-inteligente-de-ordenes.md)

@@ -34,6 +34,29 @@ function docSlug(name) {
 const escape = (value) =>
   String(value).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 
+/**
+ * El identificador de un encabezado, con las mismas reglas que GitHub: se
+ * pasa a minúsculas, se retira todo lo que no sea letra, número, espacio o
+ * guion —incluidos los emoji y el marcado— y los espacios pasan a guiones.
+ *
+ * Importa que coincida con GitHub porque los enlaces con ancla se escriben
+ * leyendo el repositorio; si aquí generásemos otro identificador, el mismo
+ * enlace funcionaría en GitHub y no en el sitio publicado.
+ */
+function headingId(text) {
+  return text
+    .replace(/`([^`]+)`/g, "$1")
+    .replace(/\*\*?([^*]+)\*\*?/g, "$1")
+    .replace(/\[([^\]]+)\]\([^)]*\)/g, "$1")
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}\s_-]/gu, "")
+    // Ni se recortan los extremos ni se colapsan los espacios: GitHub tampoco
+    // lo hace. Un emoji al principio deja un guion delante, y una raya entre
+    // palabras deja dos. Ese detalle es justo lo que hace que el ancla
+    // coincida.
+    .replace(/\s/g, "-");
+}
+
 // ── Markdown mínimo ──────────────────────────────────────────────────────────
 
 const GITHUB_BLOB = "https://github.com/vladimiracunadev-create/sandbox-labs/blob/main/";
@@ -120,7 +143,10 @@ function renderMarkdown(markdown, area = "docs") {
     const heading = line.match(/^(#{1,4})\s+(.*)$/);
     if (heading) {
       const level = heading[1].length;
-      html.push(`<h${level}>${inline(heading[2])}</h${level}>`);
+      const id = headingId(heading[2]);
+      // El mismo identificador que genera GitHub, para que un enlace con ancla
+      // escrito en el repositorio siga apuntando al mismo sitio en el sitio.
+      html.push(`<h${level} id="${id}">${inline(heading[2])}<a class="anchor" href="#${id}" aria-label="enlace a esta sección">#</a></h${level}>`);
       index += 1;
       continue;
     }
@@ -331,7 +357,11 @@ for (const name of caseFiles) {
       description: title,
       active: "docs/",
       depth: 2,
-      body: `<article class="doc">${renderMarkdown(markdown, "casos")}</article>`
+      body:
+        `<nav class="crumbs"><a href="../index.html">Documentación</a> ` +
+        `<span>›</span> <a href="index.html">Fichas de los casos</a> ` +
+        `<span>›</span> <b>${escape(title)}</b></nav>` +
+        `<article class="doc">${renderMarkdown(markdown, "casos")}</article>`
     })
   );
 }

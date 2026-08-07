@@ -179,6 +179,21 @@ máquina virtual desechable.
 **Falta también:** más formatos comprimidos, detección de tipo MIME real —no por
 extensión—, nombres Unicode confusos, archivos anidados y checksum por entrada.
 
+## Si algo falla
+
+| Síntoma | Causa | Cómo se soluciona |
+|---|---|---|
+| Todas las entradas salen `rechazada` | El archivo trae rutas absolutas o estilo Windows | Leer el `reason` de cada entrada: dice qué regla la paró. Reempaquetar con rutas relativas (`zip -r salida.zip carpeta/` desde dentro de la carpeta) |
+| `zip bomb: supera el total descomprimido permitido` | El archivo se expande más allá del techo, y puede ser legítimo | 1. Subir el techo en `app.py`. 2. **Si el equipo no tiene cgroups, no lo subas**: sin `memory.max` el corte por tamaño es la única defensa que queda |
+| El proceso muere sin responder nada | El cgroup lo mató al alcanzar `memory.max` | Es contención, no avería. Confirmarlo mirando `memory.peak` y `oom_kill` en la evidencia. Si el archivo es legítimo, subir `memoryMb` en la política |
+| `cuerpo ausente o mayor que N bytes` (413) | La subida supera el techo del servicio | Trocear el archivo, o subir `MAX_UPLOAD_BYTES` sabiendo que el techo protege el proceso que lo recorre |
+| Un archivo válido se rechaza por completo | Alguna entrada trae un enlace simbólico o duro | Los enlaces no se extraen nunca: permiten que la entrada siguiente escriba a través de ellos. Reempaquetar resolviendo los enlaces (`zip --symlinks` **no**; usar `tar -h` o copiar el contenido real) |
+| El informe no coincide con lo que ves al descomprimir con otra herramienta | Otras herramientas aplican menos comprobaciones | Ese es el punto del caso. El informe por entrada es la referencia; la otra herramienta es la que está siendo permisiva |
+
+Los fallos que afectan a **cualquier** caso —no se puede crear el sandbox, no hay
+cgroups, un puerto ocupado, procesos huérfanos, la compilación en Windows— están
+resueltos uno a uno en **[Cuando algo falla](../SOLUCION-DE-PROBLEMAS.md)**.
+
 ---
 
 **Ver también:** [Catálogo completo](../CATALOGO.md) · [Estado del proyecto](../ESTADO.md) · [Modelo de amenazas](../THREAT_MODEL.md)

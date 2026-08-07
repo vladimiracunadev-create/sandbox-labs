@@ -136,6 +136,27 @@ sandboxctl markets tokenize --scenario sobreemision
 5. Conciliación entre registro digital y registro legal simulado.
 6. Integración con [CM-17](cm-17-eventos-corporativos.md) para distribuciones.
 
+## Si algo falla
+
+Este caso **todavía no tiene código**. Lo que sigue son los fallos que el diseño
+tiene que resolver, y cómo va a resolverlos:
+
+| Situación | Causa | Cómo se resuelve |
+|---|---|---|
+| `OverIssuance` | Se emitieron más unidades de las que respalda el activo | Se bloquea la emisión. El invariante `emitido ≤ respaldo` se comprueba tras cada operación, no al cierre del día |
+| `LegalDesync` | El registro digital y el legal no coinciden | **Gana el registro legal**: el token es una anotación, no el activo. Se corrige el digital y se investiga cómo divergieron |
+| Una transferencia legítima se rechaza | El destinatario no cumple una restricción de tenencia | Es lo previsto. Si la restricción está mal, se cambia en la emisión y queda registrado el cambio |
+| Las unidades no cuadran tras un evento corporativo | El evento no se aplicó a todos los tenedores | Se aplica de forma atómica: a todos o a ninguno. Ver [CM-17](cm-17-eventos-corporativos.md) |
+| Alguien espera una cadena de bloques real | No la hay | El registro es un libro append-only local. No hay conectividad con ninguna red pública, y no la habrá |
+
+Los fallos que afectan a **cualquier** caso —la compilación, el catálogo, la
+evidencia— están resueltos uno a uno en
+**[Cuando algo falla](../SOLUCION-DE-PROBLEMAS.md)**.
+
+Esta familia **no necesita aislamiento del sistema**: no ejecuta código ajeno,
+sino reglas de negocio deterministas. Por eso casi ningún fallo suyo viene del
+entorno, y casi todos vienen de los datos.
+
 ---
 
 **Ver también:** [Catálogo completo](../CATALOGO.md) · [CM-03 · custodia](cm-03-custodia-y-segregacion-de-activos.md) · [CM-17 · eventos corporativos](cm-17-eventos-corporativos.md)

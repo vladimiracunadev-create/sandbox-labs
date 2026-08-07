@@ -61,7 +61,7 @@
       <h3>Levanta sandboxes con algo dentro</h3>
       <p><!--SERVICES_COUNT--> servicios reales que arrancan dentro de una jaula y publican un puerto.
       Se levantan y se bajan desde el panel o desde el CLI, como un contenedor.</p>
-      <code class="cmd">sandboxctl service up static-web</code>
+      <code class="cmd">sandboxctl service up file-detonation</code>
     </div>
     <div class="card">
       <div class="card-top"><span class="num">2 · medir</span><span class="chip containment">contención</span></div>
@@ -89,16 +89,16 @@
   </p>
   <div class="grid">
     <div class="card">
-      <div class="card-top"><span class="num">técnicos</span><span class="chip containment">3 de 5</span></div>
+      <div class="card-top"><span class="num">técnicos</span><span class="chip containment">4 de 15</span></div>
       <h3>Sandboxes técnicos</h3>
       <p>Código, archivos, plugins, agentes y secretos que no controlas, bajo políticas
       verificables y con ocho sondas midiendo qué contiene de verdad.</p>
       <code class="cmd">sandboxctl escape</code>
     </div>
     <div class="card">
-      <div class="card-top"><span class="num">mercado</span><span class="chip platform">1 de 21</span></div>
+      <div class="card-top"><span class="num">mercado</span><span class="chip platform">2 de 21</span></div>
       <h3>Mercado de capitales</h3>
-      <p>Custodia, negociación y cumplimiento con dinero <b>simulado</b>. El primer caso
+      <p>Custodia, negociación y cumplimiento con dinero <b>simulado</b>. El caso de custodia
       concilia activos de clientes contra el extracto de un custodio y detecta faltantes
       que los activos propios taparían.</p>
       <code class="cmd">sandboxctl markets reconcile</code>
@@ -108,6 +108,36 @@
     <b>⚠️ Dinero, instrumentos y participantes simulados.</b> Sin conexión a ningún banco ni
     medio de pago, <b>sin autorización de la CMF ni de ninguna autoridad</b>, y nada de lo que
     salga de ahí es una recomendación de inversión.
+  </div>
+</section>
+
+<section>
+  <h2>Treinta y seis casos, y el estado real de cada uno</h2>
+  <p class="sub">
+    Cada caso tiene una ficha con la misma estructura: por qué se realiza, casos de uso,
+    diagramas, esquemas de entrada y salida, software necesario, instalación, procesos que se
+    crean, tiempo de carga, qué hacer si falla y <b>en qué estado está de verdad</b>.
+    Los <code>planned</code> dicen que no hay código; los <code>building</code> dicen qué falta.
+  </p>
+  <div class="grid">
+    <a class="card" href="docs/casos/index.html">
+      <div class="card-top"><span class="num">📇 fichas</span><span class="chip starter">36</span></div>
+      <h3>Fichas de los casos</h3>
+      <p>Las 36, ordenadas por familia, con su estado al lado. Es el índice por el que se
+      entra a cualquier caso.</p>
+    </a>
+    <a class="card" href="docs/catalogo.html">
+      <div class="card-top"><span class="num">📋 catálogo</span><span class="chip platform">requisitos</span></div>
+      <h3>Catálogo completo</h3>
+      <p>Los requisitos comunes a toda la familia técnica: software, instalación, procesos,
+      tiempos y esquemas. Se documentan una vez, no quince.</p>
+    </a>
+    <a class="card" href="docs/estado.html">
+      <div class="card-top"><span class="num">📊 estado</span><span class="chip containment">honesto</span></div>
+      <h3>Qué está construido</h3>
+      <p>Qué funciona, con qué comando se comprueba y qué falta. Sin la palabra «listo»
+      en ningún sitio.</p>
+    </a>
   </div>
 </section>
 
@@ -200,7 +230,7 @@ pnpm dashboard:build &amp;&amp; pnpm dashboard:start</pre>
     <div>
       <h3>O desde la terminal</h3>
       <pre>sandboxctl doctor              # qué runtimes hay aquí
-sandboxctl service up static-web
+sandboxctl service up file-detonation
 sandboxctl service list
 sandboxctl escape              # ¿qué contiene de verdad?
 sandboxctl service down --all</pre>

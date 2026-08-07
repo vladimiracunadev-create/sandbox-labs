@@ -136,6 +136,26 @@ innegociable de esta familia.
 4. Declaración de conflictos de interés por destino.
 5. Escenarios: destino que paga por el flujo, precio obsoleto, liquidez fantasma.
 
+## Si algo falla
+
+Este caso **todavía no tiene código**. Lo que sigue son los fallos que el diseño
+tiene que resolver, y cómo va a resolverlos:
+
+| Situación | Causa | Cómo se resuelve |
+|---|---|---|
+| La decisión no se puede explicar | Falta el bloque `explanation` | Una decisión sin explicación no es defendible ante un cliente ni ante un supervisor. El esquema la hace obligatoria: sin ella no se emite la decisión |
+| Siempre gana el mismo destino | Puede ser correcto, o puede ser un sesgo del cálculo | Revisar los pesos de la función de costo, que van **versionados**. Y comprobar `conflictsDisclosed`: si ese destino remunera el flujo, hay que declararlo |
+| El precio del destino ya no existe al llegar la orden | Latencia | Se pondera por `fillProbability`. Un destino barato donde no se ejecuta nada no es barato, y el cálculo tiene que reflejarlo |
+| Fragmentar sale más caro que no fragmentar | Cada trozo paga comisión y mueve el precio | El cálculo incluye el sobrecoste de fragmentar. Si aun así fragmenta, la explicación dice con qué números lo decidió |
+
+Los fallos que afectan a **cualquier** caso —la compilación, el catálogo, la
+evidencia— están resueltos uno a uno en
+**[Cuando algo falla](../SOLUCION-DE-PROBLEMAS.md)**.
+
+Esta familia **no necesita aislamiento del sistema**: no ejecuta código ajeno,
+sino reglas de negocio deterministas. Por eso casi ningún fallo suyo viene del
+entorno, y casi todos vienen de los datos.
+
 ---
 
 **Ver también:** [Catálogo completo](../CATALOGO.md) · [CM-05 · intermediación](cm-05-intermediacion-financiera.md) · [CM-02 · libro de órdenes](cm-02-sistema-alternativo-de-transaccion.md)

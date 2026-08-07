@@ -1,5 +1,35 @@
 # Roadmap
 
+> **Qué está construido hoy, con la prueba que lo respalda:**
+> [docs/ESTADO.md](docs/ESTADO.md). Este documento es hacia dónde va, no lo que
+> hay.
+
+## Regla del código sin verificar
+
+El catálogo tiene **36 casos** y hay **6 construidos**. A medida que se escriba
+código para los treinta restantes, ese código entra bajo una regla explícita:
+
+> **Escribir el código de un caso no lo pone en marcha.** Un caso con código
+> pero sin prueba de comportamiento ejecutada se queda en `prototype`, y su
+> ficha dice que **no se ha comprobado que funcione**.
+
+Concretamente:
+
+| Lo que hay | Estado que le corresponde | Qué dice su ficha |
+|---|---|---|
+| Especificación, sin código | `planned` | «no hay código todavía» |
+| Código escrito, **sin ejecutar ni probar** | `prototype` | «hay código, **no se ha verificado que funcione**» |
+| Se ejecuta y hay una prueba concreta que lo demuestra | `functional` | qué comando lo prueba |
+| Además emite evidencia firmada y CI la valida | `verified` | dónde está la evidencia |
+
+Nada sube de `prototype` sin una prueba en `scripts/verify-cases.mjs` o en
+`cargo test`, y esa prueba tiene que **ejecutarse**, no describirse. La suite
+falla si un caso se declara `ready` sin ella.
+
+Esto vale también para el código que se genere de una vez para varios casos: se
+publica marcado como no verificado, y la verificación es un paso posterior y
+declarado.
+
 ## v0.6.0 — Foundation & Codex Handoff
 
 - Contratos tipados para catálogo, políticas, workloads, trabajos y evidencias.

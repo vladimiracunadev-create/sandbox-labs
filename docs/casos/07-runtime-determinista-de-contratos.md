@@ -156,6 +156,24 @@ proceso adicional es una fuente potencial de indeterminación.
 4. Rollback ante fallo o presupuesto agotado.
 5. Contratos de ejemplo, incluido uno que intente leer el reloj y falle.
 
+## Si algo falla
+
+Este caso **todavía no tiene código**. Lo que sigue son los fallos que el diseño
+tiene que resolver, y cómo va a resolverlos — escrito antes de la primera línea,
+que es cuando sirve de algo:
+
+| Situación | Causa | Cómo se resuelve |
+|---|---|---|
+| Dos máquinas dan `stateHash` distinto | Se coló una fuente de indeterminación | Es el fallo que este caso existe para detectar. Se busca en el orden habitual: reloj, aleatoriedad, orden de recorrido de un diccionario, coma flotante. Los cuatro están cerrados por diseño; si aparece, es que uno se escapó |
+| `gasUsed` llega al límite y no termina | El contrato necesita más presupuesto, o tiene un bucle | 1. Subir `gasLimit`. 2. Si sube sin fin, es un bucle: **el rollback ya dejó el estado intacto**, que es lo que importa |
+| El contrato intenta leer el reloj o la red | WASI no se los concede | Falla dentro del contrato, de forma determinista y en todas las máquinas por igual. Se corrige el contrato, no el runtime |
+| `wasmtime` no está | Falta el motor | `curl https://wasmtime.dev/install.sh -sSf \| bash`. `doctor` dirá si el runtime `wasi` está disponible antes de intentar nada |
+| El estado final no se puede serializar igual dos veces | La serialización no es canónica | Es un fallo del runtime, no del contrato: la representación en bytes de un mismo estado tiene que ser única. Sin eso, comparar hashes no significa nada |
+
+Los fallos que afectan a **cualquier** caso —no se puede crear el sandbox, no hay
+cgroups, un puerto ocupado, procesos huérfanos, la compilación en Windows— están
+resueltos uno a uno en **[Cuando algo falla](../SOLUCION-DE-PROBLEMAS.md)**.
+
 ---
 
 **Ver también:** [Catálogo completo](../CATALOGO.md) · [Caso 05](05-custodia-de-claves-y-firma.md) · [Comparativa de fronteras](../COMPARATIVA.md)

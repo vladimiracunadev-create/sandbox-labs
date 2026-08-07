@@ -197,6 +197,21 @@ instrucciones, sin reloj, resultados reproducibles— es otra idea y se va al
 **Falta también:** límites de monto por firma, política de autorizaciones,
 rotación y revocación de claves.
 
+## Si algo falla
+
+| Síntoma | Causa | Cómo se soluciona |
+|---|---|---|
+| `mode: plan` en vez de `live` | No hay clave cargada, así que el servicio muestra la petición que haría en vez de firmar | Es el modo previsto sin secreto. Para firmar de verdad, dejar que se genere la clave de demostración en `.sandbox-data/keys/` — se crea sola en el primer arranque |
+| La firma no se ejecuta y dice que falta algo | Una de las tres llaves no coincide: manifiesto, política o entorno | El mensaje dice cuál. Corregir el manifiesto de la carga o la política. **No quitar el modo estricto para que pase**: eso es exactamente lo que el caso enseña a no hacer |
+| `/api/egress` **no** falla | El sandbox tiene red cuando no debería | 1. Comprobar que la política dice `network: none`. 2. Ejecutar `cargo run -p sandboxctl -- escape`: si la sonda de red también sale, el problema es del entorno y no del caso |
+| Permiso denegado al leer la clave | Tiene modo `0600` y pertenece a otro usuario | Borrarla y dejar que se regenere. **No abrirla a más usuarios**: una clave de firma legible por varios ya no prueba quién firmó |
+| `evidence verify` dice que el hash de la política cambió | El código o la política cambiaron desde aquella ejecución | No es corrupción: es un acta vieja diciendo con razón que ya no describe el código de hoy. Volver a ejecutar para generar evidencia del estado actual |
+| La clave privada aparece en un registro o en una respuesta | Fallo grave | Rotar la clave —borrarla y regenerarla— y abrir una incidencia. Nada del proyecto debe exponerla, y hay una prueba de exfiltración precisamente para detectar esto |
+
+Los fallos que afectan a **cualquier** caso —no se puede crear el sandbox, no hay
+cgroups, un puerto ocupado, procesos huérfanos, la compilación en Windows— están
+resueltos uno a uno en **[Cuando algo falla](../SOLUCION-DE-PROBLEMAS.md)**.
+
 ---
 
 **Ver también:** [Catálogo completo](../CATALOGO.md) · [Formato de evidencia](../EVIDENCE_FORMAT.md) · [Estado del proyecto](../ESTADO.md)

@@ -161,6 +161,24 @@ sandboxctl ci run --pr 1234
 5. Filtrado de logs para que un secreto no llegue al registro ni por accidente.
 6. Separación en dos etapas, con aprobación humana entre ellas.
 
+## Si algo falla
+
+Este caso **todavía no tiene código**. Lo que sigue son los fallos que el diseño
+tiene que resolver, y cómo va a resolverlos — escrito antes de la primera línea,
+que es cuando sirve de algo:
+
+| Situación | Causa | Cómo se resuelve |
+|---|---|---|
+| Las pruebas del pull request necesitan un secreto | Con `trusted: false` **no hay secretos**, y no es configurable | Se parte el flujo: la etapa que ejecuta código ajeno no tiene llaves; la que tiene llaves no ejecuta código ajeno, y entre las dos hay aprobación humana |
+| Las pruebas fallan por falta de red | La lista de permitidos no incluye lo que necesitan | Añadir el destino concreto a `network.hosts`. **Nunca abrir la red entera**: el registro de intentos es lo que da valor al caso |
+| Un secreto aparece en el log | El filtrado falló, o el secreto llegó por otra vía | 1. **Rotar el secreto de inmediato**, un log público no se borra. 2. Comprobar que el entorno del runner estaba realmente vacío con la sonda de entorno |
+| El checkout toca el árbol de trabajo real | Se aisló mal | El checkout va a una carpeta temporal montada solo dentro de la jaula. Si el árbol real cambió, es un fallo del supervisor y tumba el build |
+| Un artefacto no llega a la etapa de publicación | La recolección se hace fuera de la jaula | Comprobar tamaño frente a `artifacts.maxBytes` y el checksum. Un artefacto sin checksum no se publica |
+
+Los fallos que afectan a **cualquier** caso —no se puede crear el sandbox, no hay
+cgroups, un puerto ocupado, procesos huérfanos, la compilación en Windows— están
+resueltos uno a uno en **[Cuando algo falla](../SOLUCION-DE-PROBLEMAS.md)**.
+
 ---
 
 **Ver también:** [Catálogo completo](../CATALOGO.md) · [Caso 10 · construcción de paquetes](10-construccion-de-paquetes.md) · [Referencia de políticas](../POLICY_REFERENCE.md)

@@ -158,6 +158,27 @@ sandboxctl markets model --check drift --model robo-advisor@1.4.2
 5. Aprobación humana obligatoria antes de producción y antes de un rollback.
 6. Reconstrucción de cualquier decisión pasada.
 
+## Si algo falla
+
+Este caso **todavía no tiene código**. Lo que sigue son los fallos que el diseño
+tiene que resolver, y cómo va a resolverlos:
+
+| Situación | Causa | Cómo se resuelve |
+|---|---|---|
+| No se puede explicar una decisión pasada | No se guardó la versión del modelo que la tomó | Cada decisión de los demás casos guarda `modelVersion`. Sin eso no hay forma de responder a quien reclama |
+| El modelo acierta cada vez menos y nada falla | **Drift**: el mundo cambió y el modelo no | Se vigila la distribución de entradas contra la del entrenamiento. Superado el umbral, se recomienda rollback y reentrenamiento |
+| Trato distinto entre grupos comparables | Posible sesgo, a veces por una variable que aproxima a otra prohibida | Se mide `maxDisparity` entre grupos en cada versión, sobre datos sintéticos. Un modelo que no se mide no se puede defender |
+| No se puede volver a la versión anterior | No hay rollback | El registro es append-only y el rollback es cambiar un puntero. Un modelo peor en producción sin vuelta atrás es el fallo más caro del caso |
+| Un modelo sale a producción sin aprobación | Fallo de proceso | La aprobación humana es obligatoria antes de producción **y antes de un rollback**: volver atrás también es una decisión |
+
+Los fallos que afectan a **cualquier** caso —la compilación, el catálogo, la
+evidencia— están resueltos uno a uno en
+**[Cuando algo falla](../SOLUCION-DE-PROBLEMAS.md)**.
+
+Esta familia **no necesita aislamiento del sistema**: no ejecuta código ajeno,
+sino reglas de negocio deterministas. Por eso casi ningún fallo suyo viene del
+entorno, y casi todos vienen de los datos.
+
 ---
 
 **Ver también:** [Catálogo completo](../CATALOGO.md) · [CM-07 · robo-advisor](cm-07-robo-advisor.md) · [Caso 12 · notebooks](12-notebooks-de-ciencia-de-datos.md)

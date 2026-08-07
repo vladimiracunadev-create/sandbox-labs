@@ -150,5 +150,5 @@ make clean             # además borra target/
 
 ## Siguiente paso
 
-- [Qué es un sandbox](QUE-ES-UN-SANDBOX.md) · [Los cinco casos](CASOS.md)
+- [Qué es un sandbox](QUE-ES-UN-SANDBOX.md) · [Catálogo de los 36 casos](CATALOGO.md)
 - [Runbook](../RUNBOOK.md) — operación diaria

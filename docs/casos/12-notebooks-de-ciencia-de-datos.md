@@ -149,6 +149,25 @@ de procesos sin ninguna mala intención.
 4. Registro de intentos de escritura sobre datos de solo lectura.
 5. Limpieza garantizada al terminar la sesión.
 
+## Si algo falla
+
+Este caso **todavía no tiene código**. Lo que sigue son los fallos que el diseño
+tiene que resolver, y cómo va a resolverlos — escrito antes de la primera línea,
+que es cuando sirve de algo:
+
+| Situación | Causa | Cómo se resuelve |
+|---|---|---|
+| Una celda falla al escribir en el dataset | El montaje es de solo lectura | Es el control central del caso. Escribir en la carpeta de salida declarada. **Nunca montar el dataset como escribible «solo esta vez»** |
+| El kernel muere a mitad de la sesión | Se alcanzó `memory.max` | Subir `limits.memoryMb`, o procesar por lotes. La evidencia guarda `peakMemoryMb`, que dice cuánto hacía falta de verdad |
+| `Cannot allocate memory` al paralelizar | Se alcanzó `pids.max` | Subir `limits.pids`. Un notebook que lanza un proceso por núcleo y por celda agota el techo sin ninguna mala intención |
+| Una celda no puede instalar un paquete | `network: none` | 1. Declarar las dependencias en la imagen del kernel. 2. Si hace falta, `network` con lista de permitidos, y queda registrado qué se descargó |
+| La salida no aparece al terminar | Se escribió fuera de la carpeta declarada y desapareció con la sesión | Escribir en `output.path`. La limpieza al terminar es parte del caso, no un efecto secundario |
+| La cuota de salida se agota | `output.maxBytes` | Subirla, o revisar si el notebook está escribiendo intermedios que no necesita conservar |
+
+Los fallos que afectan a **cualquier** caso —no se puede crear el sandbox, no hay
+cgroups, un puerto ocupado, procesos huérfanos, la compilación en Windows— están
+resueltos uno a uno en **[Cuando algo falla](../SOLUCION-DE-PROBLEMAS.md)**.
+
 ---
 
 **Ver también:** [Catálogo completo](../CATALOGO.md) · [Referencia de políticas](../POLICY_REFERENCE.md) · [Caso 02 · código generado](02-codigo-generado-por-ia.md)

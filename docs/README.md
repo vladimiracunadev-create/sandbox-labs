@@ -29,7 +29,8 @@ flowchart LR
 1. [Instalación](INSTALACION.md) — de un equipo en blanco al primer sandbox
 2. [Fichas de los casos](casos/README.md) — cuál levantar, qué necesita y qué hacer dentro
 3. [Estado del proyecto](ESTADO.md) — qué funciona hoy y con qué comando se comprueba
-4. [Runbook](../RUNBOOK.md) — operación diaria y qué hacer cuando algo falla
+4. [Cuando algo falla](SOLUCION-DE-PROBLEMAS.md) — cada fallo y cómo se resuelve
+5. [Runbook](../RUNBOOK.md) — operación diaria
 
 ### Quiero tocar el código
 
@@ -60,6 +61,7 @@ flowchart LR
 | [Fichas de los casos](casos/README.md) | Una por caso: por qué existe, esquemas, software, procesos, tiempo de carga |
 | [Los cinco servicios levantables](CASOS.md) | Los casos que hoy se levantan como producto en su localhost |
 | [Instalación](INSTALACION.md) | Requisitos, puesta en marcha y problemas frecuentes |
+| [Cuando algo falla](SOLUCION-DE-PROBLEMAS.md) | **Cada fallo del proyecto, con sus alternativas de solución** |
 | [Runbook](../RUNBOOK.md) | Operación diaria |
 
 ### Referencia técnica

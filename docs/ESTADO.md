@@ -207,4 +207,4 @@ El orden no es arbitrario: cada elemento desbloquea al siguiente.
 
 ---
 
-**Ver también:** [Catálogo completo](CATALOGO.md) · [Fichas de los casos](casos/README.md) · [Backlog de implementación](IMPLEMENTATION_BACKLOG.md) · [Runbook](../RUNBOOK.md)
+**Ver también:** [Catálogo completo](CATALOGO.md) · [Fichas de los casos](casos/README.md) · [Cuando algo falla](SOLUCION-DE-PROBLEMAS.md) · [Backlog de implementación](IMPLEMENTATION_BACKLOG.md) · [Runbook](../RUNBOOK.md)

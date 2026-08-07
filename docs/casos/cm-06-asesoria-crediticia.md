@@ -134,6 +134,27 @@ sandboxctl markets credit --profile perfil.json --offers ofertas.json
 4. Explicación obligatoria y declaración de conflictos.
 5. Perfiles sintéticos: **nunca datos personales reales**.
 
+## Si algo falla
+
+Este caso **todavía no tiene código**. Lo que sigue son los fallos que el diseño
+tiene que resolver, y cómo va a resolverlos:
+
+| Situación | Causa | Cómo se resuelve |
+|---|---|---|
+| La oferta con la cuota más baja no es la recomendada | Alargar el plazo baja la cuota y sube el costo total | Es el punto del caso. La explicación dice el costo total de cada una, que es la comparación honesta |
+| Ninguna oferta sale `affordable` | La capacidad de pago no da | No relajar el margen para que salga alguna: el resultado correcto es «ninguna de estas ofertas cabe» |
+| El escenario de tasa adversa tumba la recomendación | Tasa variable | Se marca como apta con advertencia, no se oculta. Quien decide tiene que ver el escenario malo |
+| Los totales no cuadran por céntimos | Intereses con coma flotante | Aritmética con enteros en unidades mínimas. Un céntimo por cuota son varios euros a lo largo del crédito |
+| Alguien toma la salida como asesoría real | Malentendido grave | `notFinancialAdvice: true` es obligatorio en el esquema. Este simulador no emite asesoría financiera |
+
+Los fallos que afectan a **cualquier** caso —la compilación, el catálogo, la
+evidencia— están resueltos uno a uno en
+**[Cuando algo falla](../SOLUCION-DE-PROBLEMAS.md)**.
+
+Esta familia **no necesita aislamiento del sistema**: no ejecuta código ajeno,
+sino reglas de negocio deterministas. Por eso casi ningún fallo suyo viene del
+entorno, y casi todos vienen de los datos.
+
 ---
 
 **Ver también:** [Catálogo completo](../CATALOGO.md) · [CM-07 · robo-advisor](cm-07-robo-advisor.md) · [CM-20 · gobierno de modelos](cm-20-gobierno-de-modelos-e-ia-financiera.md)

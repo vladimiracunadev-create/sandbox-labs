@@ -149,6 +149,27 @@ sandboxctl markets wind-down --scenario cierre-con-faltante
 5. Reporte final firmado con conciliación incluida.
 6. Escenario de cierre **con faltante**: qué se hace cuando no alcanza.
 
+## Si algo falla
+
+Este caso **todavía no tiene código**. Lo que sigue son los fallos que el diseño
+tiene que resolver, y cómo va a resolverlos:
+
+| Situación | Causa | Cómo se resuelve |
+|---|---|---|
+| El cierre termina y quedan clientes sin cobrar | `clientsPending > 0` | **El cierre no ha terminado**, por mucho que los servidores estén apagados. La definición de cierre completo son dos campos: `clientsPending: 0` y `reconciliationFindings: []` |
+| Aparece un faltante al conciliar | No había tanto como decían los libros | Es el escenario que hay que ensayar antes de necesitarlo. Se reparte con la regla publicada, **nunca por orden de llegada** |
+| Se ejecutan los pasos en otro orden | El orden es una restricción, no una sugerencia | La máquina de estados lo impide: cancelar pendientes antes de detener nuevas órdenes crea obligaciones mientras intentas cumplir las viejas |
+| Los clientes no reciben su historial | Falta la exportación | Sin historial, el cliente pierde la prueba de lo que tenía. Es un paso obligatorio del cierre, no un extra |
+| Nadie había probado el plan de cierre | Lo habitual | Por eso [CM-00](cm-00-entrada-al-sandbox-regulatorio.md) lo exige al entrar: un plan sin ensayar es un documento, no un plan |
+
+Los fallos que afectan a **cualquier** caso —la compilación, el catálogo, la
+evidencia— están resueltos uno a uno en
+**[Cuando algo falla](../SOLUCION-DE-PROBLEMAS.md)**.
+
+Esta familia **no necesita aislamiento del sistema**: no ejecuta código ajeno,
+sino reglas de negocio deterministas. Por eso casi ningún fallo suyo viene del
+entorno, y casi todos vienen de los datos.
+
 ---
 
 **Ver también:** [Catálogo completo](../CATALOGO.md) · [CM-00 · entrada](cm-00-entrada-al-sandbox-regulatorio.md) · [CM-03 · custodia](cm-03-custodia-y-segregacion-de-activos.md)

@@ -148,6 +148,28 @@ sandboxctl markets data --scenario proveedor-caido
 5. Corrección con rastro, nunca sobrescritura.
 6. Integración con [CM-17](cm-17-eventos-corporativos.md).
 
+## Si algo falla
+
+Este caso **todavía no tiene código**. Lo que sigue son los fallos que el diseño
+tiene que resolver, y cómo va a resolverlos:
+
+| Situación | Causa | Cómo se resuelve |
+|---|---|---|
+| Todo se valoriza a cero | Llegó un precio cero y nadie lo paró | Se rechaza en la validación y va a cuarentena. Un precio cero aguas arriba dispara márgenes y liquidaciones forzadas aguas abajo |
+| Un instrumento vale 900 veces más o menos | Moneda incorrecta | La moneda va **dentro** del precio, no al lado. Es la misma decisión que en `Money`: un importe sin moneda no es un importe |
+| El precio «más reciente» nunca se reemplaza | Timestamp futuro | Se rechaza. Un dato del futuro gana siempre la comparación y bloquea las actualizaciones legítimas |
+| Una caída del precio del 50% que no ocurrió | Evento corporativo sin aplicar | Antes de alertar se comprueba si hay un split pendiente. Ver [CM-17](cm-17-eventos-corporativos.md) |
+| Se sigue usando el último precio de un proveedor caído | Dato obsoleto servido como actual | Se marca `stale: true` pasado el umbral de frescura. Marcarlo no es lo mismo que ocultarlo |
+| Un precio corregido borra el anterior | Sobrescritura | Las correcciones dejan rastro: las decisiones tomadas con el precio viejo hay que poder explicarlas |
+
+Los fallos que afectan a **cualquier** caso —la compilación, el catálogo, la
+evidencia— están resueltos uno a uno en
+**[Cuando algo falla](../SOLUCION-DE-PROBLEMAS.md)**.
+
+Esta familia **no necesita aislamiento del sistema**: no ejecuta código ajeno,
+sino reglas de negocio deterministas. Por eso casi ningún fallo suyo viene del
+entorno, y casi todos vienen de los datos.
+
 ---
 
 **Ver también:** [Catálogo completo](../CATALOGO.md) · [CM-17 · eventos corporativos](cm-17-eventos-corporativos.md) · [CM-14 · resiliencia](cm-14-resiliencia-operacional.md)

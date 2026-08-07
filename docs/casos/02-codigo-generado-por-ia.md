@@ -191,6 +191,22 @@ contra abuso y reproducibilidad.
 compilado, Rust, Go, Java, WASI—, y la regla que los gobierna: **no se habilita
 un lenguaje que no tenga aislamiento y límites equivalentes a los de Python**.
 
+## Si algo falla
+
+| Síntoma | Causa | Cómo se soluciona |
+|---|---|---|
+| `timedOut: true` | Se agotó el tiempo. Un bucle infinito termina así | 1. Revisar el fragmento. 2. Subir el techo de tiempo en `policies/` si el trabajo lo justifica. 3. Si es un fragmento que debe tardar, dividirlo |
+| `controls` no incluye `memory` ni `cpu` | No hay cgroups en este equipo | Activar systemd en WSL2 (`[boot]` + `systemd=true` en `/etc/wsl.conf`, después `wsl --shutdown`). Detalle en [no hay límites de memoria, CPU o procesos](../SOLUCION-DE-PROBLEMAS.md#no-hay-límites-de-memoria-cpu-o-procesos) |
+| El fragmento no puede instalar dependencias | No tiene red | 1. Preinstalar lo necesario en la imagen del sandbox. 2. Si de verdad hace falta red, `network: allowlist` con los destinos concretos: el proxy registra cada intento |
+| El fragmento escribe un fichero y al volver no está | El sistema de ficheros es efímero y se destruye con la ejecución | Declarar una carpeta de salida en la política y escribir ahí. Todo lo demás desaparece a propósito |
+| `cuerpo ausente o demasiado grande` (413) | El fragmento supera el techo de cuerpo | Subir el límite en `app.py`, o enviar el código por fichero montado en vez de por cuerpo |
+| Dos ejecuciones seguidas se estorban | Hoy el fragmento corre **dentro** del servicio persistente: es la limitación conocida del caso | Mientras no esté el rediseño, ejecutar de uno en uno. El sandbox efímero por ejecución está en [ROADMAP](../../ROADMAP.md) |
+| `GET /api/containment` dice que faltan controles | El equipo no puede aplicar lo que la política pide | Ejecutar `cargo run -p sandboxctl -- doctor`: dice cuál falta y por qué. Con política estricta, la ejecución **no ocurre**, y eso hay que arreglarlo en el equipo, no en la política |
+
+Los fallos que afectan a **cualquier** caso —no se puede crear el sandbox, no hay
+cgroups, un puerto ocupado, procesos huérfanos, la compilación en Windows— están
+resueltos uno a uno en **[Cuando algo falla](../SOLUCION-DE-PROBLEMAS.md)**.
+
 ---
 
 **Ver también:** [Catálogo completo](../CATALOGO.md) · [Estado del proyecto](../ESTADO.md) · [Referencia de políticas](../POLICY_REFERENCE.md)

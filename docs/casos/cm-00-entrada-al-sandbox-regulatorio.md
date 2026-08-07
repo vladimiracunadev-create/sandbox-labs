@@ -188,6 +188,27 @@ poder reproducirse años después y dar exactamente el mismo resultado.
 4. Las tres resoluciones, con límites que los demás casos puedan leer.
 5. Evidencia firmada de cada evaluación.
 
+## Si algo falla
+
+Este caso **todavía no tiene código**. Lo que sigue son los fallos que el diseño
+tiene que resolver, y cómo va a resolverlos:
+
+| Situación | Causa | Cómo se resuelve |
+|---|---|---|
+| La resolución sale `rejected` y el solicitante no entiende por qué | La clasificación detectó una actividad que el modelo de negocio no declaraba | El campo `rationale` cita la regla y el dato de la postulación que la activó. Se corrige la postulación o se corrige el modelo de negocio, no la regla |
+| La misma postulación da resultados distintos en dos fechas | Una regla cambió de versión entre medias | Es correcto y está previsto: las reglas llevan **fecha de vigencia**. La resolución guarda qué versión la evaluó, para poder reconstruirla años después |
+| El solicitante no sabe describir sus flujos de dinero | Suele significar que no ha decidido de quién es el dinero en cada momento | Es el hallazgo más útil del caso. Se responde con una aprobación condicionada que exija resolverlo antes de operar |
+| Falta el plan de salida ordenada | Se pide al **entrar**, no al salir | No se aprueba sin él. Quien no sabe explicar cómo devolvería el dinero probablemente no lo ha separado bien |
+| Alguien presenta la resolución como una autorización | Malentendido grave | Toda salida lleva `notAnAuthorization: true` en el esquema, y es obligatorio. Este simulador no autoriza nada |
+
+Los fallos que afectan a **cualquier** caso —la compilación, el catálogo, la
+evidencia— están resueltos uno a uno en
+**[Cuando algo falla](../SOLUCION-DE-PROBLEMAS.md)**.
+
+Esta familia **no necesita aislamiento del sistema**: no ejecuta código ajeno,
+sino reglas de negocio deterministas. Por eso casi ningún fallo suyo viene del
+entorno, y casi todos vienen de los datos.
+
 ---
 
 **Ver también:** [Catálogo completo](../CATALOGO.md) · [CM-13 · salida ordenada](cm-13-salida-ordenada.md) · [CM-03 · custodia](cm-03-custodia-y-segregacion-de-activos.md)

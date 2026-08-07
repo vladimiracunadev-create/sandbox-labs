@@ -113,5 +113,5 @@ flowchart TD
 ## Siguiente paso
 
 - [Qué es un sandbox](QUE-ES-UN-SANDBOX.md) — el cimiento
-- [Los cinco casos](CASOS.md) — dónde se aplica
+- [Catálogo completo](CATALOGO.md) — los 36 casos y dónde se aplica cada uno
 - [Modelo de amenazas](THREAT_MODEL.md) — qué protege y qué explícitamente no

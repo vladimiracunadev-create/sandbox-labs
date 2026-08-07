@@ -6,7 +6,12 @@ comparar sin releer:
 **En una frase, para cualquiera** · **Por qué se realiza este caso** · **La idea
 que enseña** · **Casos de uso reales** · **Cómo funciona** (con diagramas) ·
 **Esquemas** de entrada y salida · **Software necesario** · **Instalación** ·
-**Procesos que se crean** · **Tiempo de carga** · **Estado real y qué falta**
+**Procesos que se crean** · **Tiempo de carga** · **Si algo falla** ·
+**Estado real y qué falta**
+
+La sección **Si algo falla** de cada ficha lista los fallos propios de ese caso
+con su causa y sus alternativas de solución. Los fallos comunes a todos están en
+**[Cuando algo falla](../SOLUCION-DE-PROBLEMAS.md)**.
 
 El estado de cada caso es el real, no el deseado. Los `planned` dicen que no hay
 código; los `building` dicen exactamente qué falta.
@@ -82,6 +87,7 @@ Probar modelos Fintech con dinero, instrumentos y participantes **simulados**.
   [CM-00 · entrada al sandbox regulatorio](cm-00-entrada-al-sandbox-regulatorio.md)
   es la puerta de la familia.
 - **Si quieres saber qué está construido de verdad:** [Estado del proyecto](../ESTADO.md).
+- **Si algo te falla:** [Cuando algo falla](../SOLUCION-DE-PROBLEMAS.md).
 
 ---
 

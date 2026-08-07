@@ -156,6 +156,24 @@ deja ninguna ventana en la que la red siga abierta por descuido.
 4. Generación de SBOM a partir de lo resuelto.
 5. Registro de intentos de red durante la compilación.
 
+## Si algo falla
+
+Este caso **todavía no tiene código**. Lo que sigue son los fallos que el diseño
+tiene que resolver, y cómo va a resolverlos — escrito antes de la primera línea,
+que es cuando sirve de algo:
+
+| Situación | Causa | Cómo se resuelve |
+|---|---|---|
+| La compilación falla al cerrar la red | Una dependencia descarga algo durante el `postinstall` | Es el hallazgo del caso. Alternativas: 1. Preparar esa descarga en la fase 1 y montarla. 2. Sustituir la dependencia. 3. Documentar la excepción y añadir el destino a la lista de la fase 1 — **nunca abrir la red en la fase 2** |
+| Un checksum no coincide con el fichero de bloqueo | Lo descargado no es lo esperado | **No se construye.** Puede ser un registro con caché sucia, o el paquete cambió bajo la misma versión. Regenerar el fichero de bloqueo a conciencia, no borrarlo |
+| La caché no se usa | Está montada de solo lectura en la fase 2 | Es deliberado: una caché escribible en la fase de compilación deja que un paquete prepare la construcción del siguiente. El llenado de caché ocurre en la fase 1 |
+| `pnpm: command not found` | No está habilitado | `corepack enable pnpm`. **No uses `npm`**: mezclar gestores produce árboles distintos entre tu equipo y CI |
+| El SBOM sale incompleto | Se generó desde el manifiesto y no desde lo resuelto | Se genera desde el árbol resuelto de la fase 1, que es el único que conoce las transitivas |
+
+Los fallos que afectan a **cualquier** caso —no se puede crear el sandbox, no hay
+cgroups, un puerto ocupado, procesos huérfanos, la compilación en Windows— están
+resueltos uno a uno en **[Cuando algo falla](../SOLUCION-DE-PROBLEMAS.md)**.
+
 ---
 
 **Ver también:** [Catálogo completo](../CATALOGO.md) · [Caso 15 · cadena de suministro](15-instalacion-de-cadena-de-suministro.md) · [Caso 09 · CI](09-runner-de-ci-con-pull-request-externo.md)

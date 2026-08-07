@@ -156,6 +156,24 @@ arranca limpio.
 5. Un corpus de documentos sintéticos hostiles: bomba de descompresión,
    referencia externa, tipografía manipulada, anidamiento profundo.
 
+## Si algo falla
+
+Este caso **todavía no tiene código**. Lo que sigue son los fallos que el diseño
+tiene que resolver, y cómo va a resolverlos — escrito antes de la primera línea,
+que es cuando sirve de algo:
+
+| Situación | Causa | Cómo se resuelve |
+|---|---|---|
+| El parser muere sin devolver nada | El cgroup lo mató al alcanzar `memory.max` | Es contención. Si el documento es legítimo, subir `memoryLimitMb`. **Sin cgroups este caso debe negarse a ejecutar con política estricta**: una imagen de dimensiones absurdas se lleva el equipo |
+| `detectedType` no coincide con `declaredType` | El fichero dice ser una cosa y es otra | Se procesa por el tipo **real**, nunca por la extensión, y la discrepancia se anota. Es un dato útil por sí solo |
+| El texto extraído sale vacío | El documento es una imagen escaneada, o el parser no lo soporta | 1. Comprobar `pages` y `parserCrashed`. 2. Si hace falta OCR, es otro proceso y otro caso: no se mete dentro del parser |
+| `externalReferences` lleno de entradas no resueltas | El documento pide ficheros o direcciones de fuera | Correcto: el parser no tiene disco ni red. Si alguna referencia es legítima, resolverla **fuera** y volver a entrar con el resultado |
+| El renderizado tarda demasiado | Documento grande o parser lento | Subir `timeoutSeconds`, o partir el documento por páginas: cada página en su propia jaula desechable |
+
+Los fallos que afectan a **cualquier** caso —no se puede crear el sandbox, no hay
+cgroups, un puerto ocupado, procesos huérfanos, la compilación en Windows— están
+resueltos uno a uno en **[Cuando algo falla](../SOLUCION-DE-PROBLEMAS.md)**.
+
 ---
 
 **Ver también:** [Catálogo completo](../CATALOGO.md) · [Caso 01 · contenido no confiable](01-contenido-web-no-confiable.md) · [Caso 03 · archivos comprimidos](03-procesamiento-seguro-de-archivos.md)
