@@ -40,6 +40,8 @@
         <li>La red está cortada; un servicio que publica un puerto la conserva, y su política lo dice</li>
         <li>Entorno limpio: solo lo que la política declara</li>
         <li>Escribe en un directorio efímero que desaparece al terminar</li>
+        <li>Corre como <code>nobody</code>, sin capabilities y con techo de memoria, PIDs y CPU</li>
+        <li>Las llamadas al kernel que la política deniega devuelven <code>EPERM</code></li>
       </ul>
     </div>
   </div>
@@ -64,8 +66,9 @@
     <div class="card">
       <div class="card-top"><span class="num">2 · medir</span><span class="chip containment">contención</span></div>
       <h3>Comprueba qué contiene de verdad</h3>
-      <p>7 sondas que <b>intentan escaparse</b> del sandbox y devuelven una matriz por runtime.
-      Ya encontró cuatro fallos reales en este mismo repositorio.</p>
+      <p>8 sondas que <b>intentan escaparse</b> del sandbox y devuelven una matriz por runtime.
+      Ya encontró seis fallos reales en este mismo repositorio — el último, una fuga de entorno
+      que se coló al añadir los límites de recursos.</p>
       <code class="cmd">sandboxctl escape</code>
     </div>
     <div class="card">
@@ -75,6 +78,36 @@
       sin medir lleva a pagar de más o a quedarse corto.</p>
       <code class="cmd">sandboxctl bench</code>
     </div>
+  </div>
+</section>
+
+<section>
+  <h2>Qué aplica de verdad, y con qué</h2>
+  <p class="sub">
+    Cada control de la política se traduce a un mecanismo concreto del kernel.
+    Lo que no tiene mecanismo <b>no se declara</b>.
+  </p>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>Control</th><th>Mecanismo</th><th>Estado</th></tr></thead>
+    <tbody>
+      <tr><td><code>filesystem</code></td><td>mount namespace de bubblewrap</td><td>✅</td></tr>
+      <tr><td><code>network</code></td><td>namespace de red propio</td><td>✅ con <code>none</code> y <code>loopback</code></td></tr>
+      <tr><td><code>capabilities</code></td><td><code>--cap-drop ALL</code> + user namespace + <code>--uid</code>/<code>--gid</code></td><td>✅</td></tr>
+      <tr><td><code>memory</code></td><td><code>memory.max</code> de cgroups v2</td><td>✅ donde el host lo admita</td></tr>
+      <tr><td><code>processes</code></td><td><code>pids.max</code> de cgroups v2</td><td>✅ donde el host lo admita</td></tr>
+      <tr><td><code>cpu</code></td><td><code>cpu.max</code> de cgroups v2</td><td>✅ donde el host lo admita</td></tr>
+      <tr><td><code>syscalls</code></td><td>filtro seccomp BPF</td><td>✅ si la política deniega algo</td></tr>
+      <tr><td><code>network</code> con <code>allowlist</code></td><td>—</td><td>⛔ sin enforcement: no se declara</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <div class="callout note" style="margin-top:18px">
+    <b>Nada de esto se declara por estar escrito aquí.</b> Los límites de recursos se comprueban
+    levantando un scope de systemd real antes de la primera ejecución; si el kernel no los acepta,
+    el control no aparece en la evidencia y una política estricta que lo exija no ejecuta.
+    Y la evidencia de cada ejecución se sella con su propia huella, que
+    <code>sandboxctl evidence verify</code> recalcula.
   </div>
 </section>
 

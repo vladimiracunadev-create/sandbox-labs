@@ -54,7 +54,7 @@ puede reportar varias dimensiones, y porque el runtime puede matar el proceso
 
 ---
 
-## 🧪 Las siete dimensiones
+## 🧪 Las ocho dimensiones
 
 | Dimensión | Qué intenta la sonda | Por qué importa |
 |---|---|---|
@@ -65,6 +65,24 @@ puede reportar varias dimensiones, y porque el runtime puede matar el proceso
 | `privilege` | Leer `CapEff` y `uid_map` | Las capabilities que sobreviven permiten montar, trazar o tocar la red |
 | `memory` | Pedir el doble del presupuesto | Sin techo, una carga tumba el host y todo lo que corra en él |
 | `processes` | Crear procesos hasta pasarse | Sin techo de PIDs, una carga agota la tabla de procesos |
+| `syscalls` | Ejecutar llamadas que la política deniega | Sin filtro, la carga le pide al kernel cosas que ninguna aplicación normal necesita: trazar procesos, cargar módulos, instrumentar la CPU |
+
+La sonda de `syscalls` merece una nota, porque enseña cómo se diseña una que
+mida algo. Compara **errno**, no éxito o fracaso: elige llamadas cuyo error sin
+filtro es distinto de `EPERM` —`perf_event_open(NULL,…)` devuelve `EFAULT`—
+porque una que ya falle con `EPERM` por falta de privilegios aprobaría con
+filtro y sin él. Mediría el privilegio del usuario, no el sandbox.
+
+Medido con bubblewrap 0.9.0:
+
+```text
+sin sandbox            → escaped   (EFAULT: la llamada llegó al kernel)
+bubblewrap sin filtro  → escaped   (EFAULT: bubblewrap por sí solo no filtra)
+bubblewrap con filtro  → contained (EPERM en perf_event_open y en ptrace)
+```
+
+La fila del medio es la que da valor a la de abajo: sin ella, «contenido» podría
+significar solo «bubblewrap estaba puesto».
 
 > [!NOTE]
 > Las sondas de red, filesystem, proceso, entorno y privilegios son de riesgo
@@ -149,7 +167,7 @@ admite** — donde no hay gestor de usuario de systemd, sigue sin declararse. Ve
 ### 3. `--strict` aprobaba sin haber medido nada
 
 En el primer run de CI, bubblewrap no llegó a ejecutar ninguna sonda (AppArmor
-restringía los user namespaces en el runner) y las siete quedaron «no
+restringía los user namespaces en el runner) y las ocho quedaron «no
 concluyente». `--strict` pasó igual, porque solo miraba si algo había escapado.
 Cero fugas de cero mediciones no es contención: es no haber mirado.
 

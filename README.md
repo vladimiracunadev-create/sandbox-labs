@@ -112,10 +112,37 @@ Referencia completa en [docs/POLICY_REFERENCE.md](docs/POLICY_REFERENCE.md).
 
 ---
 
+## Qué aplica de verdad, y con qué
+
+Cada control de la política se traduce a un mecanismo concreto del kernel. Lo
+que no tiene mecanismo **no se declara**:
+
+| Control | Mecanismo | Estado |
+|---|---|---|
+| `filesystem` | mount namespace de bubblewrap | ✅ |
+| `network` | namespace de red propio (`--unshare-net`) | ✅ con `none` y `loopback` |
+| `capabilities` | `--cap-drop ALL` + user namespace + `--uid`/`--gid` | ✅ |
+| `memory` | `memory.max` de cgroups v2 | ✅ donde el host lo admita |
+| `processes` | `pids.max` de cgroups v2 | ✅ donde el host lo admita |
+| `cpu` | `cpu.max` de cgroups v2 | ✅ donde el host lo admita |
+| `syscalls` | filtro seccomp BPF, `EPERM` en las denegadas | ✅ si la política deniega algo |
+| `timeout`, `output` | el supervisor | ✅ |
+| `network` con `allowlist` | — | ⛔ sin enforcement: **no se declara** |
+
+Los tres de cgroups pasan por `systemd-run --user --scope`, y **antes de la
+primera ejecución se levanta un scope de prueba** para comprobar que el kernel
+los acepta. Donde falle, los controles no aparecen en la evidencia y una
+política estricta que los exija no ejecuta. `sandboxctl doctor` lo enseña.
+
+Los huecos conocidos, uno por uno y con lo que haría falta para cerrarlos, en
+**[docs/IMPLEMENTATION_BACKLOG.md](docs/IMPLEMENTATION_BACKLOG.md)**.
+
+---
+
 ## Comprobar que contiene de verdad
 
 Un runtime puede *declarar* que corta la red y no cortarla. Por eso el
-repositorio trae sondas que **intentan escaparse** y publican el resultado:
+repositorio trae ocho sondas que **intentan escaparse** y publican el resultado:
 
 ```bash
 cargo run -p sandboxctl -- escape
@@ -124,6 +151,21 @@ cargo run -p sandboxctl -- escape
 Es lo que CI ejecuta en cada commit, incluida la contraprueba de que sin
 aislamiento las sondas **tienen** que escaparse — si no, no estarían midiendo
 nada. Detalle en [docs/CONTAINMENT_SUITE.md](docs/CONTAINMENT_SUITE.md).
+
+El peor veredicto posible no es «escapó», es **`❌ DECLARADO`**: el runtime
+prometió el control y la sonda demostró que no lo aplica. Eso tumba el build.
+
+## Y que la evidencia no se ha tocado
+
+Cada ejecución escribe un informe firmado con su propia huella:
+
+```bash
+cargo run -p sandboxctl -- evidence verify
+```
+
+Recalcula esa huella y vuelve a hashear la política y la carga. Distingue que
+alguien editara el informe de que el código haya cambiado desde entonces, que no
+es lo mismo. También corre en CI.
 
 ---
 

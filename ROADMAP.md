@@ -18,13 +18,15 @@
 - ✅ Identidad no privilegiada: `--uid`/`--gid` de la política, aplicados.
 - ✅ Red contenida también en los servicios, mediante reenviador del supervisor.
 - ✅ Evidencia verificable: `sandboxctl evidence verify`.
-- ⛔ **seccomp**: pendiente. Los perfiles existen y ningún runtime los aplica —
-  ver [B-05](docs/IMPLEMENTATION_BACKLOG.md).
+- ✅ **seccomp**: `policy.syscalls.deny` compilado a BPF y aplicado por
+  bubblewrap, con sonda que lo mide comparando errno.
 - ⛔ **Egress con allowlist**: pendiente, sin enforcement — ver B-04.
 - ⛔ **Un solo compilador de política** para cargas y servicios — ver B-07.
 
-Nada de esto marca el runtime como `ready`: sigue siendo `experimental` hasta
-que los huecos de arriba estén cerrados.
+Quedan dos huecos, y hasta cerrarlos el runtime sigue siendo `experimental`: el
+egress con allowlist no tiene enforcement, y los servicios se compilan por un
+camino distinto al de las cargas, que es un sitio de más donde un control puede
+perderse.
 
 ## v0.8.0 — WASI Portable Runner
 

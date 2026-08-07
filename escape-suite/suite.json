@@ -37,6 +37,11 @@
       "id": "processes",
       "label": "Límite de procesos",
       "why": "Sin techo de PIDs, una carga agota la tabla de procesos del host."
+    },
+    {
+      "id": "syscalls",
+      "label": "Filtro de llamadas al sistema",
+      "why": "Sin filtro, una carga puede pedirle al kernel cosas que ninguna aplicación normal necesita: trazar procesos, cargar módulos o instrumentar la CPU."
     }
   ],
   "probes": [
@@ -88,6 +93,13 @@
       "workload": "escape-process-limit",
       "control": "processes",
       "argument": "processes"
+    },
+    {
+      "id": "seccomp-filter",
+      "dimension": "syscalls",
+      "workload": "escape-seccomp-filter",
+      "control": "syscalls",
+      "argument": null
     }
   ]
 }

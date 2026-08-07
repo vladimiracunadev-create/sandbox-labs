@@ -141,3 +141,29 @@ en todo el host, no los de la carga.
 - `allowedEnvironment`: nombres de secretos que la política autoriza. Un secreto
   que el servicio pide y la política no declara **no entra**, y eso no es un
   fallo sino la política haciendo su trabajo.
+
+## Syscalls
+
+- `deny`: llamadas al sistema que la carga **no** puede hacer. Se compilan a un
+  filtro seccomp BPF y bubblewrap lo recibe por descriptor. Las denegadas
+  devuelven `EPERM`.
+- `allow` y `profile`: se parsean y **no se aplican todavía**. El filtro que se
+  construye sale de `deny`.
+
+Nombres reconocidos hoy: `mount`, `umount2`, `ptrace`, `reboot`, `kexec_load`,
+`bpf`, `perf_event_open`, `clone3`, `init_module`, `finit_module`,
+`delete_module`, `process_vm_readv`, `process_vm_writev`. Un nombre que este
+kernel no conozca se ignora sin tumbar el resto del filtro —`clone3` no existe
+en kernels antiguos—, y si **ninguno** se reconoce no se aplica filtro y el
+control no se declara.
+
+Por qué denegación y no lista de permitidos, y por qué `EPERM` y no matar el
+proceso: [B-05](IMPLEMENTATION_BACKLOG.md).
+
+Solo bubblewrap. `unshare` no tiene forma de recibir un filtro.
+
+## Devices
+
+- `allow`: dispositivos que se montan en `/dev`. Bubblewrap monta un `/dev`
+  mínimo; la lista es la intención declarada, y el control `devices` se declara
+  porque ese `/dev` reducido sí se aplica.

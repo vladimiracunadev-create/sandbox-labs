@@ -208,6 +208,13 @@ impl RuntimeKind {
             for control in &crate::cgroup::support().controls {
                 values.insert(control.clone());
             }
+            // `syscalls` solo si la política deniega algo que este kernel
+            // conoce y el filtro compila para esta arquitectura. La misma
+            // función que usa el adaptador para decidir si lo aplica, para que
+            // no puedan discrepar.
+            if crate::seccomp::is_supported(policy) {
+                values.insert("syscalls".into());
+            }
         }
         // El control `network` sobrevive solo si la política pide un namespace
         // de red propio. Con `allowlist` o `unrestricted` la carga conserva la

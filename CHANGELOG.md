@@ -37,6 +37,32 @@ Versionado semántico.
   inyecta `INVOCATION_ID` por su cuenta; la cadena intercala ahora un `env -i` y
   el runtime arranca con el entorno vacío. El contrato es vaciar, no enumerar.
 
+### Added — los perfiles seccomp pasan de fichero a filtro real
+
+- **`policy.syscalls.deny` se compila a un programa BPF** con `seccompiler`
+  —Rust puro, frente a `libseccomp`, que exigiría la biblioteca C en cada host y
+  en CI— y bubblewrap lo recibe por descriptor con `--seccomp`. Las llamadas
+  denegadas devuelven `EPERM`.
+- **Denegación y no lista de permitidos**, porque es lo que declaran las
+  políticas y porque una lista de permitidos incompleta no es más segura: es un
+  sandbox que no arranca, y se acaba ampliando hasta que ya no contiene nada.
+- **`EPERM` en vez de matar el proceso**, para que la carga siga viva y pueda
+  contarlo — que es lo que permite medirlo.
+- **Sonda `seccomp-filter`**, octava de la suite. Compara errno en vez de éxito:
+  elige llamadas cuyo error sin filtro es distinto de `EPERM`, porque una que ya
+  falle con `EPERM` por falta de privilegios aprobaría con filtro y sin él.
+  Medido con bubblewrap 0.9.0 — sin sandbox escapa, bubblewrap sin filtro escapa,
+  bubblewrap con filtro contiene.
+- `syscalls` entra en el contrato de contención que CI exige a bubblewrap.
+- Una prueba unitaria aplica el BPF a un hilo real y comprueba el salto de
+  `EFAULT` a `EPERM`, así que la compilación se verifica sin bubblewrap.
+
+### Added — el README y la portada dicen qué se aplica
+
+- Tabla de **control → mecanismo del kernel → estado**, con los huecos marcados
+  como tales. `allowlist` aparece con «sin enforcement: no se declara».
+- La portada del sitio deja de describir un sandbox genérico y enseña lo mismo.
+
 ### Added — la evidencia se puede verificar
 
 - **`integrity.evidenceSha256`**: cada evidencia se sella con un SHA-256 de su

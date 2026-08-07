@@ -439,6 +439,8 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "chrono",
+ "libc",
+ "seccompiler",
  "serde",
  "serde_json",
  "sha2",
@@ -452,6 +454,7 @@ name = "sandbox-runtimes"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "libc",
  "sandbox-core",
  "serde_json",
  "tempfile",
@@ -468,6 +471,15 @@ dependencies = [
  "sandbox-core",
  "sandbox-runtimes",
  "serde_json",
+]
+
+[[package]]
+name = "seccompiler"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a4ae55de56877481d112a559bbc12667635fdaf5e005712fd4e2b2fa50ffc884"
+dependencies = [
+ "libc",
 ]
 
 [[package]]

@@ -209,7 +209,7 @@ jobs:
           # ya exige que la sonda lo confirme — esta lista es el suelo mínimo,
           # no el techo.
           node scripts/assert-containment.mjs evidence/escape/bwrap.json \
-            --contained network,filesystem,process,environment,privilege,memory
+            --contained network,filesystem,process,environment,privilege,memory,syscalls
 
       - name: Suite de contención — unshare debe cortar la red y los PIDs
         run: |

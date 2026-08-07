@@ -142,17 +142,53 @@ porque un servicio que necesite la red del host tiene que poder decirlo.
 
 | | |
 |---|---|
-| **Estado** | Abierto |
+| **Estado** | ✅ Cerrado en bubblewrap · no aplica a `unshare` |
 | **Control afectado** | `syscalls` |
-| **Se declara hoy** | No, en ningún runtime. |
+| **Se declara hoy** | Sí, en bubblewrap y solo cuando la política deniega llamadas que este kernel conoce y el filtro compila para esta arquitectura. |
 
-`profiles/seccomp/strict.json` existe y `policy.syscalls` se parsea, pero ningún
-adaptador compila el perfil ni lo pasa al runtime. El fichero sugiere una
-capacidad que el sistema no tiene.
+`profiles/seccomp/strict.json` existía, `policy.syscalls` se parseaba, y ningún
+adaptador compilaba nada ni se lo pasaba al runtime. Un fichero de perfil que
+nadie aplica sugiere una capacidad que el sistema no tiene.
 
-**Para cerrarlo:** compilar el perfil a un programa BPF y pasarlo a bubblewrap
-con `--seccomp`, registrando en la evidencia el perfil solicitado, el realmente
-aplicado y el resultado de las sondas que intentan las llamadas bloqueadas.
+**Cómo se cerró:** `policy.syscalls.deny` se compila a un programa BPF con
+[`seccompiler`](https://crates.io/crates/seccompiler) —Rust puro, frente a
+`libseccomp`, que exigiría la biblioteca C en cada host y en CI— y se le pasa a
+bubblewrap por descriptor con `--seccomp 63`. El descriptor se duplica en el
+hijo con `dup2` entre el `fork` y el `exec`, porque Rust marca `CLOEXEC` en todo
+lo que abre y no hay API segura en `std` para heredar uno concreto.
+
+**Denegación, no lista de permitidos.** Es lo que declaran las políticas del
+catálogo. Una lista de permitidos contiene mucho más, pero obliga a enumerar
+todo lo que un intérprete de Python necesita para arrancar, que cambia entre
+versiones de glibc y de Python. Una lista de permitidos incompleta no es «más
+segura»: es un sandbox que no arranca, y el arreglo habitual es ampliarla hasta
+que funcione, momento en el cual ya no contiene nada. Para un binario conocido y
+estable será lo correcto; para código arbitrario, no.
+
+**`EPERM`, no matar el proceso.** Matar deja un proceso muerto sin explicación.
+Con `EPERM` la carga recibe un error normal, sigue viva y puede contarlo — que es
+lo que permite medirlo.
+
+**Y se mide.** La sonda `seccomp-filter` ejecuta las llamadas denegadas y compara
+el errno. Elige llamadas cuyo error sin filtro es **distinto** de `EPERM`
+—`perf_event_open(NULL,…)` da `EFAULT`— porque una que ya falle con `EPERM` por
+falta de privilegios aprobaría con filtro y sin él: mediría el privilegio del
+usuario, no el sandbox. Medido con bubblewrap 0.9.0:
+
+```text
+sin sandbox            → escaped   (EFAULT: llegó al kernel)
+bubblewrap sin filtro  → escaped   (EFAULT: bubblewrap solo no filtra)
+bubblewrap con filtro  → contained (EPERM en perf_event_open y en ptrace)
+```
+
+Una prueba unitaria aplica además el BPF a un hilo real y comprueba el mismo
+salto de `EFAULT` a `EPERM`, así que la compilación se verifica aunque no haya
+bubblewrap instalado.
+
+`syscalls` entra en el contrato de contención que CI exige a bubblewrap.
+
+**No aplica a `unshare`:** no tiene forma de recibir un filtro. Una razón más
+por la que sigue clasificado como runtime parcial.
 
 ### B-06 · UID/GID de la política ignorados
 

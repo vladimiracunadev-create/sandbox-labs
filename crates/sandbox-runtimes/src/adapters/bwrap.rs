@@ -20,6 +20,7 @@ fn effective_limits(
     network_isolated: bool,
     wrapped_in_prlimit: bool,
     wrapped_in_cgroup: bool,
+    filtered: bool,
 ) -> BTreeMap<String, String> {
     let mut limits = BTreeMap::new();
     limits.insert("filesystem".into(), "bubblewrap mount namespace".into());
@@ -40,6 +41,12 @@ fn effective_limits(
         limits.insert("memory".into(), format!("{}MB cgroup memory.max", policy.resources.memory_mb));
         limits.insert("processes".into(), format!("{} cgroup pids.max", policy.resources.processes));
         limits.insert("cpu".into(), format!("{} núcleos cgroup cpu.max", policy.resources.cpu));
+    }
+    if filtered {
+        limits.insert(
+            "syscalls".into(),
+            format!("{} llamadas denegadas con EPERM (seccomp BPF)", policy.syscalls.deny.len()),
+        );
     }
     limits
 }
@@ -128,6 +135,19 @@ impl RuntimeAdapter for BwrapAdapter {
         for (name, value) in &policy.process.environment {
             args.extend(["--setenv".into(), name.clone(), value.clone()]);
         }
+        // El filtro seccomp, si la política deniega algo que este kernel
+        // conoce. Va antes del `--` porque es una opción de bubblewrap, no de la
+        // carga.
+        let seccomp = match sandbox_core::seccomp::compile(policy)? {
+            None => None,
+            Some(filter) => {
+                let path = temp.path().join("seccomp.bpf");
+                std::fs::write(&path, sandbox_core::seccomp::to_bytes(&filter))?;
+                args.extend(["--seccomp".into(), sandbox_core::seccomp::FILTER_FD.to_string()]);
+                Some(std::fs::File::open(&path)?)
+            }
+        };
+        let filtered = seccomp.is_some();
         args.push("--".into());
         args.push(workload.command.clone());
         args.extend(workload.command_args(extra_args)?);
@@ -175,7 +195,7 @@ impl RuntimeAdapter for BwrapAdapter {
                 true
             }
         };
-        let limits = effective_limits(policy, network_isolated, wrapped_in_prlimit, wrapped_in_cgroup);
+        let limits = effective_limits(policy, network_isolated, wrapped_in_prlimit, wrapped_in_cgroup, filtered);
         run(
             CommandSpec {
                 program,
@@ -183,6 +203,7 @@ impl RuntimeAdapter for BwrapAdapter {
                 current_dir: None,
                 clear_env: true,
                 environment,
+                seccomp,
                 effective_limits: limits,
                 observe_cgroup: wrapped_in_cgroup,
             },
@@ -209,7 +230,7 @@ mod tests {
 
     #[test]
     fn declares_network_isolation_when_the_namespace_exists() {
-        let contained = effective_limits(&policy_with_network("none"), true, false, false);
+        let contained = effective_limits(&policy_with_network("none"), true, false, false, false);
         assert!(contained.contains_key("network"), "con --unshare-net la red sí queda aislada");
     }
 
@@ -221,7 +242,7 @@ mod tests {
     #[test]
     fn never_declares_isolation_while_keeping_the_host_network() {
         for mode in ["loopback", "allowlist", "unrestricted"] {
-            let limits = effective_limits(&policy_with_network(mode), false, false, false);
+            let limits = effective_limits(&policy_with_network(mode), false, false, false, false);
             assert!(
                 !limits.contains_key("network"),
                 "con network={mode} no se creó namespace de red: declararlo sería mentir en la evidencia"
@@ -232,26 +253,26 @@ mod tests {
     #[test]
     fn declares_memory_only_when_prlimit_wraps_the_execution() {
         let policy = policy_with_network("none");
-        assert!(!effective_limits(&policy, true, false, false).contains_key("memory"));
-        assert!(effective_limits(&policy, true, true, false).contains_key("memory"));
+        assert!(!effective_limits(&policy, true, false, false, false).contains_key("memory"));
+        assert!(effective_limits(&policy, true, true, false, false).contains_key("memory"));
     }
 
     #[test]
     fn always_declares_the_identity_the_policy_asked_for() {
         // No depende del host: `--uid`/`--gid` los aplica bubblewrap siempre que
         // haya user namespace, y siempre lo hay.
-        let limits = effective_limits(&policy_with_network("none"), true, false, false);
+        let limits = effective_limits(&policy_with_network("none"), true, false, false, false);
         assert_eq!(limits["user"], "uid=65534 gid=65534 (--uid/--gid)");
     }
 
     #[test]
     fn declares_pids_and_cpu_only_under_a_cgroup() {
         let policy = policy_with_network("none");
-        let sin = effective_limits(&policy, true, true, false);
+        let sin = effective_limits(&policy, true, true, false, false);
         assert!(!sin.contains_key("processes"), "RLIMIT_NPROC no es un techo de PIDs de la carga");
         assert!(!sin.contains_key("cpu"), "sin cgroup no hay cuota de CPU que declarar");
 
-        let con = effective_limits(&policy, true, true, true);
+        let con = effective_limits(&policy, true, true, true, false);
         assert!(con["processes"].contains("pids.max"));
         assert!(con["cpu"].contains("cpu.max"));
     }
@@ -261,7 +282,7 @@ mod tests {
         // Los dos pueden estar puestos a la vez. La evidencia tiene que nombrar
         // el que de verdad acota la memoria residente, no el del espacio de
         // direcciones virtual.
-        let limits = effective_limits(&policy_with_network("none"), true, true, true);
+        let limits = effective_limits(&policy_with_network("none"), true, true, true, false);
         assert!(limits["memory"].contains("memory.max"), "{}", limits["memory"]);
         assert!(!limits["memory"].contains("RLIMIT_AS"), "{}", limits["memory"]);
     }

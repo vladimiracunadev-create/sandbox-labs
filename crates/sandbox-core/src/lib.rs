@@ -7,6 +7,7 @@ pub mod evidence;
 pub mod hash;
 pub mod policy;
 pub mod runtime;
+pub mod seccomp;
 pub mod service;
 pub mod workload;
 

@@ -77,6 +77,7 @@ impl RuntimeAdapter for UnshareAdapter {
                 environment: policy.process.environment.clone(),
                 effective_limits: limits,
                 observe_cgroup: false,
+                seccomp: None,
             },
             policy,
         )

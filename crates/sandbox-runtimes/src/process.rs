@@ -10,7 +10,9 @@ use std::{
 };
 use wait_timeout::ChildExt;
 
-#[derive(Debug, Clone)]
+/// Sin `Clone`: lleva el fichero abierto del filtro seccomp, que es un recurso
+/// único y no se puede duplicar sin duplicar también el descriptor.
+#[derive(Debug)]
 pub struct CommandSpec {
     pub program: String,
     pub args: Vec<String>,
@@ -24,6 +26,13 @@ pub struct CommandSpec {
     /// apunta al cgroup de la sesión del host, y publicar sus cifras como
     /// consumo de la carga sería peor que no medir nada.
     pub observe_cgroup: bool,
+    /// Filtro seccomp ya compilado y escrito a un fichero temporal.
+    ///
+    /// Se pasa abierto y no por ruta porque bubblewrap lo lee de un
+    /// **descriptor**, no de un camino: `--seccomp <fd>`. El fichero se mantiene
+    /// vivo hasta después de `spawn` para que el descriptor siga siendo válido
+    /// cuando el hijo lo duplique.
+    pub seccomp: Option<std::fs::File>,
 }
 
 pub fn run(spec: CommandSpec, policy: &Policy) -> Result<ExecutionOutcome> {
@@ -36,6 +45,25 @@ pub fn run(spec: CommandSpec, policy: &Policy) -> Result<ExecutionOutcome> {
         command.env_clear();
     }
     command.envs(&spec.environment);
+    // El filtro tiene que llegar al hijo por un descriptor concreto, y Rust
+    // marca CLOEXEC en todo lo que abre. `dup2` en el hijo —después de fork y
+    // antes de exec— crea una copia sin CLOEXEC en el número que bubblewrap
+    // espera. No hay API segura en std para esto.
+    //
+    // `dup2` es async-signal-safe, que es el requisito de lo que corre aquí.
+    #[cfg(unix)]
+    if let Some(filter) = spec.seccomp.as_ref() {
+        use std::os::unix::{io::AsRawFd, process::CommandExt};
+        let source = filter.as_raw_fd();
+        unsafe {
+            command.pre_exec(move || {
+                if libc::dup2(source, sandbox_core::seccomp::FILTER_FD) < 0 {
+                    return Err(std::io::Error::last_os_error());
+                }
+                Ok(())
+            });
+        }
+    }
     let started = Instant::now();
     let mut child = command.spawn().with_context(|| format!("No se pudo iniciar {}", spec.program))?;
     // Antes de nada: systemd retira el cgroup en cuanto el scope termina, así

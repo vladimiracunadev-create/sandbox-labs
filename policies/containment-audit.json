@@ -51,9 +51,16 @@
     "group": 65534
   },
   "syscalls": {
-    "profile": "default",
+    "profile": "strict",
     "allow": [],
-    "deny": []
+    "deny": [
+      "mount",
+      "ptrace",
+      "reboot",
+      "kexec_load",
+      "bpf",
+      "perf_event_open"
+    ]
   },
   "devices": {
     "allow": [
