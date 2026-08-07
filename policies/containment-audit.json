@@ -1,7 +1,7 @@
 {
   "$schema": "../schemas/policy.schema.json",
   "id": "containment-audit",
-  "description": "Auditoría de contención: pide todos los controles en modo best-effort para poder MEDIR qué aplica cada runtime. Una política strict fallaría cerrada antes de ejecutar y no mediría nada.",
+  "description": "Auditoría de contención: pide todos los controles en modo best-effort para poder MEDIR qué aplica cada runtime. Una política strict fallaría cerrada antes de ejecutar y no mediría nada. Deniega además `getcpu`, que no es peligrosa: es la llamada de CALIBRACIÓN de la sonda de seccomp. Tiene éxito siempre y para cualquiera, así que un EPERM solo puede venir del filtro. Medir con llamadas peligrosas no serviría: esas ya fallan con EPERM por falta de privilegios, y la sonda aprobaría con filtro y sin él.",
   "enforcement": {
     "mode": "best-effort",
     "requiredControls": [
@@ -59,7 +59,8 @@
       "reboot",
       "kexec_load",
       "bpf",
-      "perf_event_open"
+      "perf_event_open",
+      "getcpu"
     ]
   },
   "devices": {

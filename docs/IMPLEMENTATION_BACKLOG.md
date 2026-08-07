@@ -169,21 +169,44 @@ estable será lo correcto; para código arbitrario, no.
 Con `EPERM` la carga recibe un error normal, sigue viva y puede contarlo — que es
 lo que permite medirlo.
 
-**Y se mide.** La sonda `seccomp-filter` ejecuta las llamadas denegadas y compara
-el errno. Elige llamadas cuyo error sin filtro es **distinto** de `EPERM`
-—`perf_event_open(NULL,…)` da `EFAULT`— porque una que ya falle con `EPERM` por
-falta de privilegios aprobaría con filtro y sin él: mediría el privilegio del
-usuario, no el sandbox. Medido con bubblewrap 0.9.0:
+**Y se mide, con una llamada de calibración.** La sonda `seccomp-filter` ejecuta
+`getcpu(NULL, NULL, NULL)`, que **tiene éxito siempre, para cualquiera y en
+cualquier host**. Así solo hay dos respuestas posibles y cada una significa una
+cosa: éxito = ningún filtro la bloqueó, `EPERM` = el filtro la denegó. Por eso
+`containment-audit` —la política cuya única razón de ser es medir— la incluye en
+su lista de denegación.
+
+Se llegó ahí después de dos intentos fallidos, y los dos enseñan lo mismo:
+
+1. Medir con `mount` o `ptrace`, que es el instinto. No sirve: ya fallan con
+   `EPERM` para cualquier usuario sin privilegios, así que la sonda aprobaría con
+   filtro y sin él. Mediría el privilegio del usuario, no el sandbox.
+2. Medir con `perf_event_open(NULL, …)`, que devuelve `EFAULT` en una máquina
+   normal. **Falló en CI**: el runner devuelve `EACCES` por
+   `perf_event_paranoid`, y en un host con ese sysctl en 3 devolvería `EPERM` sin
+   que hubiera filtro alguno. Un discriminador que depende de la configuración
+   del host no discrimina.
+
+Medido con bubblewrap 0.9.0, las tres filas:
 
 ```text
-sin sandbox            → escaped   (EFAULT: llegó al kernel)
-bubblewrap sin filtro  → escaped   (EFAULT: bubblewrap solo no filtra)
-bubblewrap con filtro  → contained (EPERM en perf_event_open y en ptrace)
+sin sandbox            → escaped   (getcpu tuvo éxito)
+bubblewrap sin filtro  → escaped   (bubblewrap por sí solo no filtra)
+bubblewrap con filtro  → contained (getcpu → EPERM, perf_event_open → EPERM)
 ```
 
+La fila del medio es la que da valor a la de abajo: sin ella, «contenido» podría
+significar solo «bubblewrap estaba puesto».
+
+La sonda tampoco llama a `ptrace`. Hacerlo con `request=0` es `PTRACE_TRACEME`,
+que tiene éxito y deja el proceso **detenido** esperando a su padre: sin filtro
+la sonda se colgaba y no llegaba a imprimir su veredicto. Una sonda que se cuelga
+justo en el caso que tiene que detectar es peor que no tenerla.
+
 Una prueba unitaria aplica además el BPF a un hilo real y comprueba el mismo
-salto de `EFAULT` a `EPERM`, así que la compilación se verifica aunque no haya
-bubblewrap instalado.
+salto, así que la compilación se verifica aunque no haya bubblewrap instalado. Y
+otra comprueba el paso del descriptor —`dup2` entre el fork y el exec— usando
+`/proc/self/fd`, porque `/bin/sh` es dash y no admite `<&63`.
 
 `syscalls` entra en el contrato de contención que CI exige a bubblewrap.
 

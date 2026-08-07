@@ -48,11 +48,13 @@ Versionado semántico.
   sandbox que no arranca, y se acaba ampliando hasta que ya no contiene nada.
 - **`EPERM` en vez de matar el proceso**, para que la carga siga viva y pueda
   contarlo — que es lo que permite medirlo.
-- **Sonda `seccomp-filter`**, octava de la suite. Compara errno en vez de éxito:
-  elige llamadas cuyo error sin filtro es distinto de `EPERM`, porque una que ya
-  falle con `EPERM` por falta de privilegios aprobaría con filtro y sin él.
-  Medido con bubblewrap 0.9.0 — sin sandbox escapa, bubblewrap sin filtro escapa,
-  bubblewrap con filtro contiene.
+- **Sonda `seccomp-filter`**, octava de la suite. Mide con `getcpu`, que tiene
+  éxito siempre y para cualquiera: éxito = ningún filtro la bloqueó, `EPERM` = el
+  filtro la denegó. Medir con llamadas peligrosas no vale —ya fallan con `EPERM`
+  sin privilegios— y medir con `perf_event_open` tampoco: su error sin filtro
+  depende de `perf_event_paranoid` del host, y falló en CI por eso. Medido con
+  bubblewrap 0.9.0: sin sandbox escapa, bubblewrap sin filtro escapa, bubblewrap
+  con filtro contiene.
 - `syscalls` entra en el contrato de contención que CI exige a bubblewrap.
 - Una prueba unitaria aplica el BPF a un hilo real y comprueba el salto de
   `EFAULT` a `EPERM`, así que la compilación se verifica sin bubblewrap.

@@ -125,3 +125,104 @@ fn drain<R: Read>(mut reader: R, cap: usize) -> (String, bool) {
     }
     (String::from_utf8_lossy(&kept).to_string(), truncated)
 }
+
+#[cfg(all(test, unix))]
+mod tests {
+    use super::*;
+    use std::collections::BTreeMap;
+
+    fn policy() -> Policy {
+        serde_json::from_value(serde_json::json!({
+            "id": "test",
+            "enforcement": { "mode": "best-effort", "requiredControls": [] },
+            "filesystem": { "root": "ephemeral", "readOnly": [], "writable": [], "maxWorkspaceMb": 64, "followSymlinks": false },
+            "network": { "mode": "none", "hosts": [], "dns": "disabled" },
+            "resources": { "cpu": 1.0, "memoryMb": 128, "processes": 8, "timeoutSeconds": 20, "openFiles": 32, "outputBytes": 4096 },
+            "process": { "capabilities": [], "environment": {}, "allowedEnvironment": [], "user": 65534, "group": 65534 }
+        }))
+        .expect("política de prueba válida")
+    }
+
+    /// El eslabón que no se puede comprobar mirando la línea de comandos.
+    ///
+    /// El filtro seccomp viaja a bubblewrap por un descriptor concreto, y ese
+    /// descriptor lo crea `dup2` dentro del hijo. Si fallara, bubblewrap leería
+    /// basura o nada y **todas** las sondas se caerían a la vez — que es un
+    /// fallo ruidoso, pero llegaría en CI y no aquí.
+    ///
+    /// Se usa `sh` leyendo del descriptor en vez de bubblewrap: lo que se mide
+    /// es el paso del descriptor, no lo que el runtime haga con él.
+    #[test]
+    fn the_filter_descriptor_reaches_the_child() {
+        let directory = tempfile::tempdir().expect("directorio temporal");
+        let path = directory.path().join("filtro.bpf");
+        std::fs::write(&path, b"12345678").expect("escribir filtro");
+
+        let outcome = run(
+            CommandSpec {
+                program: "/bin/sh".into(),
+                args: vec![
+                    "-c".into(),
+                    // Por `/proc/self/fd` y no con `<&63`: `/bin/sh` es dash en
+                    // Debian y Ubuntu, y no admite descriptores de más de un
+                    // dígito. El descriptor sí está; lo que no está es la
+                    // sintaxis para nombrarlo.
+                    format!("/usr/bin/wc -c < /proc/self/fd/{}", sandbox_core::seccomp::FILTER_FD),
+                ],
+                current_dir: None,
+                clear_env: true,
+                environment: BTreeMap::new(),
+                effective_limits: BTreeMap::new(),
+                observe_cgroup: false,
+                seccomp: Some(std::fs::File::open(&path).expect("abrir filtro")),
+            },
+            &policy(),
+        )
+        .expect("ejecutar");
+
+        assert_eq!(
+            outcome.stdout.trim(),
+            "8",
+            "salida={:?} error={:?} estado={} código={:?}",
+            outcome.stdout,
+            outcome.stderr,
+            outcome.status,
+            outcome.exit_code
+        );
+    }
+
+    /// Y sin filtro, ese descriptor no puede existir: heredarlo por accidente
+    /// sería una fuga de descriptores hacia dentro del sandbox.
+    #[test]
+    fn without_a_filter_the_descriptor_is_not_there() {
+        let outcome = run(
+            CommandSpec {
+                program: "/bin/sh".into(),
+                args: vec![
+                    "-c".into(),
+                    format!(
+                        "test -e /proc/self/fd/{} && echo presente || echo ausente",
+                        sandbox_core::seccomp::FILTER_FD
+                    ),
+                ],
+                current_dir: None,
+                clear_env: true,
+                environment: BTreeMap::new(),
+                effective_limits: BTreeMap::new(),
+                observe_cgroup: false,
+                seccomp: None,
+            },
+            &policy(),
+        )
+        .expect("ejecutar");
+
+        assert_eq!(
+            outcome.stdout.trim(),
+            "ausente",
+            "salida={:?} error={:?} estado={}",
+            outcome.stdout,
+            outcome.stderr,
+            outcome.status
+        );
+    }
+}

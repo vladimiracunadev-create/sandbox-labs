@@ -11,3 +11,6 @@ serde_json.workspace = true
 tempfile.workspace = true
 wait-timeout.workspace = true
 sandbox-core = { path = "../sandbox-core" }
+
+[dev-dependencies]
+serde_json.workspace = true

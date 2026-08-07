@@ -143,6 +143,9 @@ fn syscall_number(name: &str) -> Option<i64> {
         "delete_module" => 176,
         "process_vm_readv" => 310,
         "process_vm_writev" => 311,
+        // Calibración de la suite de contención: siempre tiene éxito para
+        // cualquier usuario, así que un EPERM solo puede venir del filtro.
+        "getcpu" => 309,
         _ => return None,
     };
     #[cfg(target_arch = "aarch64")]
@@ -160,6 +163,7 @@ fn syscall_number(name: &str) -> Option<i64> {
         "delete_module" => 106,
         "process_vm_readv" => 270,
         "process_vm_writev" => 271,
+        "getcpu" => 168,
         _ => return None,
     };
     #[cfg(not(any(target_arch = "x86_64", target_arch = "aarch64")))]
@@ -197,9 +201,11 @@ mod tests {
 
     #[test]
     fn the_catalogue_deny_list_compiles() {
-        let program = compile(&policy_denying(&["mount", "ptrace", "reboot", "kexec_load", "bpf", "perf_event_open"]))
-            .expect("compilar")
-            .expect("con llamadas denegadas tiene que haber filtro");
+        // La misma lista que `policies/containment-audit.json`, calibración incluida.
+        let program =
+            compile(&policy_denying(&["mount", "ptrace", "reboot", "kexec_load", "bpf", "perf_event_open", "getcpu"]))
+                .expect("compilar")
+                .expect("con llamadas denegadas tiene que haber filtro");
         assert!(!program.is_empty(), "un filtro vacío no filtra nada");
         assert!(is_supported(&policy_denying(&["ptrace"])));
         // Gancho para comprobar a mano que bubblewrap acepta este formato de
@@ -226,17 +232,22 @@ mod tests {
         assert!(compile(&policy_denying(&["esto", "tampoco"])).expect("compilar").is_none());
     }
 
-    /// `perf_event_open(NULL, …)` y su errno.
+    /// `getcpu(NULL, NULL, NULL)` y su errno, o 0 si tuvo éxito.
     ///
-    /// Sin filtro el kernel devuelve `EFAULT`: la llamada llegó y no pudo leer
-    /// la estructura. Con filtro devuelve `EPERM`. Son distintos a propósito —
-    /// si se eligiera una llamada que ya falla con `EPERM` por falta de
-    /// privilegios, la comprobación aprobaría con filtro y sin él.
+    /// Se elige `getcpu` y no una llamada «peligrosa» porque tiene éxito para
+    /// cualquier usuario en cualquier host. Las peligrosas ya fallan con `EPERM`
+    /// por falta de privilegios, y entonces la comprobación aprobaría con filtro
+    /// y sin él: mediría el privilegio del usuario, no el filtro.
+    ///
+    /// El primer intento usó `perf_event_open`, que devuelve `EFAULT` en esta
+    /// máquina pero `EACCES` en el runner de CI —y `EPERM` donde
+    /// `perf_event_paranoid` valga 3—. Es justo el error contra el que avisaba
+    /// el comentario de esta función, cometido a pesar de él.
     #[cfg(target_arch = "x86_64")]
-    fn perf_event_open_errno() -> i32 {
+    fn getcpu_errno() -> i32 {
         unsafe {
             *libc::__errno_location() = 0;
-            let result = libc::syscall(298, std::ptr::null::<u8>(), 0, -1, -1, 0);
+            let result = libc::syscall(309, std::ptr::null::<u8>(), std::ptr::null::<u8>(), std::ptr::null::<u8>());
             if result >= 0 {
                 0
             } else {
@@ -249,22 +260,16 @@ mod tests {
     ///
     /// Compilar un BPF y que el kernel lo acepte son cosas distintas. Esta
     /// aplica el programa a un hilo de verdad y ejecuta la llamada denegada:
-    /// si el filtro no hiciera nada, el errno seguiría siendo el del kernel.
+    /// si el filtro no hiciera nada, la llamada seguiría teniendo éxito.
     ///
     /// El filtro se aplica en un hilo aparte porque seccomp **no se puede
     /// quitar**: dejarlo en el hilo principal filtraría el resto de la suite.
     #[test]
     #[cfg(target_arch = "x86_64")]
     fn the_compiled_filter_really_denies_the_syscall() {
-        let program = compile(&policy_denying(&["perf_event_open"])).expect("compilar").expect("filtro");
+        let program = compile(&policy_denying(&["getcpu"])).expect("compilar").expect("filtro");
 
-        let before = perf_event_open_errno();
-        assert_eq!(
-            before,
-            libc::EFAULT,
-            "sin filtro la llamada tiene que llegar al kernel y fallar por EFAULT, no por EPERM; \
-             si no, la prueba no distinguiría nada"
-        );
+        assert_eq!(getcpu_errno(), 0, "sin filtro `getcpu` tiene éxito en cualquier host");
 
         let filtered = std::thread::spawn(move || {
             // Sin `no_new_privs` el kernel rechaza instalar un filtro a un
@@ -274,14 +279,14 @@ mod tests {
                 assert_eq!(libc::prctl(libc::PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0), 0, "no_new_privs");
             }
             seccompiler::apply_filter(&program).expect("el kernel tiene que aceptar el programa");
-            perf_event_open_errno()
+            getcpu_errno()
         })
         .join()
         .expect("hilo filtrado");
 
         assert_eq!(filtered, libc::EPERM, "con el filtro puesto la llamada tiene que devolver EPERM");
         // Y el hilo principal sigue sin filtrar: seccomp es por hilo salvo TSYNC.
-        assert_eq!(perf_event_open_errno(), libc::EFAULT, "el filtro no puede haberse escapado a este hilo");
+        assert_eq!(getcpu_errno(), 0, "el filtro no puede haberse escapado a este hilo");
     }
 
     #[test]

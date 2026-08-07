@@ -68,17 +68,23 @@ puede reportar varias dimensiones, y porque el runtime puede matar el proceso
 | `syscalls` | Ejecutar llamadas que la política deniega | Sin filtro, la carga le pide al kernel cosas que ninguna aplicación normal necesita: trazar procesos, cargar módulos, instrumentar la CPU |
 
 La sonda de `syscalls` merece una nota, porque enseña cómo se diseña una que
-mida algo. Compara **errno**, no éxito o fracaso: elige llamadas cuyo error sin
-filtro es distinto de `EPERM` —`perf_event_open(NULL,…)` devuelve `EFAULT`—
-porque una que ya falle con `EPERM` por falta de privilegios aprobaría con
-filtro y sin él. Mediría el privilegio del usuario, no el sandbox.
+mida algo. Ejecuta `getcpu(NULL, NULL, NULL)`, que **tiene éxito siempre y para
+cualquiera**: así, éxito significa «ningún filtro la bloqueó» y `EPERM` significa
+«el filtro la denegó», sin ambigüedad en ningún host.
+
+Los dos intentos anteriores fallaron por el mismo motivo:
+
+| Intento | Por qué no sirve |
+|---|---|
+| `mount`, `ptrace` | Ya fallan con `EPERM` sin privilegios: la sonda aprobaría con filtro y sin él |
+| `perf_event_open` | Su error sin filtro depende de `perf_event_paranoid` del host: `EFAULT` aquí, `EACCES` en el runner de CI, `EPERM` donde el sysctl valga 3 |
 
 Medido con bubblewrap 0.9.0:
 
 ```text
-sin sandbox            → escaped   (EFAULT: la llamada llegó al kernel)
-bubblewrap sin filtro  → escaped   (EFAULT: bubblewrap por sí solo no filtra)
-bubblewrap con filtro  → contained (EPERM en perf_event_open y en ptrace)
+sin sandbox            → escaped   (getcpu tuvo éxito)
+bubblewrap sin filtro  → escaped   (bubblewrap por sí solo no filtra)
+bubblewrap con filtro  → contained (getcpu → EPERM)
 ```
 
 La fila del medio es la que da valor a la de abajo: sin ella, «contenido» podría
