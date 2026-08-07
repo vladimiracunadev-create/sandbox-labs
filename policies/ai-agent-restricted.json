@@ -1,7 +1,7 @@
 {
   "$schema": "../schemas/policy.schema.json",
   "id": "ai-agent-restricted",
-  "description": "Código generado por IA con salida de red restringida a una allowlist: un agente necesita llamar a su API, no a internet entero. AVISO: hoy ningún runtime del proyecto hace cumplir esa lista — no hay proxy de salida ni reglas de firewall— así que el control `network` nunca sale efectivo y esta política, al ser estricta, NO EJECUTA. Está aquí como la frontera que se quiere, no como una que ya exista. Ver B-04 en docs/IMPLEMENTATION_BACKLOG.md.",
+  "description": "Código generado por IA con salida de red restringida a una allowlist: un agente necesita llamar a su API, no a internet entero. La carga corre SIN red: lo único que cruza la frontera es un socket Unix por el que pide destinos, y el proxy del supervisor los compara con esta lista y registra todos los intentos, permitidos y denegados. La salida es una capacidad que hay que usar a propósito — un cliente HTTP corriente no la usa solo. Ver B-04 en docs/IMPLEMENTATION_BACKLOG.md.",
   "enforcement": {
     "mode": "strict",
     "requiredControls": [

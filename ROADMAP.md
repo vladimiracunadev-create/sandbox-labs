@@ -20,13 +20,18 @@
 - ✅ Evidencia verificable: `sandboxctl evidence verify`.
 - ✅ **seccomp**: `policy.syscalls.deny` compilado a BPF y aplicado por
   bubblewrap, con sonda que lo mide comparando errno.
-- ⛔ **Egress con allowlist**: pendiente, sin enforcement — ver B-04.
+- ✅ **Egress con allowlist**: la carga corre sin red y sale solo por un canal
+  explícito que aplica la lista y registra cada intento.
 - ✅ **Un solo compilador de política** para cargas y servicios, con lo que los
   servicios ganan identidad, capabilities, cgroups y seccomp.
 
-Queda un hueco, y hasta cerrarlo el runtime sigue siendo `experimental`: el
-egress con `allowlist` no tiene enforcement, así que ese control no se declara
-nunca y una política estricta que lo exija no ejecuta.
+El runtime sigue siendo `experimental`, y no por una lista de tareas: lo que
+falta es tiempo de uso y de ataque contra él. Lo que sí está es que cada control
+que declara se puede medir, y que la suite de contención lo mide en cada commit.
+
+Los límites que se mantienen: no es seguro para malware real, ni para
+multi-tenancy hostil, ni para producción. Para carga desconocida, VM
+desechable.
 
 ## v0.8.0 — WASI Portable Runner
 

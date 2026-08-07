@@ -24,7 +24,7 @@ que decide si el control `network` puede declararse efectivo:
 |---|---|---|---|---|
 | `none` | sí | no | no | efectivo |
 | `loopback` | sí | no | no — solo socket Unix | efectivo |
-| `allowlist` | **no** | **sí, sin filtrar** | sí | **nunca efectivo** |
+| `allowlist` | sí | solo por el canal explícito | no | efectivo |
 | `unrestricted` | no | sí | sí | nunca efectivo |
 
 - `none`: sin interfaz de red utilizable hacia fuera.
@@ -33,11 +33,22 @@ que decide si el control `network` puede declararse efectivo:
   que abra nace dentro del sandbox. Sí puede publicarlo el supervisor por él
   —ver `publish: proxy` más abajo—, y si no hace ninguna de las dos cosas,
   `sandboxctl service up` falla en cerrado explicando ambas salidas.
-- `allowlist`: hoy **no hay nada que haga cumplir la lista**. No existe proxy de
-  salida, ni reglas de firewall, ni resolución DNS controlada. `hosts` se valida
-  y después se ignora, así que el control nunca sale efectivo y una política
-  estricta que lo exija no ejecuta. Ver
-  [B-04](IMPLEMENTATION_BACKLOG.md) — es un hueco conocido, no un modo listo.
+- `allowlist`: la carga **no tiene red**. Lo único que cruza la frontera es un
+  socket Unix por el que pide `CONNECT host:puerto`, y un proxy del supervisor
+  compara con `hosts`, abre o rechaza con `403`, y registra **todos** los
+  intentos en `networkEvents` de la evidencia.
+
+  Tres cosas que conviene saber antes de usarlo:
+
+  - **La salida es una capacidad, no una propiedad del entorno.** Un cliente
+    HTTP corriente no usa el canal solo: hay que abrir el socket a propósito. La
+    ruta llega en `SANDBOX_EGRESS_SOCKET`.
+  - **No hay comodines.** `*.ejemplo.com` parece cómodo y es cómo una lista de
+    permitidos deja de serlo: basta un subdominio ajeno para atravesarla.
+  - **`unshare` no monta el canal**, así que con él `allowlist` deja a la carga
+    sin salida ninguna.
+
+  Detalle y medición en [B-04](IMPLEMENTATION_BACKLOG.md).
 - `unrestricted`: la red del host, escrito con todas sus letras. Ninguna
   política que lo use puede exigir el control `network`, porque ahí no hay
   ninguno que exigir.

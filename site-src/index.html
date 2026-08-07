@@ -98,7 +98,7 @@
       <tr><td><code>processes</code></td><td><code>pids.max</code> de cgroups v2</td><td>✅ donde el host lo admita</td></tr>
       <tr><td><code>cpu</code></td><td><code>cpu.max</code> de cgroups v2</td><td>✅ donde el host lo admita</td></tr>
       <tr><td><code>syscalls</code></td><td>filtro seccomp BPF</td><td>✅ si la política deniega algo</td></tr>
-      <tr><td><code>network</code> con <code>allowlist</code></td><td>—</td><td>⛔ sin enforcement: no se declara</td></tr>
+      <tr><td><code>network</code> con <code>allowlist</code></td><td>namespace propio + proxy con lista y registro</td><td>✅ salida solo por canal explícito</td></tr>
     </tbody>
   </table>
   </div>

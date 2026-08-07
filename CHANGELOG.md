@@ -37,6 +37,27 @@ Versionado semántico.
   inyecta `INVOCATION_ID` por su cuenta; la cadena intercala ahora un `env -i` y
   el runtime arranca con el entorno vacío. El contrato es vaciar, no enumerar.
 
+### Added — `network: allowlist` deja de ser una lista que nadie hacía cumplir
+
+- **La salida se entrega como capacidad, no como propiedad del entorno.** Con
+  `allowlist` la carga corre en su propio namespace de red, sin ruta hacia
+  fuera. Lo único que cruza la frontera es un socket Unix por el que pide
+  `CONNECT host:puerto`; un proxy del supervisor —que vive fuera y por eso sí
+  tiene red— aplica la lista y decide.
+- **Registro de todos los intentos**, permitidos y denegados, en
+  `networkEvents` de la evidencia: destino, veredicto, motivo y bytes movidos.
+  Un proxy que filtra y no cuenta lo que dejó pasar no permite auditar nada.
+- **Sin comodines.** `*.ejemplo.com` es exactamente cómo una lista de permitidos
+  deja de serlo.
+- El control `network` pasa a ser efectivo con `allowlist`, porque el namespace
+  se crea igual que con `none`.
+- Medido con bubblewrap 0.9.0 contra un destino local: desde dentro,
+  `sin-canal=ConnectionRefusedError`, `permitido=200` con la respuesta real del
+  destino y `denegado=403`.
+- La contrapartida, dicha entera: un cliente HTTP corriente no usa el canal
+  solo, tiene que abrir el socket a propósito. `unshare` no lo monta, así que
+  con él `allowlist` deja a la carga sin salida ninguna.
+
 ### Fixed — un solo compilador de política, y tres controles que se perdían
 
 - **`sandbox_core::compiler`** produce los argumentos de bubblewrap para las

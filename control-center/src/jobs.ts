@@ -196,6 +196,7 @@ export class JobStore {
         durationMs: 0, stdout: "", stderr: "", stdoutTruncated: false, stderrTruncated: false
       },
       violations: [],
+      networkEvents: [],
       unsupported: policy.enforcement.requiredControls,
       plan: isDryRun
         ? ["Solicitud validada.", "Se generó evidencia sin ejecutar código."]

@@ -302,6 +302,34 @@
       "items": {
         "type": "string"
       }
+    },
+    "networkEvents": {
+      "description": "Cada intento de salida por el canal filtrado, con destino, veredicto y bytes movidos. Vacío cuando la política no monta canal.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "target",
+          "allowed"
+        ],
+        "properties": {
+          "target": {
+            "type": "string"
+          },
+          "allowed": {
+            "type": "boolean"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "bytesSent": {
+            "type": "integer"
+          },
+          "bytesReceived": {
+            "type": "integer"
+          }
+        }
+      }
     }
   }
 }

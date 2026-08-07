@@ -127,7 +127,7 @@ que no tiene mecanismo **no se declara**:
 | `cpu` | `cpu.max` de cgroups v2 | ✅ donde el host lo admita |
 | `syscalls` | filtro seccomp BPF, `EPERM` en las denegadas | ✅ si la política deniega algo |
 | `timeout`, `output` | el supervisor | ✅ |
-| `network` con `allowlist` | — | ⛔ sin enforcement: **no se declara** |
+| `network` con `allowlist` | namespace propio + proxy con lista y registro | ✅ salida solo por canal explícito |
 
 Los tres de cgroups pasan por `systemd-run --user --scope`, y **antes de la
 primera ejecución se levanta un scope de prueba** para comprobar que el kernel

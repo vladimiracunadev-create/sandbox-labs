@@ -90,6 +90,7 @@ pub fn run(spec: CommandSpec, policy: &Policy) -> Result<ExecutionOutcome> {
         stderr_truncated,
         effective_limits: spec.effective_limits,
         observed,
+        network_events: Vec::new(),
     })
 }
 

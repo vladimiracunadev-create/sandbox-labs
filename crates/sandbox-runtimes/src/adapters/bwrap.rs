@@ -21,12 +21,20 @@ fn effective_limits(
     wrapped_in_prlimit: bool,
     wrapped_in_cgroup: bool,
     filtered: bool,
+    egress: bool,
 ) -> BTreeMap<String, String> {
     let mut limits = BTreeMap::new();
     limits.insert("filesystem".into(), "bubblewrap mount namespace".into());
     limits.insert("user".into(), format!("uid={} gid={} (--uid/--gid)", policy.process.user, policy.process.group));
     if network_isolated {
-        limits.insert("network".into(), "isolated network namespace (--unshare-net)".into());
+        limits.insert(
+            "network".into(),
+            if egress {
+                format!("isolated network namespace + canal filtrado a {} destino(s)", policy.network.hosts.len())
+            } else {
+                "isolated network namespace (--unshare-net)".into()
+            },
+        );
     }
     limits.insert("timeout".into(), format!("{}s", policy.resources.timeout_seconds));
     limits.insert("output".into(), format!("{} bytes", policy.resources.output_bytes));
@@ -84,16 +92,41 @@ impl RuntimeAdapter for BwrapAdapter {
         };
         let filtered = seccomp.is_some();
 
+        // El canal de salida filtrado, si la política lo pide. El proxy vive
+        // FUERA del sandbox —por eso él sí tiene red— y lo único que cruza la
+        // frontera es su socket.
+        let mut mounts = vec![
+            sandbox_core::Mount::read_only(workload.directory.display().to_string(), "/workspace/input"),
+            sandbox_core::Mount::writable(output.display().to_string(), "/workspace/output"),
+        ];
+        let mut sandbox_environment = BTreeMap::new();
+        let egress = if policy.network.needs_egress_proxy() {
+            let directory = temp.path().join("egress");
+            std::fs::create_dir_all(&directory)?;
+            let proxy = sandbox_core::egress::Proxy::start(
+                &directory.join("egress.sock"),
+                sandbox_core::Allowlist::new(&policy.network.hosts),
+            )?;
+            mounts.push(sandbox_core::Mount::writable(
+                directory.display().to_string(),
+                sandbox_core::egress::SANDBOX_SOCKET_DIR,
+            ));
+            sandbox_environment.insert(
+                sandbox_core::egress::SOCKET_VARIABLE.to_string(),
+                sandbox_core::egress::SANDBOX_SOCKET_PATH.to_string(),
+            );
+            Some(proxy)
+        } else {
+            None
+        };
+
         // Un único compilador para cargas y servicios: ver `sandbox_core::compiler`.
         let mut args = sandbox_core::bubblewrap(
             policy,
             &sandbox_core::SandboxRequest {
-                mounts: vec![
-                    sandbox_core::Mount::read_only(workload.directory.display().to_string(), "/workspace/input"),
-                    sandbox_core::Mount::writable(output.display().to_string(), "/workspace/output"),
-                ],
+                mounts,
                 workdir: "/workspace/input".into(),
-                environment: BTreeMap::new(),
+                environment: sandbox_environment,
                 command: workload.command.clone(),
                 args: workload.command_args(extra_args)?,
                 // El supervisor espera a esta carga: si él cae, la jaula no
@@ -113,7 +146,11 @@ impl RuntimeAdapter for BwrapAdapter {
                 format!("--as={}", policy.resources.memory_mb * 1024 * 1024),
                 format!("--nofile={}", policy.resources.open_files),
                 "--".into(),
-                "bwrap".into(),
+                // Ruta absoluta: `prlimit` ejecuta esto con el entorno que le
+                // llegue, y detrás del `env -i` del scope no hay PATH. Con el
+                // nombre suelto solo se encontraría en la ruta por defecto del
+                // sistema.
+                sandbox_core::compiler::resolve_program("bwrap"),
             ];
             wrapped.extend(args);
             args = wrapped;
@@ -146,8 +183,15 @@ impl RuntimeAdapter for BwrapAdapter {
                 true
             }
         };
-        let limits = effective_limits(policy, network_isolated, wrapped_in_prlimit, wrapped_in_cgroup, filtered);
-        run(
+        let limits = effective_limits(
+            policy,
+            network_isolated,
+            wrapped_in_prlimit,
+            wrapped_in_cgroup,
+            filtered,
+            egress.is_some(),
+        );
+        let mut outcome = run(
             CommandSpec {
                 program,
                 args,
@@ -159,7 +203,13 @@ impl RuntimeAdapter for BwrapAdapter {
                 observe_cgroup: wrapped_in_cgroup,
             },
             policy,
-        )
+        )?;
+        // El registro se recoge DESPUÉS de que la carga termine: hasta entonces
+        // pueden seguir llegando intentos.
+        if let Some(proxy) = egress {
+            outcome.network_events = proxy.finish();
+        }
+        Ok(outcome)
     }
 }
 
@@ -181,7 +231,7 @@ mod tests {
 
     #[test]
     fn declares_network_isolation_when_the_namespace_exists() {
-        let contained = effective_limits(&policy_with_network("none"), true, false, false, false);
+        let contained = effective_limits(&policy_with_network("none"), true, false, false, false, false);
         assert!(contained.contains_key("network"), "con --unshare-net la red sí queda aislada");
     }
 
@@ -193,7 +243,7 @@ mod tests {
     #[test]
     fn never_declares_isolation_while_keeping_the_host_network() {
         for mode in ["loopback", "allowlist", "unrestricted"] {
-            let limits = effective_limits(&policy_with_network(mode), false, false, false, false);
+            let limits = effective_limits(&policy_with_network(mode), false, false, false, false, false);
             assert!(
                 !limits.contains_key("network"),
                 "con network={mode} no se creó namespace de red: declararlo sería mentir en la evidencia"
@@ -204,26 +254,26 @@ mod tests {
     #[test]
     fn declares_memory_only_when_prlimit_wraps_the_execution() {
         let policy = policy_with_network("none");
-        assert!(!effective_limits(&policy, true, false, false, false).contains_key("memory"));
-        assert!(effective_limits(&policy, true, true, false, false).contains_key("memory"));
+        assert!(!effective_limits(&policy, true, false, false, false, false).contains_key("memory"));
+        assert!(effective_limits(&policy, true, true, false, false, false).contains_key("memory"));
     }
 
     #[test]
     fn always_declares_the_identity_the_policy_asked_for() {
         // No depende del host: `--uid`/`--gid` los aplica bubblewrap siempre que
         // haya user namespace, y siempre lo hay.
-        let limits = effective_limits(&policy_with_network("none"), true, false, false, false);
+        let limits = effective_limits(&policy_with_network("none"), true, false, false, false, false);
         assert_eq!(limits["user"], "uid=65534 gid=65534 (--uid/--gid)");
     }
 
     #[test]
     fn declares_pids_and_cpu_only_under_a_cgroup() {
         let policy = policy_with_network("none");
-        let sin = effective_limits(&policy, true, true, false, false);
+        let sin = effective_limits(&policy, true, true, false, false, false);
         assert!(!sin.contains_key("processes"), "RLIMIT_NPROC no es un techo de PIDs de la carga");
         assert!(!sin.contains_key("cpu"), "sin cgroup no hay cuota de CPU que declarar");
 
-        let con = effective_limits(&policy, true, true, true, false);
+        let con = effective_limits(&policy, true, true, true, false, false);
         assert!(con["processes"].contains("pids.max"));
         assert!(con["cpu"].contains("cpu.max"));
     }
@@ -233,7 +283,7 @@ mod tests {
         // Los dos pueden estar puestos a la vez. La evidencia tiene que nombrar
         // el que de verdad acota la memoria residente, no el del espacio de
         // direcciones virtual.
-        let limits = effective_limits(&policy_with_network("none"), true, true, true, false);
+        let limits = effective_limits(&policy_with_network("none"), true, true, true, false, false);
         assert!(limits["memory"].contains("memory.max"), "{}", limits["memory"]);
         assert!(!limits["memory"].contains("RLIMIT_AS"), "{}", limits["memory"]);
     }

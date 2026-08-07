@@ -81,6 +81,30 @@ const SYSTEM_PATHS: [&str; 4] = ["/usr", "/bin", "/lib", "/lib64"];
 /// pregunte por su propio usuario recibe un error donde esperaba un nombre.
 const IDENTITY_FILES: [&str; 2] = ["/etc/passwd", "/etc/group"];
 
+/// Ruta absoluta de un programa, buscada en el `PATH` **de quien lanza**.
+///
+/// Detrás del `env -i` no hay `PATH`, así que `execvp` recurre a la ruta por
+/// defecto del sistema —`/bin:/usr/bin`— y ahí no está todo. Un `bwrap`
+/// instalado en `/usr/local/bin`, o en el directorio del usuario, no se
+/// encontraría, y el fallo llega como un `No such file or directory` del
+/// eslabón intermedio que no dice cuál es el programa que falta.
+///
+/// Si no se encuentra se devuelve el nombre tal cual: quien ejecute dará un
+/// error normal, que es mejor que una ruta inventada.
+pub fn resolve_program(program: &str) -> String {
+    if program.contains('/') {
+        return program.to_string();
+    }
+    let Some(path) = std::env::var_os("PATH") else {
+        return program.to_string();
+    };
+    std::env::split_paths(&path)
+        .map(|directory| directory.join(program))
+        .find(|candidate| candidate.is_file())
+        .map(|candidate| candidate.display().to_string())
+        .unwrap_or_else(|| program.to_string())
+}
+
 /// Argumentos de bubblewrap para esta petición bajo esta política.
 ///
 /// `seccomp_fd` es el descriptor por el que bubblewrap leerá el filtro, o
@@ -221,7 +245,9 @@ mod tests {
 
     #[test]
     fn the_network_namespace_follows_the_policy() {
-        for mode in ["none", "loopback"] {
+        // `allowlist` está aquí arriba desde que la salida pasa por un canal
+        // explícito: la carga no tiene red ambiental, igual que con `none`.
+        for mode in ["none", "loopback", "allowlist"] {
             let args = bubblewrap(&policy_with_network(mode), &request(), None);
             assert!(args.contains(&"--unshare-net".to_string()), "{mode} tiene que aislar la red");
             assert!(
@@ -229,10 +255,8 @@ mod tests {
                 "{mode}: sin rutas hacia fuera, montar resolv.conf solo filtra los DNS del usuario"
             );
         }
-        for mode in ["allowlist", "unrestricted"] {
-            let args = bubblewrap(&policy_with_network(mode), &request(), None);
-            assert!(!args.contains(&"--unshare-net".to_string()), "{mode} conserva la red del host");
-        }
+        let args = bubblewrap(&policy_with_network("unrestricted"), &request(), None);
+        assert!(!args.contains(&"--unshare-net".to_string()), "unrestricted conserva la red del host");
     }
 
     #[test]

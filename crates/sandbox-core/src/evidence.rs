@@ -48,6 +48,10 @@ pub struct Evidence {
     pub violations: Vec<Violation>,
     pub unsupported: Vec<String>,
     pub plan: Vec<String>,
+    /// Cada intento de salida por el canal filtrado, con destino, veredicto y
+    /// bytes. Un filtro que no cuenta lo que dejó pasar no se puede auditar.
+    #[serde(default)]
+    pub network_events: Vec<crate::ConnectionRecord>,
 }
 
 impl Evidence {
@@ -137,6 +141,7 @@ impl Evidence {
             violations: vec![],
             unsupported: plan.controls.unsupported.clone(),
             plan: plan.steps.clone(),
+            network_events: outcome.map(|value| value.network_events.clone()).unwrap_or_default(),
         }
     }
 
@@ -311,6 +316,7 @@ mod tests {
             violations: vec![],
             unsupported: vec![],
             plan: vec![],
+            network_events: vec![],
         }
     }
 

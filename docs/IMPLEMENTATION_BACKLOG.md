@@ -83,18 +83,55 @@ así que `cpu: 2.0` son 200%— que systemd traduce a `cpu.max`.
 
 | | |
 |---|---|
-| **Estado** | Abierto |
+| **Estado** | ✅ Cerrado en bubblewrap · no aplica a `unshare` |
 | **Control afectado** | `network` |
-| **Se declara hoy** | No. Con `allowlist` el control `network` queda fuera de `effectiveControls`, y una política estricta que lo exija **no ejecuta**. |
+| **Se declara hoy** | Sí. `allowlist` crea namespace de red propio, así que el control es efectivo igual que con `none`. |
 
-`policy.network.hosts` se valida sintácticamente y después se ignora: no hay
-proxy de salida, ni reglas de firewall, ni resolución DNS controlada. Una lista
-de hosts sin nada que la haga cumplir es peor que no tenerla, porque invita a
-confiar.
+`policy.network.hosts` se validaba y después la ignoraba todo el mundo: con
+`allowlist` la carga se quedaba con la red del host entera. Una lista de hosts
+sin nada que la haga cumplir es peor que no tenerla, porque invita a confiar.
 
-**Para cerrarlo:** namespace de red propio más un proxy supervisor en el host
-que solo abra los destinos de la lista y registre cada conexión. Sin registro de
-conexiones no hay control, solo intención.
+**Cómo se cerró: la salida es una capacidad, no una propiedad del entorno.** La
+carga corre en su propio namespace de red, sin ruta hacia fuera. Lo único que
+atraviesa la frontera es un socket Unix montado en su árbol, por el que pide
+`CONNECT host:puerto`. Un proxy del supervisor —que vive fuera, y por eso él sí
+tiene red— compara con la lista, abre o rechaza, y **registra todos los
+intentos**.
+
+**Por qué no NAT transparente.** Dar salida filtrada a un proceso sin
+privilegios exigiría una pila de red en espacio de usuario (`slirp4netns`,
+`pasta`) que hay que instalar en cada host, y aun así haría falta un proxy para
+filtrar: esas herramientas dan conectividad, no política. La consecuencia hay
+que decirla entera: **un cliente HTTP corriente no usa este canal solo**, tiene
+que hablarle al socket a propósito. Es menos cómodo, y a cambio no hay forma de
+salir «sin querer».
+
+**Sin comodines.** `*.ejemplo.com` parece cómodo y es exactamente cómo una lista
+de permitidos deja de serlo: basta un subdominio que el atacante controle para
+atravesarla. Si hace falta un subdominio, se escribe.
+
+**Registro, no solo filtro.** Cada intento va a `networkEvents` de la evidencia
+con destino, veredicto, motivo y bytes movidos. Un proxy que filtra y no cuenta
+lo que dejó pasar no permite auditar nada después.
+
+Medido con bubblewrap 0.9.0, contra un destino local para no depender de
+ninguna red de verdad:
+
+```text
+desde dentro de la carga:
+  canal=sí
+  sin-canal=ConnectionRefusedError      ← no hay red ambiental
+  permitido=200 respuesta='HOLA-DESTINO:ping'
+  denegado=403
+
+en la evidencia:
+  {"target":"127.0.0.1:9099",  "allowed":true,  "bytesSent":4, "bytesReceived":17}
+  {"target":"10.255.255.1:9099","allowed":false, "reason":"«10.255.255.1» no está en la lista"}
+```
+
+**No aplica a `unshare`:** no monta el canal, así que con `allowlist` la carga
+se queda sin salida ninguna. Contiene más de lo que la política pide, no menos,
+pero la lista no le sirve de nada.
 
 ### B-04b · Un servicio en namespace de red propio no puede publicar un puerto
 

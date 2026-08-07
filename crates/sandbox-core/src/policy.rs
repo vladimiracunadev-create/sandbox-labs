@@ -57,15 +57,16 @@ pub struct FilesystemPolicy {
 /// |---|---|---|---|
 /// | `none` | sí | no | no |
 /// | `loopback` | sí | no | no — solo socket Unix |
-/// | `allowlist` | no | sí, sin filtrar | sí |
+/// | `allowlist` | sí | solo por el canal explícito | no |
 /// | `unrestricted` | no | sí | sí |
 ///
-/// `allowlist` aparece ahí arriba con «sin filtrar» a propósito: hoy no existe
-/// proxy de salida, ni reglas de firewall, ni resolución DNS controlada. La
-/// lista de hosts se valida y después no la hace cumplir nadie, así que el
-/// control `network` **no** se declara con este modo y una política estricta
-/// que lo exija no llega a ejecutar. Ver B-04 en
-/// [el backlog técnico](../../../docs/IMPLEMENTATION_BACKLOG.md).
+/// `allowlist` crea namespace de red propio igual que `none`: la carga no tiene
+/// salida ambiental. Lo único que atraviesa la frontera es un socket Unix por el
+/// que se piden destinos, y un proxy del supervisor decide según
+/// `network.hosts` y **registra todos los intentos**. Ver B-04 en
+/// [el backlog técnico](../../../docs/IMPLEMENTATION_BACKLOG.md) para lo que eso
+/// implica: la salida es una capacidad que hay que usar a propósito, no una
+/// propiedad del entorno.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NetworkPolicy {
     pub mode: String,
@@ -79,11 +80,24 @@ impl NetworkPolicy {
     ///
     /// Es la única pregunta que decide si el control `network` puede
     /// declararse. `loopback` cuenta: el namespace se crea igual y el runtime
-    /// levanta `lo` dentro. Lo que distingue a `loopback` de `none` es la
-    /// intención —la carga habla consigo misma— y que un servicio con este modo
-    /// no puede publicar un puerto al host.
+    /// levanta `lo` dentro. Lo que lo distingue de `none` es la intención —la
+    /// carga habla consigo misma— y que un servicio con ese modo no puede
+    /// publicar un puerto al host.
+    ///
+    /// `allowlist` también cuenta. La carga no tiene salida ambiental: lo único
+    /// que atraviesa la frontera es un socket Unix por el que se piden destinos,
+    /// y el proxy del supervisor aplica la lista y registra cada intento. Un
+    /// canal explícito no es la red del host.
     pub fn isolates_host_network(&self) -> bool {
-        matches!(self.mode.as_str(), "none" | "loopback")
+        matches!(self.mode.as_str(), "none" | "loopback" | "allowlist")
+    }
+
+    /// ¿Hay que montar un canal de salida filtrado para esta política?
+    ///
+    /// Una lista vacía no es un canal: sería `none` con más pasos, y montar un
+    /// socket que no autoriza nada solo añade superficie.
+    pub fn needs_egress_proxy(&self) -> bool {
+        self.mode == "allowlist" && !self.hosts.is_empty()
     }
 
     /// ¿Puede un servicio con esta política publicar un puerto TCP en el host?

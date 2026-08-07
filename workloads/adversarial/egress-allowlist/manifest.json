@@ -1,0 +1,20 @@
+{
+  "$schema": "../../../schemas/workload.schema.json",
+  "id": "egress-allowlist",
+  "kind": "python",
+  "entrypoint": "probe.py",
+  "command": "python3",
+  "args": [
+    "probe.py"
+  ],
+  "risk": "controlled",
+  "description": "Pide dos destinos por el canal de salida: uno que la política autoriza y otro que no.",
+  "allowNative": false,
+  "expected": {
+    "outcome": "limited",
+    "contains": [
+      "permitido=",
+      "denegado="
+    ]
+  }
+}

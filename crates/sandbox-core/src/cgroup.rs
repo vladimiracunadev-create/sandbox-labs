@@ -181,33 +181,9 @@ fn build_chain(program: &str, args: &[String], limits: &ResourcePolicy) -> (Stri
     wrapped.push("--".into());
     wrapped.push(EMPTY_ENVIRONMENT.0.into());
     wrapped.push(EMPTY_ENVIRONMENT.1.into());
-    wrapped.push(resolve(program));
+    wrapped.push(crate::compiler::resolve_program(program));
     wrapped.extend_from_slice(args);
     ("systemd-run".into(), wrapped)
-}
-
-/// Ruta absoluta del programa, buscada en el `PATH` **de quien lanza**.
-///
-/// Detrás del `env -i` no hay `PATH`, así que `execvp` recurre a la ruta por
-/// defecto del sistema —`/bin:/usr/bin`— y ahí no está todo. Un `bwrap`
-/// instalado en `/usr/local/bin`, o en el directorio del usuario, no se
-/// encontraría, y el fallo llega como un `No such file or directory` del
-/// eslabón intermedio que no dice cuál es el programa que falta.
-///
-/// Si no se encuentra se devuelve el nombre tal cual: quien ejecute dará un
-/// error normal, que es mejor que una ruta inventada.
-fn resolve(program: &str) -> String {
-    if program.contains('/') {
-        return program.to_string();
-    }
-    let Some(path) = std::env::var_os("PATH") else {
-        return program.to_string();
-    };
-    std::env::split_paths(&path)
-        .map(|directory| directory.join(program))
-        .find(|candidate| candidate.is_file())
-        .map(|candidate| candidate.display().to_string())
-        .unwrap_or_else(|| program.to_string())
 }
 
 /// `env -i`: el runtime arranca con el entorno **vacío**, que es exactamente lo

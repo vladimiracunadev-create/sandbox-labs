@@ -101,6 +101,10 @@ pub struct ExecutionOutcome {
     /// Vacío cuando no hubo cgroup propio que mirar.
     #[serde(default)]
     pub observed: BTreeMap<String, String>,
+    /// Cada intento de salida por el canal filtrado, permitido o no. Vacío
+    /// cuando la política no monta canal.
+    #[serde(default)]
+    pub network_events: Vec<crate::ConnectionRecord>,
 }
 
 impl RuntimeKind {
@@ -220,6 +224,10 @@ impl RuntimeKind {
         // de red propio. Con `allowlist` o `unrestricted` la carga conserva la
         // red del host: da igual lo que declare el runtime, ahí no hay control
         // que declarar.
+        // Con `allowlist` el namespace se crea igual; lo que cambia es que hay
+        // un canal explícito. Pero solo bubblewrap lo monta: con `unshare` la
+        // carga se queda sin salida ninguna, que contiene más de lo que la
+        // política pide y por tanto sigue siendo un control efectivo.
         if matches!(self, Self::Bwrap | Self::Unshare | Self::Wasi) && !policy.network.isolates_host_network() {
             values.remove("network");
         }
