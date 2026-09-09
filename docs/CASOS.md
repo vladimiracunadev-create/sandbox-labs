@@ -1,8 +1,8 @@
-# 🧪 Los casos levantables
+# 🧪 Recorrido inicial: cinco servicios
 
 > [!NOTE]
-> Este documento cubre **los cinco casos que se levantan como servicio en su
-> propio `localhost`**. El proyecto tiene 36 casos en total: la lista completa
+> Los **15 casos técnicos** se levantan como servicio en su propio `localhost`.
+> Este documento desarrolla los cinco primeros como recorrido inicial. El proyecto tiene 36 casos en total: la lista completa
 > está en el **[Catálogo](CATALOGO.md)**, cada uno con su
 > **[ficha detallada](casos/README.md)**, y lo que está construido de verdad en
 > **[Estado del proyecto](ESTADO.md)**.
@@ -25,10 +25,10 @@ idea, uno de los dos sobra.
 | 01 | [Contenido web no confiable](#01--contenido-web-no-confiable) | Quien interpreta contenido ajeno no toca el disco | `8801` | 🟡 en obra |
 | 02 | [Código generado por IA](#02--código-generado-por-ia) | Efímero y sin red: se crea, corre y se destruye | `8802` | 🟡 en obra |
 | 03 | [Detonación de archivo](#03--detonación-de-archivo-sospechoso) | El sandbox como microscopio: el informe vale más que el bloqueo | `8803` | 🟡 en obra |
-| 04 | [Plugins de terceros](#04--plugins-de-terceros) | Conceder capacidades una a una, no restar permisos | `8804` | 🔴 pendiente |
+| 04 | [Plugins de terceros](#04--plugins-de-terceros) | Conceder capacidades una a una, no restar permisos | `8804` | 🟡 en obra |
 | 05 | [Contratos inteligentes](#05--contratos-inteligentes) | Medir el trabajo, no el tiempo. Determinismo | `8805` | 🟡 en obra |
 
-**Estados:** 🔴 pendiente · 🟡 en obra (base construida, falta interfaz y ficha) · 🟢 listo
+**Estado común:** 🟡 en obra — el servicio y su ficha existen; todavía no alcanza `verified` con evidencia firmada por cada operación.
 
 ```mermaid
 flowchart TB

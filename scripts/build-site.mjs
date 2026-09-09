@@ -235,7 +235,9 @@ function page({ title, description, body, active = "", depth = 0 }) {
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#07111f">
 <meta name="description" content="${escape(description)}">
+<link rel="icon" href="${base}favicon.svg" type="image/svg+xml">
 <title>${escape(title)}</title>
 <style>${STYLE}</style>
 </head>
@@ -298,6 +300,7 @@ const cases = catalog.cases.map((item) => {
 await rm(out, { recursive: true, force: true });
 await mkdir(out, { recursive: true });
 await writeFile(join(out, "_style.css"), STYLE);
+await writeFile(join(out, "favicon.svg"), await readFile(join(root, "site-src", "favicon.svg")));
 
 const STATUS = { ready: ["ready", "listo"], building: ["documented", "en obra"], planned: ["manual", "pendiente"] };
 
@@ -324,6 +327,25 @@ function docTitle(markdown, fallback) {
   return heading ? heading.slice(2).trim() : fallback;
 }
 
+/** Navegación lateral derivada de los H2 del propio documento. */
+function docToc(markdown, area) {
+  const headings = markdown
+    .split(NEWLINES)
+    .map((line) => line.match(/^##\s+(.*)$/)?.[1])
+    .filter(Boolean);
+  if (headings.length < 2) return "";
+  return `<aside class="doc-toc" aria-label="En esta página">
+    <strong>En esta página</strong>
+    <nav>${headings
+      .map((heading) => `<a href="#${headingId(heading)}">${inlineText(heading, area)}</a>`)
+      .join("")}</nav>
+  </aside>`;
+}
+
+function docLayout(markdown, area) {
+  return `<div class="doc-layout">${docToc(markdown, area)}<article class="doc">${renderMarkdown(markdown, area)}</article></div>`;
+}
+
 for (const name of docFiles) {
   const markdown = await readFile(join(root, "docs", name), "utf8");
   const slug = docSlug(name);
@@ -335,7 +357,7 @@ for (const name of docFiles) {
       description: title,
       active: "docs/",
       depth: 1,
-      body: `<article class="doc">${renderMarkdown(markdown, "docs")}</article>`
+      body: docLayout(markdown, "docs")
     })
   );
 }
@@ -361,7 +383,7 @@ for (const name of caseFiles) {
         `<nav class="crumbs"><a href="../index.html">Documentación</a> ` +
         `<span>›</span> <a href="index.html">Fichas de los casos</a> ` +
         `<span>›</span> <b>${escape(title)}</b></nav>` +
-        `<article class="doc">${renderMarkdown(markdown, "casos")}</article>`
+        docLayout(markdown, "casos")
     })
   );
 }

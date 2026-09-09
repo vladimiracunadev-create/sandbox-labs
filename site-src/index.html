@@ -1,18 +1,41 @@
-<section class="hero">
-  <span class="eyebrow">v<!--VERSION--> · Apache-2.0</span>
-  <h1>Ejecuta lo que no controlas.<br>Mide cuánto se contiene.</h1>
-  <p class="lead">
-    <b>sandbox-labs</b> es un <b>laboratorio de aislamiento</b>: ejecuta código, archivos y
-    modelos de negocio ajenos dentro de fronteras declaradas en una política, y emite un acta
-    firmada de qué controles se aplicaron <i>realmente en tu equipo</i> — no de los que la
-    política pedía. <b>36 casos</b> en dos familias, cada uno con su documentación y su prueba
-    corriendo en cada commit.
-  </p>
-  <div class="cta">
-    <a class="btn primary" href="https://github.com/vladimiracunadev-create/sandbox-labs">⭐ Ver el código</a>
-    <a class="btn" href="conceptos.html">🧠 Qué es un sandbox</a>
-    <a class="btn" href="docs/index.html">📚 Documentación</a>
+<section class="hero hero-grid">
+  <div class="hero-copy">
+    <span class="eyebrow">v<!--VERSION--> · WSL2 + Linux · Apache-2.0</span>
+    <h1>Ejecuta lo que no controlas.<br><span>Mide cuánto se contiene.</span></h1>
+    <p class="lead">
+      <b>sandbox-labs</b> convierte políticas de aislamiento en controles reales del kernel,
+      publica servicios exclusivamente en <code>localhost</code> y deja evidencia verificable de
+      lo que el runtime aplicó. Hay <b>36 casos</b>; 33 ya tienen prueba de comportamiento.
+    </p>
+    <div class="cta">
+      <a class="btn primary" href="docs/instalacion.html">Levantar el primer sandbox <span>→</span></a>
+      <a class="btn" href="docs/estado.html">Ver estado verificable</a>
+      <a class="btn quiet" href="https://github.com/vladimiracunadev-create/sandbox-labs">GitHub ↗</a>
+    </div>
   </div>
+  <div class="hero-visual" aria-label="Windows usa WSL2; bubblewrap aísla la carga y un proxy publica localhost">
+    <div class="visual-head"><span></span><span></span><span></span><b>ruta de ejecución</b></div>
+    <div class="runtime-flow">
+      <div class="runtime-node"><small>CONTROL</small><strong>Windows</strong><span>Panel :9093</span></div>
+      <i>→</i>
+      <div class="runtime-node"><small>KERNEL</small><strong>WSL2</strong><span>Ubuntu</span></div>
+      <i>→</i>
+      <div class="runtime-node active"><small>FRONTERA</small><strong>bwrap</strong><span>9 controles</span></div>
+    </div>
+    <div class="publish-flow">
+      <span class="pulse"></span>
+      <div><strong>127.0.0.1 : 8801–8815</strong><small>proxy → socket Unix → sandbox</small></div>
+      <span class="status">aislado</span>
+    </div>
+    <div class="denied-row"><span>filesystem del host</span><span>red externa</span><span>secretos</span></div>
+  </div>
+</section>
+
+<section class="metrics" aria-label="Estado actual del proyecto">
+  <div><strong>36</strong><span>casos documentados</span></div>
+  <div><strong>33</strong><span>con prueba de comportamiento</span></div>
+  <div><strong><!--SERVICES_COUNT--></strong><span>servicios en localhost</span></div>
+  <div><strong>9/9</strong><span>controles estrictos en bwrap</span></div>
 </section>
 
 <section>
@@ -39,7 +62,7 @@
       <ul>
         <li>Ve <b>1 o 2</b> procesos: los suyos</li>
         <li>El árbol del host, sencillamente, no existe para él</li>
-        <li>La red está cortada; un servicio que publica un puerto la conserva, y su política lo dice</li>
+        <li>La red sigue cortada; un proxy externo publica solo el socket autorizado</li>
         <li>Entorno limpio: solo lo que la política declara</li>
         <li>Escribe en un directorio efímero que desaparece al terminar</li>
         <li>Corre como <code>nobody</code>, sin capabilities y con techo de memoria, PIDs y CPU</li>
@@ -91,14 +114,14 @@
   </p>
   <div class="grid">
     <div class="card">
-      <div class="card-top"><span class="num">técnicos</span><span class="chip containment">4 de 15</span></div>
+      <div class="card-top"><span class="num">técnicos</span><span class="chip containment">12 de 15 con prueba</span></div>
       <h3>Sandboxes técnicos</h3>
       <p>Código, archivos, plugins, agentes y secretos que no controlas, bajo políticas
       verificables y con ocho sondas midiendo qué contiene de verdad.</p>
       <code class="cmd">sandboxctl escape</code>
     </div>
     <div class="card">
-      <div class="card-top"><span class="num">mercado</span><span class="chip platform">2 de 21</span></div>
+      <div class="card-top"><span class="num">mercado</span><span class="chip platform">21 de 21 con escenarios</span></div>
       <h3>Mercado de capitales</h3>
       <p>Custodia, negociación y cumplimiento con dinero <b>simulado</b>. El caso de custodia
       concilia activos de clientes contra el extracto de un custodio y detecta faltantes
@@ -205,7 +228,7 @@ process-visibility                 ❌             ✅             ✅
 environment-leak                   ✅             ✅             ✅
 privilege-check                    ✅             ✅             ✅
 memory-limit                       —              ✅             ✅
-process-limit                      —              ❌             ❌</pre>
+process-limit                      —              ✅             ❌</pre>
   <p class="sub">
     El veredicto que más importa no es ❌ sino <b>❌ DECLARADO</b>: el runtime dice que aplica el
     control y la sonda demuestra que no. Un control no declarado al menos es honesto; uno
@@ -221,13 +244,11 @@ process-limit                      —              ❌             ❌</pre>
   <h2>Empezar</h2>
   <div class="split">
     <div>
-      <h3>Levantar el panel</h3>
+      <h3>Windows + WSL2</h3>
       <pre>git clone https://github.com/vladimiracunadev-create/sandbox-labs.git
 cd sandbox-labs
-
-cargo build -p sandboxctl --release
-pnpm dashboard:build &amp;&amp; pnpm dashboard:start</pre>
-      <p class="sub">Abre <code>http://127.0.0.1:9093</code> y levanta cualquier laboratorio con un clic.</p>
+.\launcher\windows\start-sandbox-labs.ps1</pre>
+      <p class="sub">Abre <code>http://127.0.0.1:9093</code>; el launcher comprueba WSL2 y bubblewrap antes de mostrar el panel.</p>
     </div>
     <div>
       <h3>O desde la terminal</h3>
@@ -236,7 +257,7 @@ sandboxctl service up file-detonation
 sandboxctl service list
 sandboxctl escape              # ¿qué contiene de verdad?
 sandboxctl service down --all</pre>
-      <p class="sub">Necesita Linux o WSL2 para el aislamiento real. En Windows y macOS se planifica y se mide, pero no hay frontera.</p>
+      <p class="sub">Necesita Linux o WSL2 para el aislamiento real. Windows nativo y macOS solo pueden planificar.</p>
     </div>
   </div>
 </section>

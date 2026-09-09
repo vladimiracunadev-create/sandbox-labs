@@ -7,6 +7,19 @@ Versionado semántico.
 
 ## [Unreleased]
 
+### Changed — documentación visual y navegación profesional
+
+- La portada del repositorio incorpora un banner arquitectónico propio que
+  muestra el recorrido Windows → WSL2 → bubblewrap → localhost sin depender de
+  recursos externos.
+- El sitio presenta una jerarquía visual renovada, métricas de estado,
+  arquitectura de ejecución y tabla de contenidos automática en documentos y
+  fichas de casos.
+- Se corrigieron afirmaciones derivadas que aún hablaban de cinco servicios,
+  `4/15` casos técnicos y una publicación de puertos que conservaba la red del
+  host. El estado actual es 15 servicios, 33/36 casos con prueba de
+  comportamiento y proxy por socket Unix para mantener la red aislada.
+
 ### Fixed — servicios realmente aislados y utilizables desde Windows
 
 - El launcher de Windows ahora usa WSL2 como backend real: instala o comprueba

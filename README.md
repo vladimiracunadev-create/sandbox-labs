@@ -1,4 +1,6 @@
-# 🛡️ sandbox-labs
+![sandbox-labs — WSL2, bubblewrap y localhost](docs/assets/sandbox-labs-hero.svg)
+
+# sandbox-labs
 
 **Ejecutar lo que no controlas, y medir cuánto se contiene de verdad.**
 
@@ -25,7 +27,7 @@ resultado.
 ![Platform](https://img.shields.io/badge/Platform-Linux%20%7C%20WSL2-orange)
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 
-🌐 **[Sitio del proyecto](https://vladimiracunadev-create.github.io/sandbox-labs/)** · 📋 **[Catálogo de los 36 casos](docs/CATALOGO.md)** · 📊 **[Estado real](docs/ESTADO.md)** · 📚 **[Documentación](docs/)**
+🌐 **[Sitio](https://vladimiracunadev-create.github.io/sandbox-labs/)** · 🚀 **[Empezar](docs/INSTALACION.md)** · 📋 **[36 casos](docs/CATALOGO.md)** · 📊 **[Estado verificable](docs/ESTADO.md)** · 📚 **[Documentación](docs/)**
 
 ---
 

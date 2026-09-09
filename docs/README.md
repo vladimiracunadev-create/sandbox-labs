@@ -59,7 +59,7 @@ flowchart LR
 | [Estado del proyecto](ESTADO.md) | **Qué está construido, qué lo demuestra y qué falta** |
 | [Catálogo completo](CATALOGO.md) | **Los 36 casos del proyecto, con su estado real** |
 | [Fichas de los casos](casos/README.md) | Una por caso: por qué existe, esquemas, software, procesos, tiempo de carga |
-| [Los cinco servicios levantables](CASOS.md) | Los casos que hoy se levantan como producto en su localhost |
+| [Recorrido inicial por cinco servicios](CASOS.md) | La entrada guiada a los 15 servicios que hoy se levantan en localhost |
 | [Instalación](INSTALACION.md) | Requisitos, puesta en marcha y problemas frecuentes |
 | [Cuando algo falla](SOLUCION-DE-PROBLEMAS.md) | **Cada fallo del proyecto, con sus alternativas de solución** |
 | [Runbook](../RUNBOOK.md) | Operación diaria |
