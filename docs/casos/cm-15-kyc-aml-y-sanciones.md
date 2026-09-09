@@ -113,7 +113,7 @@ automática** sobre una persona basada solo en una coincidencia.
 | Componente | Para qué |
 |---|---|
 | **Rust** 1.75+ | Perfilado de riesgo, coincidencia de nombres y monitoreo |
-| **Node.js** 20+ / **pnpm** 9+ | Cola de revisión humana (recomendado) |
+| **Node.js** 22+ / **pnpm** 9+ | Cola de revisión humana (recomendado) |
 
 Sin jaula ni Linux. **Las listas de sanciones son sintéticas y viven en el
 repositorio como datos de ejemplo**; no se descargan listas reales ni se usan

@@ -115,7 +115,7 @@ cuesta equivocarse, junto a la decisión de bloquear.
 | Componente | Para qué |
 |---|---|
 | **Rust** 1.75+ | Señales, puntuación de riesgo y respuesta graduada |
-| **Node.js** 20+ / **pnpm** 9+ | Cola de revisión humana (recomendado) |
+| **Node.js** 22+ / **pnpm** 9+ | Cola de revisión humana (recomendado) |
 
 Sin jaula ni Linux. **Cuentas, dispositivos y ubicaciones son sintéticos**; las
 ubicaciones se representan como etiquetas, no como coordenadas, para no modelar

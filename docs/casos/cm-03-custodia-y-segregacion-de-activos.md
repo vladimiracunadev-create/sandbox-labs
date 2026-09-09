@@ -119,7 +119,7 @@ es en sí mismo un hallazgo, y esa es la trampa que este caso enseña a detectar
 | Componente | Versión | Para qué | ¿Obligatorio? |
 |---|---|---|---|
 | **Rust** | 1.75+ | El motor de custodia, `Money` y `Ledger` | Sí |
-| **Node.js** 20+ / **pnpm** 9+ | — | Panel (opcional) | No |
+| **Node.js** 22+ / **pnpm** 9+ | — | Panel (opcional) | No |
 | **`bubblewrap`**, Linux | — | **No hacen falta** | No |
 
 Este caso corre en **cualquier sistema operativo**: no ejecuta código ajeno, así

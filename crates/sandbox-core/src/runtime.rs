@@ -142,11 +142,74 @@ impl RuntimeKind {
         match Command::new(command).args(args).output() {
             Ok(output) => {
                 let text = if output.stdout.is_empty() { &output.stderr } else { &output.stdout };
-                RuntimeProbe {
-                    id: self.to_string(),
-                    available: output.status.success(),
-                    version: String::from_utf8_lossy(text).lines().next().unwrap_or("desconocida").to_string(),
-                    detail: command.into(),
+                let version = String::from_utf8_lossy(text).lines().next().unwrap_or("desconocida").to_string();
+                if !output.status.success() {
+                    return RuntimeProbe {
+                        id: self.to_string(),
+                        available: false,
+                        version,
+                        detail: format!("{command} está instalado pero no responde correctamente"),
+                    };
+                }
+
+                // Encontrar un binario no demuestra que el kernel permita usarlo.
+                // AppArmor, user namespaces desactivados o una configuración de
+                // WSL incompleta hacen que `--version` pase y la primera carga
+                // muera. Los dos runtimes rootless se prueban con la misma forma
+                // de namespaces que usarán después.
+                let capability = match self {
+                    Self::Bwrap => Command::new("bwrap")
+                        .args([
+                            "--unshare-user",
+                            "--unshare-pid",
+                            "--unshare-net",
+                            "--new-session",
+                            "--ro-bind",
+                            "/",
+                            "/",
+                            "--",
+                            "/bin/true",
+                        ])
+                        .output(),
+                    Self::Unshare => Command::new("unshare")
+                        .args([
+                            "--user",
+                            "--map-root-user",
+                            "--mount",
+                            "--pid",
+                            "--fork",
+                            "--mount-proc",
+                            "--net",
+                            "true",
+                        ])
+                        .output(),
+                    _ => {
+                        return RuntimeProbe { id: self.to_string(), available: true, version, detail: command.into() }
+                    }
+                };
+
+                match capability {
+                    Ok(check) if check.status.success() => RuntimeProbe {
+                        id: self.to_string(),
+                        available: true,
+                        version,
+                        detail: format!("{command} · namespaces comprobados"),
+                    },
+                    Ok(check) => RuntimeProbe {
+                        id: self.to_string(),
+                        available: false,
+                        version,
+                        detail: format!(
+                            "{command} instalado, pero el sondeo de namespaces falló: {}",
+                            String::from_utf8_lossy(&check.stderr).trim()
+                        ),
+                    },
+                    Err(error) => RuntimeProbe {
+                        id: self.to_string(),
+                        available: false,
+                        version,
+                        detail: format!("{command} instalado, pero no se pudo ejecutar el sondeo: {error}"),
+                    },
                 }
             }
             Err(error) => RuntimeProbe {

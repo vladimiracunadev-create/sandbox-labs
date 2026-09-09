@@ -170,7 +170,7 @@ tocar nada.
 | **Rust** | 1.75+ | `sandboxctl`, el supervisor que levanta el caso | Solo para levantarlo como servicio |
 | **`bubblewrap`** | 0.6+ | La jaula que aplica los controles | Solo para el servicio con aislamiento |
 | **Linux o WSL2** | kernel 5.10+ | Namespaces de usuario sin privilegios | Solo para el servicio |
-| **Node.js** | 20+ | La prueba de comportamiento y el panel | Solo para comprobarlo |
+| **Node.js** | 22+ | La prueba de comportamiento y el panel | Solo para comprobarlo |
 
 El intérprete por sí solo **funciona en cualquier sistema con Python**, incluido
 Windows: no necesita jaula porque no usa nada que haya que enjaular.

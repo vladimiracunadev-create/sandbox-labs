@@ -116,7 +116,7 @@ después de emitir la 2 rompe el enlace y se detecta.
 | Componente | Para qué | ¿Obligatorio? |
 |---|---|---|
 | **Rust** 1.75+ | Consolidación, validación y firma Ed25519 | Sí |
-| **Node.js** 20+ / **pnpm** 9+ | Panel de envíos y observaciones | No |
+| **Node.js** 22+ / **pnpm** 9+ | Panel de envíos y observaciones | No |
 
 Reutiliza la firma y el encadenamiento del
 [formato de evidencia](../EVIDENCE_FORMAT.md), ya construido y verificado en cada

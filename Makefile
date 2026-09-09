@@ -1,9 +1,6 @@
 .PHONY: check lock test build dashboard doctor clean zip
 check:
-	node scripts/validate-config.mjs
-	node scripts/check-doc-links.mjs
-	node scripts/run-negative-tests.mjs
-	cd control-center && node scripts/build.mjs && node --test test/*.test.mjs
+	pnpm check
 
 lock:
 	@test -f Cargo.lock || cargo generate-lockfile
