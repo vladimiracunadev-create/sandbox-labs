@@ -36,7 +36,7 @@ jobs:
       # `components` debe ser una cadena: en formato de flujo YAML,
       # `{ components: rustfmt, clippy }` se lee como dos claves y la acción
       # ignora clippy en silencio.
-      - uses: dtolnay/rust-toolchain@e97e2d8cc328f1b50210efc529dca0028893a2d9 # v1
+      - uses: dtolnay/rust-toolchain@d1031067263f94b142dd6c0ce24c5eb9d02d52a0 # v1
         with:
           toolchain: stable
           components: rustfmt, clippy
@@ -157,7 +157,7 @@ jobs:
         with:
           persist-credentials: false
 
-      - uses: dtolnay/rust-toolchain@e97e2d8cc328f1b50210efc529dca0028893a2d9 # v1
+      - uses: dtolnay/rust-toolchain@d1031067263f94b142dd6c0ce24c5eb9d02d52a0 # v1
         with:
           toolchain: stable
 
