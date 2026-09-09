@@ -43,7 +43,7 @@ async function runCli(paths, args, timeoutMs = 30_000) {
   if (!invocation) {
     throw new Error("sandboxctl_unavailable");
   }
-  const child = spawn(invocation.command, [...invocation.prefix, "--root", paths.repoRoot, "service", ...args], {
+  const child = spawn(invocation.command, [...invocation.prefix, "--root", invocation.repoRoot ?? paths.repoRoot, "service", ...args], {
     cwd: paths.repoRoot,
     env: { ...process.env, NO_COLOR: "1" },
     stdio: ["ignore", "pipe", "pipe"]

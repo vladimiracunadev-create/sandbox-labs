@@ -110,7 +110,7 @@ flowchart TB
 | Componente | Para qué |
 |---|---|
 | **Rust** 1.75+ | Detectores, reconstrucción de sesión y expediente |
-| **Node.js** 20+ / **pnpm** 9+ | Visualización de la línea de tiempo del libro (recomendado) |
+| **Node.js** 22+ / **pnpm** 9+ | Visualización de la línea de tiempo del libro (recomendado) |
 
 Sin jaula ni Linux. **Sin datos personales reales**: las cuentas son sintéticas.
 

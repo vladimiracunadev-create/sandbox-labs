@@ -118,7 +118,7 @@ atomicidad: la falla no dejó a nadie a medias.
 | Componente | Para qué |
 |---|---|
 | **Rust** 1.75+ | Netting, atomicidad y libro de partida doble |
-| **Node.js** 20+ / **pnpm** 9+ | Panel (opcional) |
+| **Node.js** 22+ / **pnpm** 9+ | Panel (opcional) |
 
 Sin jaula ni Linux. Se apoya en `Money` y `Ledger` del crate
 [`sandbox-markets`](../../crates/sandbox-markets), **ya construidos**.

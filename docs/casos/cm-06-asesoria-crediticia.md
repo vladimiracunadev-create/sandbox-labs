@@ -99,7 +99,7 @@ asesoría financiera real.
 | Componente | Para qué |
 |---|---|
 | **Rust** 1.75+ | Cálculo de costo total, capacidad de pago y escenarios |
-| **Node.js** 20+ / **pnpm** 9+ | Formulario y comparación visual (opcional) |
+| **Node.js** 22+ / **pnpm** 9+ | Formulario y comparación visual (opcional) |
 
 Sin jaula ni Linux. **Aritmética con enteros en unidades mínimas**: los intereses
 con coma flotante producen diferencias de céntimos que, acumuladas, no cuadran.

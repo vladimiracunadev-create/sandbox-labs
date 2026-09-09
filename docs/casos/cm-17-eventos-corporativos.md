@@ -116,7 +116,7 @@ el de custodia. Los dos tienen que cumplirse a la vez.
 | Componente | Para qué |
 |---|---|
 | **Rust** 1.75+ | Aplicación atómica sobre posiciones y libro contable |
-| **Node.js** 20+ / **pnpm** 9+ | Panel de eventos (opcional) |
+| **Node.js** 22+ / **pnpm** 9+ | Panel de eventos (opcional) |
 
 Sin jaula ni Linux. Se apoya en `Money`, `Ledger` y `CustodyBook`, **ya
 construidos**.

@@ -98,7 +98,7 @@ flowchart TB
 | Componente | Para qué |
 |---|---|
 | **Rust** 1.75+ | Registro de propiedad, invariantes y eventos |
-| **Node.js** 20+ / **pnpm** 9+ | Panel (opcional) |
+| **Node.js** 22+ / **pnpm** 9+ | Panel (opcional) |
 
 **No usa cadena de bloques real** ni conectividad externa: el registro es un
 libro append-only local. Sin jaula ni Linux.

@@ -40,7 +40,7 @@ for (const runtime of catalog.runtimes) {
   for (const control of runtime.controls) assert(knownControls.has(control), `Control desconocido ${control} en runtime ${runtime.id}`);
 }
 assert(runtimeIds.has(catalog.project.defaultRuntime), "defaultRuntime no registrado");
-assert(catalog.runtimes.find((value) => value.id === catalog.project.defaultRuntime)?.status === "ready", "defaultRuntime debe estar ready");
+assert(["ready", "experimental"].includes(catalog.runtimes.find((value) => value.id === catalog.project.defaultRuntime)?.status), "defaultRuntime debe estar ready o experimental");
 
 
 const policiesDirectory = resolve(root, catalog.policiesDirectory);

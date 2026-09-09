@@ -2,6 +2,19 @@
 
 ## Panel no inicia
 
+En Windows usa el launcher WSL2, no `node` directamente:
+
+```powershell
+.\launcher\windows\start-sandbox-labs.ps1
+```
+
+El launcher se niega a arrancar si `127.0.0.1:9093` ya está ocupado o si el
+sondeo funcional de bubblewrap no puede crear namespaces. Para una distribución
+con otro nombre usa `-Distribution <nombre>`; `-NoBrowser` sirve para operación
+sin interfaz visible.
+
+En Linux:
+
 ```bash
 node scripts/validate-config.mjs
 cd control-center

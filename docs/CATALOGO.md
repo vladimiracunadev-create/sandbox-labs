@@ -52,7 +52,7 @@ repetirlos 15 veces.
 | **`util-linux`** (`unshare`, `prlimit`) | 2.37+ | Runtime alternativo, más débil, y límites de recursos | Sí para `runtime=unshare` |
 | **`systemd`** en modo usuario | 249+ | Los cgroups v2 (memoria, PIDs, CPU) se piden por `systemd-run --user --scope` | Solo si quieres límites de memoria/CPU reales |
 | **Python** | 3.11+ | Los servicios de los casos técnicos 01–05 están escritos con la biblioteca estándar, sin dependencias | Sí para esos casos |
-| **Node.js** | 20+ | Panel de control, validación del catálogo y construcción del sitio | Solo para el panel |
+| **Node.js** | 22+ | Panel de control, validación del catálogo y construcción del sitio | Solo para el panel |
 | **pnpm** | 9+ | Gestor de paquetes del proyecto. **No se usa `npm`** | Solo para el panel |
 
 Lo que **no** hace falta: Docker, permisos de root, una máquina virtual dedicada

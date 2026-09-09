@@ -223,6 +223,9 @@ jobs:
           node scripts/assert-containment.mjs evidence/escape/bwrap.json \
             --contained network,filesystem,process,environment,privilege,memory,syscalls
 
+      - name: Servicio real — bubblewrap → socket Unix → localhost
+        run: bash scripts/test-service-e2e.sh
+
       - name: Suite de contención — unshare debe cortar la red y los PIDs
         run: |
           set -euo pipefail

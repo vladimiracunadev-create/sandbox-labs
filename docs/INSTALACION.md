@@ -29,12 +29,24 @@ Linux por debajo, y WSL lleva el Linux en el nombre.
 
 ## 1 · El sistema base
 
-En **Windows**, instala WSL2 y entra en la distro. Todo lo demás se hace dentro:
+En **Windows**, instala WSL2. El launcher mantiene el panel en Windows y usa la
+distribución Linux como backend de aislamiento:
 
 ```powershell
 wsl --install
-wsl
 ```
+
+Después, desde PowerShell en el repositorio:
+
+```powershell
+.\launcher\windows\start-sandbox-labs.ps1
+```
+
+En el primer arranque comprueba Ubuntu, instala `bubblewrap` y `util-linux` si
+faltan, compila `sandboxctl` dentro de WSL2 y abre el panel solo cuando
+`127.0.0.1:9093` responde. Usa `-Distribution <nombre>` si tu distro no se llama
+`Ubuntu`, o `-SkipDependencyInstall` para impedir instalaciones automáticas.
+Para servidores o pruebas automatizadas, `-NoBrowser` evita abrir el navegador.
 
 En **Linux** (o ya dentro de WSL):
 
@@ -84,8 +96,9 @@ node scripts/validate-config.mjs
 cargo run -p sandboxctl -- doctor
 ```
 
-Cada runtime sale como ✅ disponible o ⚪ ausente. Un ⚪ no es un error: el plan
-lo tratará como control no soportado y la política decidirá qué hacer.
+Cada runtime sale como ✅ disponible o ⚪ ausente. El sondeo de `bwrap` y
+`unshare` crea namespaces reales: encontrar el ejecutable ya no basta. Las
+políticas de servicio estrictas bloquean el arranque si falta un control.
 
 ## 5 · Levantar el primer sandbox
 
@@ -110,7 +123,8 @@ pnpm dashboard:start
 ```
 
 Abre <http://127.0.0.1:9093>: desde ahí se levantan y apagan todos los casos con
-un clic, con su estado en vivo y la política bajo la que corren.
+un clic, con su estado en vivo, backend WSL2 y controles efectivos. En Windows
+se recomienda el launcher anterior; estos comandos son la ruta Linux manual.
 
 ---
 
