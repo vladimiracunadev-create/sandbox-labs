@@ -70,15 +70,19 @@ Con `proxy`, `sandboxctl service up` levanta un reenviador que escucha en
 El servicio sigue hablando HTTP y se abre en el navegador igual, pero corre en
 un namespace de red propio y no tiene por dónde salir.
 
-Es lo que usan `service-isolated` y los casos `02` y `03`. `service-sandbox` y
-`web-application` se quedan en `unrestricted` para los servicios que enlacen el
-puerto ellos mismos.
+Es lo que usa `service-isolated`, ahora en modo `strict`: si bubblewrap, cgroups
+o seccomp no están disponibles, el servicio no cae a un runtime más débil sino
+que bloquea el arranque. `service-sandbox` y `web-application` se quedan en
+`unrestricted` para los servicios que enlacen el puerto ellos mismos.
 
 ## Recursos
 
 `cpu`, `memoryMb`, `processes`, `timeoutSeconds`, `openFiles` y `outputBytes`.
 
-El timeout y el límite de salida los aplica el supervisor común.
+El timeout y el límite de salida los aplica el supervisor común a las cargas que
+terminan. Los servicios persistentes no los declaran como controles efectivos;
+sus políticas estrictas exigen en cambio los controles del kernel que sí se
+mantienen durante toda su vida.
 
 `memoryMb`, `processes` y `cpu` los aplica **cgroups v2**, y solo en bubblewrap.
 El mecanismo es `systemd-run --user --scope`, que envuelve el árbol entero

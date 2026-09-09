@@ -140,17 +140,34 @@ fn port_responds(port: u16) -> bool {
 }
 
 /// Primer runtime de la lista que esté disponible en este host.
-fn pick_runtime(service: &Service) -> Result<RuntimeKind> {
+fn pick_runtime(service: &Service, policy: &Policy, filtered: bool) -> Result<RuntimeKind> {
+    let mut rejected = Vec::new();
     for candidate in &service.runtimes {
         let kind = RuntimeKind::from_str(candidate)?;
-        if kind.probe().available {
-            return Ok(kind);
+        let probe = kind.probe();
+        if !probe.available {
+            rejected.push(format!("{candidate}: {}", probe.detail));
+            continue;
         }
+        let effective = effective_controls(kind, policy, filtered);
+        let missing: Vec<_> = policy
+            .enforcement
+            .required_controls
+            .iter()
+            .filter(|control| !effective.contains(control))
+            .cloned()
+            .collect();
+        if policy.enforcement.mode == sandbox_core::EnforcementMode::Strict && !missing.is_empty() {
+            rejected.push(format!("{candidate}: faltan {}", missing.join(", ")));
+            continue;
+        }
+        return Ok(kind);
     }
     bail!(
-        "Ningún runtime de {} está disponible en este host (probados: {}). Ejecuta `sandboxctl doctor`.",
+        "Ningún runtime de {} puede satisfacer la política {} en este host.\n   {}\nEjecuta `sandboxctl doctor`.",
         service.id,
-        service.runtimes.join(", ")
+        policy.id,
+        if rejected.is_empty() { "no hay candidatos".into() } else { rejected.join("\n   ") }
     )
 }
 
@@ -163,10 +180,8 @@ fn pick_runtime(service: &Service) -> Result<RuntimeKind> {
 ///
 /// Con `unshare` la lista es corta a propósito: no recibe ni cgroups ni filtro.
 fn effective_controls(runtime: RuntimeKind, policy: &Policy, filtered: bool) -> Vec<String> {
-    let mut controls: Vec<String> = ["filesystem", "capabilities", "devices", "environment", "output", "timeout"]
-        .iter()
-        .map(|value| (*value).to_string())
-        .collect();
+    let mut controls: Vec<String> =
+        ["filesystem", "capabilities", "devices", "environment"].iter().map(|value| (*value).to_string()).collect();
     if policy.network.isolates_host_network() {
         controls.push("network".into());
     }
@@ -381,7 +396,6 @@ pub fn up(ctx: &ServiceContext, id: &str, wait: bool) -> Result<i32> {
 
     let policy = Policy::load(ctx.root.join("policies").join(format!("{}.json", service.policy)))?;
     check_transport_matches_network(&service, &policy)?;
-    let runtime = pick_runtime(&service)?;
     let (secrets, refused) = resolved_secrets(&service, &policy);
     let socket_dir = ctx.socket_dir();
     // El filtro seccomp vive en el directorio de datos y no en un temporal: el
@@ -396,6 +410,7 @@ pub fn up(ctx: &ServiceContext, id: &str, wait: bool) -> Result<i32> {
             Some(fs::File::open(&path)?)
         }
     };
+    let runtime = pick_runtime(&service, &policy, seccomp.is_some())?;
     let (program, mut args) = sandbox_command(runtime, &service, &policy, &secrets, &socket_dir, seccomp.as_ref());
 
     // Los mismos límites de recursos que reciben las cargas que terminan. Sin
@@ -554,7 +569,7 @@ pub fn up(ctx: &ServiceContext, id: &str, wait: bool) -> Result<i32> {
 /// En los dos casos la marca lleva la ruta de este repositorio, así que un
 /// proceso de otro proyecto no coincide.
 #[cfg(target_os = "linux")]
-fn orphans(ctx: &ServiceContext, known: &[u32]) -> Vec<(u32, String)> {
+fn orphans(ctx: &ServiceContext, known: &[u32]) -> Vec<(u32, Option<u64>, String)> {
     let repo = ctx.root.display().to_string();
     let marker = ctx.root.join("cases").display().to_string();
     let mut found = Vec::new();
@@ -575,14 +590,14 @@ fn orphans(ctx: &ServiceContext, known: &[u32]) -> Vec<(u32, String)> {
                 .and_then(|value| value.rsplit('/').next())
                 .unwrap_or("desconocido")
                 .to_string();
-            found.push((pid, case));
+            found.push((pid, process_start_ticks(pid), case));
             continue;
         }
         // El reenviador del puerto. Sin esto queda ocupando el puerto y el
         // siguiente `service up` falla sin decir quién lo tiene.
         if cmdline.contains(&repo) && cmdline.contains(" service ") && cmdline.contains(" forward ") {
             let id = cmdline.split_whitespace().last().unwrap_or("desconocido").to_string();
-            found.push((pid, format!("reenviador de {id}")));
+            found.push((pid, process_start_ticks(pid), format!("reenviador de {id}")));
         }
     }
     found.sort();
@@ -590,8 +605,32 @@ fn orphans(ctx: &ServiceContext, known: &[u32]) -> Vec<(u32, String)> {
 }
 
 #[cfg(not(target_os = "linux"))]
-fn orphans(_ctx: &ServiceContext, _known: &[u32]) -> Vec<(u32, String)> {
+fn orphans(_ctx: &ServiceContext, _known: &[u32]) -> Vec<(u32, Option<u64>, String)> {
     Vec::new()
+}
+
+fn stop_stragglers(stragglers: &[(u32, Option<u64>, String)]) {
+    for (pid, ticks, _) in stragglers {
+        if same_process(*pid, *ticks) {
+            terminate(*pid);
+        }
+    }
+    if !stragglers.is_empty() {
+        std::thread::sleep(Duration::from_secs(2));
+    }
+    for (pid, ticks, _) in stragglers {
+        if same_process(*pid, *ticks) {
+            kill(*pid);
+        }
+    }
+}
+
+fn belongs_to_service(label: &str, service: &Service) -> bool {
+    let case = service.directory.file_name().and_then(|value| value.to_str()).unwrap_or_default();
+    label == case
+        || label == service.id
+        || label.ends_with(&format!("-{}", service.id))
+        || label == format!("reenviador de {}", service.id)
 }
 
 pub fn down(ctx: &ServiceContext, id: &str) -> Result<i32> {
@@ -639,6 +678,19 @@ pub fn down(ctx: &ServiceContext, id: &str) -> Result<i32> {
             }
         }
     }
+
+    // `systemd-run --scope` entrega la carga al gestor de usuario y
+    // bubblewrap crea después una sesión propia (`--new-session`). Por eso el
+    // grupo del proceso registrado puede morir mientras el sandbox sigue vivo.
+    // Se busca la instancia de ESTE servicio por la ruta de su caso antes de
+    // borrar el registro, y se comprueba también su marca de arranque antes de
+    // señalizarla para no alcanzar un PID reutilizado.
+    let stragglers: Vec<_> =
+        orphans(ctx, &[record.pid]).into_iter().filter(|(_, _, label)| belongs_to_service(label, &service)).collect();
+    if !stragglers.is_empty() {
+        println!("· deteniendo {} proceso(s) interno(s) de {}", stragglers.len(), service.id);
+    }
+    stop_stragglers(&stragglers);
 
     ServiceRecord::remove(&ctx.data_root, &service.id);
     if service.is_socket() {
@@ -707,14 +759,10 @@ pub fn down_all(ctx: &ServiceContext) -> Result<i32> {
     let stragglers = orphans(ctx, &known);
     if !stragglers.is_empty() {
         println!("\n⚠ {} sandbox(es) vivos sin registro que los nombre:", stragglers.len());
-        for (pid, case) in &stragglers {
+        for (pid, _, case) in &stragglers {
             println!("   · PID {pid} · {case}");
-            terminate(*pid);
         }
-        std::thread::sleep(Duration::from_secs(2));
-        for (pid, _) in &stragglers {
-            kill(*pid);
-        }
+        stop_stragglers(&stragglers);
         println!("   detenidos.");
     }
     Ok(0)
@@ -906,5 +954,16 @@ mod transport_tests {
     fn a_tcp_service_runs_when_the_policy_admits_it_keeps_the_host_network() {
         check_transport_matches_network(&service("tcp"), &policy("unrestricted"))
             .expect("con la red del host el puerto sí se publica");
+    }
+
+    #[test]
+    fn an_orphan_case_directory_is_attributed_to_its_service() {
+        let mut value = service("unix-socket");
+        value.id = "file-detonation".into();
+        value.directory = PathBuf::from("/repo/cases/03-file-detonation");
+
+        assert!(belongs_to_service("03-file-detonation", &value));
+        assert!(belongs_to_service("reenviador de file-detonation", &value));
+        assert!(!belongs_to_service("02-ai-code-runner", &value));
     }
 }

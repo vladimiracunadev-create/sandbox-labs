@@ -139,7 +139,7 @@ pero la lista no le sirve de nada.
 |---|---|
 | **Estado** | ✅ Cerrado |
 | **Control afectado** | `network`, en los servicios |
-| **Se declara hoy** | Sí. Los casos `02` y `03` corren con `service-isolated`, que exige el control `network`. |
+| **Se declara hoy** | Sí. Los servicios publicados corren con `service-isolated` estricto, que exige `network` y bloquea cualquier runtime incompleto. |
 
 `loopback` estaba implementado —crea namespace propio— pero un servicio con
 `transport: tcp` no podía usarlo: su puerto nacía dentro del sandbox y nadie
@@ -164,7 +164,8 @@ Medido levantando el caso `03` de verdad:
 ```text
 ✅ file-detonation responde en http://127.0.0.1:8803
    (reenviado a unix:/run/user/1000/sandbox-labs/file-detonation.sock)
-   contención efectiva: environment, memory, network, output, timeout
+   contención efectiva: capabilities, cpu, devices, environment, filesystem,
+   memory, network, processes, syscalls
 
 curl http://127.0.0.1:8803/health  →  http=200
 netns del sandbox : net:[4026532244]

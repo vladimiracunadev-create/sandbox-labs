@@ -410,7 +410,7 @@ fn no_policy_runs_the_workload_as_root() {
 #[test]
 fn a_policy_that_requires_network_either_isolates_or_fails_closed() {
     // Exigir el control `network` con un modo que no crea namespace propio
-    // —hoy, `allowlist` y `unrestricted`— es pedir algo que ningún runtime
+    // —hoy, `unrestricted`— es pedir algo que ningún runtime
     // sabe aplicar. Eso no está prohibido: una política puede declarar la
     // frontera que quiere aunque todavía no exista quien la haga cumplir. Lo
     // que no puede pasar es que se ejecute igual y nadie se entere.
@@ -496,6 +496,27 @@ fn a_proxied_service_has_no_excuse_to_keep_the_host_network() {
             "{}: si la red queda contenida, la política tiene que exigir el control `network`",
             service.id
         );
+        assert_eq!(
+            policy.enforcement.mode,
+            EnforcementMode::Strict,
+            "{}: un servicio publicado no puede degradarse silenciosamente a un runtime incompleto",
+            service.id
+        );
+    }
+}
+
+#[test]
+fn every_network_isolated_service_fails_closed() {
+    for service in built_cases() {
+        let policy = load_policy(&service.policy);
+        if policy.network.isolates_host_network() {
+            assert_eq!(
+                policy.enforcement.mode,
+                EnforcementMode::Strict,
+                "{}: una jaula de servicio no puede arrancar con menos controles de los pedidos",
+                service.id
+            );
+        }
     }
 }
 

@@ -98,7 +98,7 @@ flujo de órdenes, tiene que aparecer ahí.
 | Componente | Para qué |
 |---|---|
 | **Rust** 1.75+ | El evaluador y la explicación |
-| **Node.js** 20+ / **pnpm** 9+ | Visualizar la comparación en el panel (opcional) |
+| **Node.js** 22+ / **pnpm** 9+ | Visualizar la comparación en el panel (opcional) |
 
 No necesita jaula ni Linux: lógica determinista sobre datos simulados.
 

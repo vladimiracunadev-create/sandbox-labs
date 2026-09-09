@@ -108,7 +108,7 @@ stateDiagram-v2
 | Componente | Para qué |
 |---|---|
 | **Rust** 1.75+ | Ciclo de vida del consentimiento y APIs simuladas |
-| **Node.js** 20+ / **pnpm** 9+ | Pantalla de consentimiento y trazabilidad para el usuario |
+| **Node.js** 22+ / **pnpm** 9+ | Pantalla de consentimiento y trazabilidad para el usuario |
 
 Sin jaula ni Linux. **Los certificados son simulados y generados en local**; el
 proyecto no almacena credenciales reales en ningún sitio, tampoco en fixtures.

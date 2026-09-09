@@ -142,7 +142,7 @@ ninguna salida de este simulador puede presentarse como una autorización.
 | Componente | Para qué | ¿Obligatorio? |
 |---|---|---|
 | **Rust** 1.75+ | El motor de clasificación y las reglas como código | Sí |
-| **Node.js** 20+ y **pnpm** 9+ | El formulario en el panel de control | Solo para la interfaz |
+| **Node.js** 22+ y **pnpm** 9+ | El formulario en el panel de control | Solo para la interfaz |
 | **`bubblewrap`** | **No hace falta**: no se ejecuta código no confiable | No |
 
 Esta familia **no necesita aislamiento del sistema**: lo que se prueba son

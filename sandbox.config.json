@@ -4,7 +4,7 @@
     "name": "Sandbox Labs",
     "version": "0.1.0",
     "controlCenterPort": 9093,
-    "defaultRuntime": "dry-run",
+    "defaultRuntime": "bwrap",
     "evidenceDirectory": "evidence/runs",
     "dataDirectory": ".sandbox-data"
   },

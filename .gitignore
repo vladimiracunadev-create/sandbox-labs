@@ -6,6 +6,8 @@
 /evidence/runs/*.json
 !/evidence/runs/.gitkeep
 *.log
+__pycache__/
+*.py[cod]
 .DS_Store
 .env
 .env.*
