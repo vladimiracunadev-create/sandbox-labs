@@ -115,7 +115,7 @@ flowchart TB
 | Componente | Para qué | ¿Obligatorio? |
 |---|---|---|
 | **Rust** 1.75+ | Registro de modelos, métricas de drift y sesgo | Sí |
-| **Node.js** 20+ / **pnpm** 9+ | Panel de gobierno y aprobaciones | Recomendado |
+| **Node.js** 22+ / **pnpm** 9+ | Panel de gobierno y aprobaciones | Recomendado |
 | **Python** 3.11+ | Solo si un modelo de ejemplo lo requiere | No |
 
 Sin jaula ni Linux para el gobierno en sí. Si algún día se entrenara un modelo

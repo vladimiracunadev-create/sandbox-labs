@@ -194,6 +194,7 @@ function renderForm() {
   fillSelect(byId("workload"), workloads, (value) => `${value.id} · ${value.risk}`);
   fillSelect(byId("policy"), policies, (value) => `${value.id} · ${value.enforcement.mode}`);
   fillSelect(byId("runtime"), catalog.runtimes, (value) => `${value.id} · ${value.status}`);
+  byId("runtime").value = catalog.project.defaultRuntime;
   for (const id of ["policy", "runtime"]) byId(id).addEventListener("change", updatePlanHint);
   updatePlanHint();
 }

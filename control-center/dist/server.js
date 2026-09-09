@@ -73,7 +73,7 @@ export async function createSandboxServer(options = {}) {
 }
 
 async function api(request, response, url, ctx) {
-  if (request.method === "GET" && url.pathname === "/api/system") { sendJson(response, 200, { name: "Sandbox Control Center", version: ctx.registry.catalog.project.version, host: ctx.host, port: ctx.port, safeMode: true, executionModel: "registered-workloads-only" }); return; }
+  if (request.method === "GET" && url.pathname === "/api/system") { sendJson(response, 200, { name: "Sandbox Control Center", version: ctx.registry.catalog.project.version, host: ctx.host, port: ctx.port, safeMode: true, executionModel: "registered-workloads-only", backend: process.env.SANDBOX_LABS_WSL_DISTRO ? { type: "wsl2", distribution: process.env.SANDBOX_LABS_WSL_DISTRO } : { type: process.platform } }); return; }
   if (request.method === "GET" && url.pathname === "/api/catalog") { sendJson(response, 200, ctx.registry.catalog); return; }
   if (request.method === "GET" && url.pathname === "/api/policies") { sendJson(response, 200, ctx.registry.policies.map(({ path, file, ...policy }) => policy)); return; }
   if (request.method === "GET" && url.pathname === "/api/workloads") { sendJson(response, 200, ctx.registry.workloads.map(({ directory, manifestPath, ...workload }) => workload)); return; }

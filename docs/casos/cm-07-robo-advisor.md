@@ -98,7 +98,7 @@ flowchart TB
 | Componente | Para qué |
 |---|---|
 | **Rust** 1.75+ | Perfilado, construcción de cartera y simulación determinista |
-| **Node.js** 20+ / **pnpm** 9+ | Cuestionario y visualización (opcional) |
+| **Node.js** 22+ / **pnpm** 9+ | Cuestionario y visualización (opcional) |
 
 Sin jaula ni Linux. La simulación usa **semilla explícita**: mismos datos y misma
 semilla, mismo resultado.

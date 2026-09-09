@@ -108,7 +108,7 @@ flowchart TB
 | Componente | Para qué |
 |---|---|
 | **Rust** 1.75+ | Cálculo de margen, haircuts y simulación del impacto |
-| **Node.js** 20+ / **pnpm** 9+ | Panel de exposiciones y llamadas (recomendado) |
+| **Node.js** 22+ / **pnpm** 9+ | Panel de exposiciones y llamadas (recomendado) |
 
 Sin jaula ni Linux. Aritmética con **enteros en unidades mínimas**: un error de
 redondeo en un cálculo de margen se convierte en una llamada equivocada.

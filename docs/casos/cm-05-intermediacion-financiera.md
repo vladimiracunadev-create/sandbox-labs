@@ -106,7 +106,7 @@ sequenceDiagram
 | Componente | Para qué |
 |---|---|
 | **Rust** 1.75+ | Motor de operaciones y detección de conductas |
-| **Node.js** 20+ / **pnpm** 9+ | Panel (opcional) |
+| **Node.js** 22+ / **pnpm** 9+ | Panel (opcional) |
 
 Sin jaula ni Linux: lógica determinista sobre operaciones simuladas.
 

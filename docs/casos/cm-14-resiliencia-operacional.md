@@ -109,7 +109,7 @@ los clientes en sus posiciones.
 | Componente | Para qué |
 |---|---|
 | **Rust** 1.75+ | Inyección de incidentes, kill switch y replay |
-| **Node.js** 20+ / **pnpm** 9+ | Panel de estado durante el incidente (recomendado) |
+| **Node.js** 22+ / **pnpm** 9+ | Panel de estado durante el incidente (recomendado) |
 
 Sin jaula ni Linux: los incidentes se inyectan en un sistema simulado, no se
 provocan fallos reales en el equipo.

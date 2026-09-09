@@ -109,7 +109,7 @@ construido: un importe sin moneda es un error esperando a ocurrir.
 | Componente | Para qué |
 |---|---|
 | **Rust** 1.75+ | Validación, calendario y consolidación de proveedores |
-| **Node.js** 20+ / **pnpm** 9+ | Panel de cuarentena y alertas (recomendado) |
+| **Node.js** 22+ / **pnpm** 9+ | Panel de cuarentena y alertas (recomendado) |
 
 Sin jaula ni Linux. **Los proveedores son simulados**: no hay conectividad con
 ninguna fuente real de datos de mercado.

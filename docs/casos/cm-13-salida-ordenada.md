@@ -109,7 +109,7 @@ terminado, por mucho que los servidores estén apagados.
 | Componente | Para qué |
 |---|---|
 | **Rust** 1.75+ | Máquina de estados del cierre y reporte final firmado |
-| **Node.js** 20+ / **pnpm** 9+ | Panel del progreso del cierre (recomendado) |
+| **Node.js** 22+ / **pnpm** 9+ | Panel del progreso del cierre (recomendado) |
 
 Sin jaula ni Linux. Se apoya en [CM-03](cm-03-custodia-y-segregacion-de-activos.md)
 —ya construido— para comprobar que el libro cuadra al final.

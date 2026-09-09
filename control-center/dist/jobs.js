@@ -105,10 +105,10 @@ export class JobStore {
       }
       const workload = this.registry.workloadById.get(job.workloadId);
       const policy = this.registry.policyById.get(job.policyId);
-      const workloadPath = relative(this.paths.repoRoot, workload.directory);
-      const policyPath = relative(this.paths.repoRoot, policy.path);
+      const workloadPath = cliPath(relative(this.paths.repoRoot, workload.directory), invocation);
+      const policyPath = cliPath(relative(this.paths.repoRoot, policy.path), invocation);
       const args = [
-        ...invocation.prefix, "--root", this.paths.repoRoot, "run",
+        ...invocation.prefix, "--root", invocation.repoRoot ?? this.paths.repoRoot, "run",
         "--workload", workloadPath, "--runtime", job.runtimeId,
         "--policy", policyPath, "--json"
       ];
@@ -260,6 +260,24 @@ export async function cliInvocation(root) {
   if (explicit) {
     try { await access(explicit, constants.X_OK); return { command: explicit, prefix: [], startupGraceMs: 0 }; } catch { /* continue */ }
   }
+  // El panel puede vivir en Windows mientras el motor usa el kernel de WSL2.
+  // El launcher entrega rutas Linux ya resueltas: ningún caller tiene que
+  // construir comandos de shell ni intentar traducir C:\\... por su cuenta.
+  if (process.platform === "win32" && process.env.SANDBOX_LABS_WSL_DISTRO) {
+    const wsl = await findOnPath("wsl.exe");
+    const distro = process.env.SANDBOX_LABS_WSL_DISTRO;
+    const wslRoot = process.env.SANDBOX_LABS_WSL_ROOT;
+    const wslBin = process.env.SANDBOXCTL_WSL_BIN;
+    if (wsl && distro && wslRoot && wslBin) {
+      return {
+        command: wsl,
+        prefix: ["-d", distro, "--cd", wslRoot, "--", wslBin],
+        startupGraceMs: 0,
+        repoRoot: wslRoot,
+        pathStyle: "unix"
+      };
+    }
+  }
   const suffix = process.platform === "win32" ? ".exe" : "";
   for (const path of [resolve(root, `target/release/sandboxctl${suffix}`), resolve(root, `target/debug/sandboxctl${suffix}`)]) {
     try { await access(path, constants.X_OK); return { command: path, prefix: [], startupGraceMs: 0 }; } catch { /* continue */ }
@@ -267,6 +285,10 @@ export async function cliInvocation(root) {
   const cargo = await findOnPath(process.platform === "win32" ? "cargo.exe" : "cargo");
   if (cargo) return { command: cargo, prefix: ["run", "-q", "-p", "sandboxctl", "--"], startupGraceMs: CARGO_STARTUP_GRACE_MS };
   return null;
+}
+
+function cliPath(path, invocation) {
+  return invocation.pathStyle === "unix" ? path.replaceAll("\\", "/") : path;
 }
 
 async function findOnPath(name) {

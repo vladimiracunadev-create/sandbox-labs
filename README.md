@@ -31,14 +31,16 @@ resultado.
 
 ## 📊 Estado, sin adornos
 
-| | Con código y prueba que corre en CI | Estado más alto alcanzado |
+| | Con código | Estado más alto alcanzado |
 |---|:--:|:--:|
 | **Núcleo de aislamiento** | 9 de 9 controles | ✅ verificado en cada commit |
 | **Casos técnicos** | 15 de 15 | 🟡 `building` |
 | **Casos de mercado de capitales** | 21 de 21 | 🟢 `functional` en uno · 🟠 `prototype` en el resto |
 
-Los 36 tienen código y prueba. **Ninguno llega a `verified`**: para eso hace
-falta que cada ejecución emita evidencia firmada, y todavía no la emiten.
+Los 36 tienen código; **33 tienen prueba de comportamiento**. Los casos técnicos
+02, 03 y 05 aún tienen que completar esa prueba específica. **Ninguno llega a
+`verified`**: para eso hace falta que cada ejecución emita evidencia firmada, y
+todavía no la emiten.
 **[docs/ESTADO.md](docs/ESTADO.md)** dice, caso por caso, qué hay, qué lo
 demuestra y cuánta distancia queda — sin usar la palabra «listo» en ningún
 sitio.
@@ -218,6 +220,19 @@ software necesario, instalación, procesos, tiempo de carga y diagramas— en
 Necesitas **Linux o WSL2**: los sandboxes son primitivas del kernel de Linux
 —namespaces, cgroups, capabilities— y en Windows no existen. Guía completa en
 [docs/INSTALACION.md](docs/INSTALACION.md).
+
+En Windows, el camino recomendado es un solo comando desde PowerShell. Mantiene
+el panel en Windows y ejecuta los sandboxes dentro de WSL2:
+
+```powershell
+.\launcher\windows\start-sandbox-labs.ps1
+```
+
+El primer arranque instala las herramientas Linux que falten y compila el
+backend; los siguientes reutilizan esa compilación. El panel queda en
+<http://127.0.0.1:9093> y cada servicio publicado usa su puerto `8801`–`8815`.
+
+En Linux, o para hacerlo manualmente dentro de WSL2:
 
 ```bash
 sudo apt install bubblewrap util-linux python3

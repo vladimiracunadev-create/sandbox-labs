@@ -103,7 +103,7 @@ campaña que no alcanza el mínimo · emisor que deja de reportar avances.
 | Componente | Para qué |
 |---|---|
 | **Rust** 1.75+ | Motor de campañas sobre `Money` y `Ledger` |
-| **Node.js** 20+ / **pnpm** 9+ | Interfaz en el panel (opcional) |
+| **Node.js** 22+ / **pnpm** 9+ | Interfaz en el panel (opcional) |
 
 No necesita `bubblewrap`: no se ejecuta código ajeno, se prueban reglas de
 negocio. Funciona en cualquier sistema con Rust.

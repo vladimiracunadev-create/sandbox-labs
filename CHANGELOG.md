@@ -7,6 +7,31 @@ Versionado semántico.
 
 ## [Unreleased]
 
+### Fixed — servicios realmente aislados y utilizables desde Windows
+
+- El launcher de Windows ahora usa WSL2 como backend real: instala o comprueba
+  las dependencias Linux, compila `sandboxctl` dentro de la distribución,
+  publica el panel en `127.0.0.1:9093` y permite levantar servicios aislados
+  con bubblewrap desde la interfaz. También detecta de antemano una colisión en
+  el puerto del panel y no confunde otra instancia con la que acaba de iniciar.
+- `bwrap` y `unshare` ya no se consideran disponibles por responder a
+  `--version`: el sondeo crea namespaces de usuario, PID, montaje y red de
+  verdad. Un host que prohíba esa operación falla antes de ejecutar una carga.
+- Los servicios pasan de una política permisiva a una política estricta. El
+  selector descarta runtimes que no cubren todos los controles requeridos y
+  falla en cerrado; un servicio persistente ya no afirma aplicar `timeout` ni
+  límite de salida, controles que pertenecen a ejecuciones finitas.
+- El runtime predeterminado es bubblewrap. El panel conserva y envía esa
+  elección, y en Windows traduce rutas e invocaciones al filesystem de WSL2.
+- La integración continua cubre el ciclo completo
+  `service up → bubblewrap → socket Unix → localhost → service down`, además de
+  comprobar los nueve controles efectivos de la política de servicio y que el
+  proceso bubblewrap tampoco sobreviva al apagado. Esto cubre la sesión propia
+  que bubblewrap crea fuera del grupo del wrapper de `systemd-run`.
+- Se retiraron bytecodes de Python versionados y se corrigieron el objetivo
+  `make check`, el requisito actual de Node 22+ y los conteos de casos realmente
+  probados frente a casos que solo tienen código.
+
 ### Fixed — tres afirmaciones del núcleo que no eran ciertas
 
 - **La evidencia declaraba una red aislada que bubblewrap no aislaba.** El

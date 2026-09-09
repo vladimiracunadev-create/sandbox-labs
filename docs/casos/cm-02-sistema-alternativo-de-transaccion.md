@@ -105,7 +105,7 @@ Nótese el precio de la ejecución: **10300, el de la orden que descansaba**, no
 | Componente | Para qué | ¿Obligatorio? |
 |---|---|---|
 | **Rust** 1.75+ | El motor del libro y sus invariantes | Sí |
-| **Node.js** 20+ / **pnpm** 9+ | Visualización de profundidad en el panel | No |
+| **Node.js** 22+ / **pnpm** 9+ | Visualización de profundidad en el panel | No |
 
 No necesita `bubblewrap` ni Linux: es lógica determinista. Corre en Windows,
 macOS y Linux por igual.

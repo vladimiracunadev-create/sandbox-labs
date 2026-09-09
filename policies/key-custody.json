@@ -3,7 +3,7 @@
   "id": "key-custody",
   "description": "Custodia de claves: la clave vive dentro del sandbox y NO hay salida de red. Una clave privada más una conexión a internet es la receta de un robo de fondos; aquí el camino de salida sencillamente no existe.",
   "enforcement": {
-    "mode": "best-effort",
+    "mode": "strict",
     "requiredControls": [
       "filesystem",
       "network",
@@ -12,7 +12,7 @@
       "capabilities",
       "devices",
       "environment",
-      "output"
+      "cpu"
     ]
   },
   "filesystem": {
